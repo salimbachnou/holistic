@@ -1,0 +1,172 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap');
+@import url('https://unpkg.com/leaflet@1.9.4/dist/leaflet.css');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    @apply text-gray-900 bg-white;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: 'Playfair Display', serif;
+    @apply font-semibold;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-gradient-lotus hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-all duration-200;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center px-6 py-3 border border-gray-300 text-base font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors duration-200;
+  }
+
+  .btn-outline {
+    @apply inline-flex items-center justify-center px-6 py-3 border-2 border-primary-600 text-base font-medium rounded-md text-primary-600 bg-transparent hover:bg-primary-600 hover:text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-all duration-200;
+  }
+
+  .input-field {
+    @apply block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm;
+  }
+
+  .card {
+    @apply bg-white rounded-lg shadow-md p-6 border border-gray-100;
+  }
+
+  .card-hover {
+    @apply bg-white rounded-lg shadow-md p-6 border border-gray-100 hover:shadow-lg transition-shadow duration-300;
+  }
+
+  .lotus-card {
+    @apply bg-white rounded-lg shadow-md p-6 border border-gray-100 hover:shadow-xl hover:border-primary-200 transition-all duration-300;
+  }
+}
+
+@layer utilities {
+  .text-gradient {
+    @apply bg-gradient-to-r from-primary-600 to-primary-800 bg-clip-text text-transparent;
+  }
+
+  .text-gradient-lotus {
+    background: linear-gradient(135deg, #c53d8f 0%, #9333ea 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .bg-gradient-primary {
+    @apply bg-gradient-lotus;
+  }
+
+  .bg-gradient-secondary {
+    @apply bg-gradient-to-r from-secondary-400 to-secondary-500;
+  }
+
+  .bg-gradient-lotus {
+    background: linear-gradient(135deg, #c53d8f 0%, #9333ea 100%);
+  }
+
+  .shadow-soft {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  }
+
+  .shadow-glow {
+    box-shadow: 0 0 20px rgba(197, 61, 143, 0.2);
+  }
+
+  .shadow-lotus {
+    box-shadow: 0 4px 20px rgba(197, 61, 143, 0.15);
+  }
+
+  .shadow-lotus-hover {
+    box-shadow: 0 8px 30px rgba(197, 61, 143, 0.25);
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-gray-100;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #c53d8f 0%, #9333ea 100%);
+  @apply rounded-lg;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #a21caf 0%, #7c3aed 100%);
+}
+
+/* Loading spinner */
+.spinner {
+  @apply animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600;
+}
+
+/* Toast notifications custom styles */
+.Toaster__toast {
+  @apply rounded-lg shadow-lg;
+}
+
+/* Leaflet map customization */
+.leaflet-container {
+  @apply rounded-lg;
+}
+
+.leaflet-control-zoom a {
+  @apply text-primary-600;
+}
+
+/* Form validation errors */
+.error-message {
+  @apply text-red-600 text-sm mt-1;
+}
+
+/* Responsive utilities */
+@media (max-width: 640px) {
+  .mobile-padding {
+    @apply px-4;
+  }
+}
+
+/* Focus styles for accessibility */
+.focus-visible {
+  @apply focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2;
+}
+
+/* Lotus logo styles */
+.lotus-logo {
+  transition: all 0.3s ease;
+}
+
+.lotus-logo:hover {
+  transform: scale(1.05);
+  filter: drop-shadow(0 4px 12px rgba(197, 61, 143, 0.3));
+}
+
+/* Hero section with lotus gradient */
+.hero-lotus-bg {
+  background: radial-gradient(
+    ellipse at center,
+    rgba(197, 61, 143, 0.1) 0%,
+    rgba(147, 51, 234, 0.05) 50%,
+    transparent 100%
+  );
+}
