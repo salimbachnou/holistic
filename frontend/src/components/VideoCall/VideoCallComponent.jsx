@@ -10,7 +10,17 @@ import {
   FaPhone,
   FaDesktop,
   FaShieldAlt,
+  FaExpand,
+  FaCog,
+  FaUsers,
+  FaPaperPlane,
+  FaTimes,
+  FaVolumeUp,
+  FaVolumeOff,
+  FaCircle,
+  FaStop,
 } from 'react-icons/fa';
+import './VideoCallComponent.css';
 
 const VideoCallComponent = memo(
   ({
@@ -927,16 +937,16 @@ const VideoCallComponent = memo(
     // Show security error if not verified
     if (securityError) {
       return (
-        <div className="bg-gray-900 text-white h-screen flex items-center justify-center">
-          <div className="text-center max-w-md p-6 bg-red-900 rounded-lg">
-            <div className="text-red-400 text-5xl mb-4">🔒</div>
-            <h2 className="text-xl font-bold mb-2">Accès sécurisé refusé</h2>
-            <p className="mb-6">{securityError}</p>
+        <div className="min-h-screen bg-gradient-to-br from-slate-900 via-gray-900 to-slate-800 text-white flex items-center justify-center p-6">
+          <div className="text-center max-w-md p-8 bg-gradient-to-r from-red-900/80 to-red-800/80 backdrop-blur-lg rounded-2xl border border-red-700/30 shadow-2xl">
+            <div className="text-red-400 text-6xl mb-6 animate-pulse">🔒</div>
+            <h2 className="text-2xl font-bold mb-4 text-red-100">Accès sécurisé refusé</h2>
+            <p className="mb-8 text-red-200 leading-relaxed">{securityError}</p>
             <button
               onClick={handleEndCall}
-              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+              className="px-6 py-3 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-all duration-300 transform hover:scale-105 focus:ring-4 focus:ring-red-500/50 font-medium"
             >
-              Quitter
+              Quitter la session
             </button>
           </div>
         </div>
@@ -946,109 +956,213 @@ const VideoCallComponent = memo(
     // Show loading while verifying security
     if (!isSecurityVerified) {
       return (
-        <div className="bg-gray-900 text-white h-screen flex items-center justify-center">
-          <div className="text-center">
-            <div className="animate-spin text-4xl mb-4">🔒</div>
-            <p>Vérification de sécurité en cours...</p>
+        <div className="min-h-screen bg-gradient-to-br from-slate-900 via-gray-900 to-slate-800 text-white flex items-center justify-center">
+          <div className="text-center p-8">
+            <div className="relative">
+              <div className="animate-spin text-6xl mb-6 text-blue-400">🔒</div>
+              <div className="absolute inset-0 animate-ping text-6xl mb-6 text-blue-400 opacity-20">
+                🔒
+              </div>
+            </div>
+            <h3 className="text-xl font-semibold mb-2">Vérification de sécurité</h3>
+            <p className="text-gray-300">Authentification en cours...</p>
+            <div className="mt-4 flex justify-center">
+              <div className="flex space-x-1">
+                <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce"></div>
+                <div
+                  className="w-2 h-2 bg-blue-400 rounded-full animate-bounce"
+                  style={{ animationDelay: '0.1s' }}
+                ></div>
+                <div
+                  className="w-2 h-2 bg-blue-400 rounded-full animate-bounce"
+                  style={{ animationDelay: '0.2s' }}
+                ></div>
+              </div>
+            </div>
           </div>
         </div>
       );
     }
 
     return (
-      <div className="bg-gray-900 text-white h-screen flex flex-col">
-        {/* Shared room header with security indicator */}
-        <div className="bg-gray-800 p-4 flex justify-between items-center">
-          <div className="flex items-center">
-            <div className="text-lg font-medium">
-              {sessionData ? sessionData.title : 'Session Vidéo'}
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-gray-900 to-slate-800 text-white flex flex-col">
+        {/* Responsive header with glass effect */}
+        <div className="bg-black/20 backdrop-blur-lg border-b border-white/10 p-3 md:p-4">
+          <div className="flex justify-between items-center">
+            {/* Left section - Logo and title */}
+            <div className="flex items-center space-x-2 md:space-x-4 min-w-0 flex-1">
+              <div className="flex items-center space-x-2 md:space-x-3 min-w-0">
+                <div className="w-8 h-8 md:w-10 md:h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg md:rounded-xl flex items-center justify-center flex-shrink-0">
+                  <FaVideo className="text-white text-sm md:text-lg" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h1 className="text-sm md:text-lg font-semibold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent truncate">
+                    {sessionData ? sessionData.title : 'Session Vidéo Sécurisée'}
+                  </h1>
+                  <div className="flex items-center space-x-1 md:space-x-2 text-xs md:text-sm text-gray-400">
+                    <FaShieldAlt className="text-green-400 text-xs" />
+                    <span className="hidden sm:inline">Connexion chiffrée</span>
+                    <span className="sm:hidden">Sécurisé</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Status badges - Hidden on small screens, shown on medium+ */}
+              <div className="hidden lg:flex items-center space-x-2 flex-shrink-0">
+                <div className="bg-blue-500/20 backdrop-blur-sm border border-blue-400/30 text-blue-300 text-xs px-2 md:px-3 py-1 rounded-full flex items-center space-x-1 md:space-x-2">
+                  <FaUsers className="text-xs" />
+                  <span>
+                    {participants.filter(p => p.hasVideo).length}/{participants.length}
+                  </span>
+                </div>
+                <div className="bg-green-500/20 backdrop-blur-sm border border-green-400/30 text-green-300 text-xs px-2 md:px-3 py-1 rounded-full flex items-center space-x-1 md:space-x-2">
+                  <FaCircle className="text-xs animate-pulse" />
+                  <span>En direct</span>
+                </div>
+              </div>
             </div>
-            <FaShieldAlt className="ml-2 text-green-500" />
-            <span className="ml-2 bg-blue-600 text-white text-xs px-2 py-1 rounded-full">
-              {participants.filter(p => p.hasVideo).length}/{participants.length} vidéo active(s)
-            </span>
-          </div>
-          <div className="text-sm flex items-center">
-            <span className="mr-2">Session: {sessionId}</span>
-            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-            <span className="ml-1 text-xs">Sécurisé</span>
+
+            {/* Right section - Session info and settings */}
+            <div className="flex items-center space-x-2 md:space-x-3 flex-shrink-0">
+              {/* Session ID - Hidden on mobile, visible on medium+ screens */}
+              <div className="hidden md:block text-xs md:text-sm text-gray-400">
+                <span className="hidden lg:inline">Session: </span>
+                <span className="text-white font-mono text-xs">{sessionId}</span>
+              </div>
+
+              {/* Mobile status indicator */}
+              <div className="lg:hidden flex items-center space-x-1">
+                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                <span className="text-xs text-green-400">
+                  {participants.filter(p => p.hasVideo).length}
+                </span>
+              </div>
+
+              {/* Settings button */}
+              <button className="p-1.5 md:p-2 bg-white/10 backdrop-blur-sm rounded-lg hover:bg-white/20 transition-all duration-300">
+                <FaCog className="text-gray-300 text-sm md:text-base" />
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* Main content */}
-        <div className="flex-1 flex">
-          {/* Video area - Real participants grid */}
-          <div className={`flex-1 relative ${isChatOpen ? 'lg:w-3/4' : 'w-full'}`}>
-            <div className="w-full h-full bg-black p-4">
+        {/* Responsive main video content area */}
+        <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
+          {/* Video grid area */}
+          <div
+            className={`flex-1 relative transition-all duration-300 ${
+              isChatOpen ? 'lg:w-3/4 h-1/2 lg:h-full' : 'w-full h-full'
+            }`}
+          >
+            <div className="w-full h-full bg-black/50 backdrop-blur-sm p-3 md:p-4 lg:p-6">
               {participants.length === 0 ? (
                 <div className="w-full h-full flex items-center justify-center">
-                  <div className="text-center">
-                    <div className="w-24 h-24 rounded-full bg-gray-700 mx-auto mb-4 flex items-center justify-center">
-                      <span className="text-3xl">🎥</span>
+                  <div className="text-center p-4 md:p-6 lg:p-8 bg-white/5 backdrop-blur-lg rounded-2xl lg:rounded-3xl border border-white/10 max-w-sm mx-auto">
+                    <div className="w-16 h-16 md:w-20 md:h-20 lg:w-24 lg:h-24 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 mx-auto mb-4 md:mb-6 flex items-center justify-center shadow-2xl">
+                      <FaVideo className="text-white text-xl md:text-2xl lg:text-3xl" />
                     </div>
-                    <p>Chargement des participants...</p>
-                    <div className="flex items-center justify-center mt-2">
-                      <FaShieldAlt className="text-green-500 mr-1" />
-                      <span className="text-xs">Session sécurisée - {sessionId}</span>
+                    <h3 className="text-lg md:text-xl font-semibold mb-2">
+                      Préparation de la session
+                    </h3>
+                    <p className="text-gray-400 mb-4 text-sm md:text-base">
+                      Chargement des participants autorisés...
+                    </p>
+                    <div className="flex flex-col sm:flex-row items-center justify-center space-y-2 sm:space-y-0 sm:space-x-2 text-sm">
+                      <div className="flex items-center space-x-2">
+                        <FaShieldAlt className="text-green-400" />
+                        <span className="text-green-400">Session sécurisée</span>
+                      </div>
+                      <span className="text-gray-500 hidden sm:inline">•</span>
+                      <span className="text-gray-400 font-mono text-xs">{sessionId}</span>
                     </div>
                   </div>
                 </div>
               ) : (
                 <div
-                  className={`grid gap-4 h-full ${
+                  className={`grid gap-2 md:gap-3 lg:gap-4 h-full ${
                     participants.length === 1
                       ? 'grid-cols-1'
                       : participants.length === 2
-                        ? 'grid-cols-2'
+                        ? 'grid-cols-1 sm:grid-cols-2'
                         : participants.length <= 4
-                          ? 'grid-cols-2 grid-rows-2'
-                          : 'grid-cols-3 grid-rows-2'
+                          ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 lg:grid-rows-2'
+                          : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 lg:grid-rows-2'
                   }`}
                 >
                   {participants.map((participant, index) => (
                     <div
                       key={participant.id || `participant-${index}`}
-                      className="bg-gray-800 rounded-lg overflow-hidden border-2 border-gray-600 relative"
+                      className="group relative bg-gradient-to-br from-slate-800/80 to-slate-900/80 backdrop-blur-lg rounded-xl lg:rounded-2xl overflow-hidden border border-white/10 shadow-2xl hover:shadow-blue-500/20 transition-all duration-300 min-h-[200px] sm:min-h-[250px] lg:min-h-[300px]"
                     >
                       <div className="w-full h-full relative">
                         {participant.hasVideo ? (
                           getVideoElement(participant)
                         ) : (
-                          <div
-                            className="w-full h-full flex items-center justify-center bg-gray-700 cursor-pointer"
+                          <button
+                            className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-700/80 to-slate-800/80 backdrop-blur-lg hover:from-slate-600/80 hover:to-slate-700/80 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
                             onClick={() => simulateParticipantConnection(participant.id)}
+                            onKeyDown={e => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                simulateParticipantConnection(participant.id);
+                              }
+                            }}
                           >
-                            <div className="text-center">
-                              <div className="w-16 h-16 rounded-full bg-gray-600 mx-auto mb-2 flex items-center justify-center">
-                                <span className="text-xl">
+                            <div className="text-center p-3 sm:p-4 lg:p-6">
+                              <div className="w-12 h-12 sm:w-16 sm:h-16 lg:w-20 lg:h-20 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 mx-auto mb-2 sm:mb-3 lg:mb-4 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
+                                <span className="text-lg sm:text-xl lg:text-2xl">
                                   {participant.role === 'professional' ? '👨‍⚕️' : '👤'}
                                 </span>
                               </div>
-                              <p className="text-xs text-gray-300">
-                                {participant.isConnected ? 'Caméra désactivée' : 'En attente...'}
+                              <p className="text-xs sm:text-sm font-medium text-white mb-1 truncate px-2">
+                                {participant.id === currentUserId ? 'Vous' : participant.name}
+                              </p>
+                              <p className="text-xs text-gray-400 mb-2 sm:mb-3">
+                                {participant.isConnected ? 'Caméra désactivée' : 'En attente'}
                               </p>
                               {!participant.isConnected && (
-                                <p className="text-xs text-gray-500 mt-1">Cliquez pour simuler</p>
+                                <div className="bg-blue-500/20 backdrop-blur-sm border border-blue-400/30 text-blue-300 text-xs px-2 sm:px-3 py-1 rounded-full">
+                                  <span className="hidden sm:inline">Cliquez pour connecter</span>
+                                  <span className="sm:hidden">Connecter</span>
+                                </div>
                               )}
                             </div>
-                          </div>
+                          </button>
                         )}
 
-                        <div className="absolute top-2 left-2 bg-black bg-opacity-50 px-2 py-1 rounded text-xs">
-                          <span className="text-white">
-                            {participant.id === currentUserId ? 'Vous' : participant.name} (
-                            {participant.role})
-                          </span>
+                        {/* Responsive participant info overlay */}
+                        <div className="absolute top-2 left-2 lg:top-3 lg:left-3 bg-black/60 backdrop-blur-sm px-2 py-1 lg:px-3 lg:py-1 rounded-md lg:rounded-lg border border-white/20">
+                          <div className="flex items-center space-x-1 lg:space-x-2">
+                            <span className="text-white text-xs lg:text-sm font-medium truncate max-w-[100px] lg:max-w-none">
+                              {participant.id === currentUserId ? 'Vous' : participant.name}
+                            </span>
+                            <span className="text-xs text-gray-300 hidden sm:inline">
+                              ({participant.role === 'professional' ? 'Pro' : 'Client'})
+                            </span>
+                          </div>
                         </div>
-                        <div className="absolute top-2 right-2 flex items-center space-x-1">
+
+                        {/* Responsive status indicators */}
+                        <div className="absolute top-2 right-2 lg:top-3 lg:right-3 flex items-center space-x-1 lg:space-x-2">
                           <div
-                            className={`w-2 h-2 rounded-full ${participant.isConnected ? 'bg-green-500' : 'bg-gray-500'}`}
+                            className={`w-2 h-2 lg:w-3 lg:h-3 rounded-full shadow-lg ${
+                              participant.isConnected ? 'bg-green-400 animate-pulse' : 'bg-gray-500'
+                            }`}
                           ></div>
                           {participant.hasVideo && (
-                            <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                            <div className="w-2 h-2 lg:w-3 lg:h-3 rounded-full bg-blue-400 shadow-lg animate-pulse"></div>
                           )}
-                          <FaShieldAlt className="text-green-500 text-xs" />
+                          <FaShieldAlt className="text-green-400 text-xs drop-shadow-lg" />
                         </div>
+
+                        {/* Hover controls - Hidden on mobile */}
+                        {participant.hasVideo && (
+                          <div className="absolute bottom-2 right-2 lg:bottom-3 lg:right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300 hidden md:block">
+                            <button className="p-1.5 lg:p-2 bg-black/60 backdrop-blur-sm rounded-md lg:rounded-lg border border-white/20 hover:bg-black/80 transition-all duration-300">
+                              <FaExpand className="text-white text-xs" />
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -1056,25 +1170,43 @@ const VideoCallComponent = memo(
               )}
             </div>
 
-            {/* Session info overlay */}
-            <div className="absolute top-4 left-4 bg-black bg-opacity-75 px-4 py-3 rounded-lg max-w-sm">
-              <div className="text-white text-sm flex items-center mb-2">
-                <FaShieldAlt className="text-green-500 mr-2" />
-                <span className="font-medium">
-                  {sessionData ? sessionData.title : 'Session Vidéo'}
-                </span>
-              </div>
-              <div className="text-xs text-gray-300 space-y-1">
-                <div>👥 {participants.length} participant(s) autorisé(s)</div>
-                <div>📹 {participants.filter(p => p.hasVideo).length} flux vidéo actif(s)</div>
-                <div>🔒 Session ID: {sessionId}</div>
-                <div className="text-blue-300 mt-2">
-                  💡 Flux vidéo partagés en temps réel entre participants
+            {/* Enhanced session info overlay */}
+            <div className="absolute top-6 left-6 bg-black/60 backdrop-blur-lg px-6 py-4 rounded-2xl border border-white/20 max-w-sm shadow-2xl">
+              <div className="text-white text-sm flex items-center mb-3">
+                <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-blue-600 rounded-lg flex items-center justify-center mr-3">
+                  <FaShieldAlt className="text-white text-xs" />
+                </div>
+                <div>
+                  <h3 className="font-semibold">
+                    {sessionData ? sessionData.title : 'Session Vidéo Sécurisée'}
+                  </h3>
+                  <p className="text-xs text-gray-400">Connexion chiffrée E2E</p>
                 </div>
               </div>
 
-              {/* Test buttons */}
-              <div className="mt-3 space-y-2">
+              <div className="text-xs text-gray-300 space-y-2">
+                <div className="flex items-center space-x-2">
+                  <FaUsers className="text-blue-400" />
+                  <span>{participants.length} participant(s) autorisé(s)</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <FaVideo className="text-green-400" />
+                  <span>{participants.filter(p => p.hasVideo).length} flux vidéo actif(s)</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <FaCircle className="text-green-400 animate-pulse" />
+                  <span>Session ID: {sessionId}</span>
+                </div>
+              </div>
+
+              <div className="mt-4 p-3 bg-blue-500/20 backdrop-blur-sm border border-blue-400/30 rounded-xl">
+                <p className="text-blue-300 text-xs leading-relaxed">
+                  💡 Flux vidéo partagés en temps réel avec chiffrement de bout en bout
+                </p>
+              </div>
+
+              {/* Enhanced test controls */}
+              <div className="mt-4 space-y-3">
                 {/* Button to activate all remote cameras */}
                 {participants.filter(p => !p.hasVideo && p.id !== currentUserId).length > 0 && (
                   <button
@@ -1085,78 +1217,75 @@ const VideoCallComponent = memo(
                         }
                       });
                     }}
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white text-xs py-2 px-3 rounded-lg"
+                    className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white text-xs py-3 px-4 rounded-xl transition-all duration-300 transform hover:scale-105 focus:ring-2 focus:ring-blue-500/50 flex items-center justify-center space-x-2"
                   >
-                    🎥 Activer toutes les caméras
+                    <FaVideo />
+                    <span>Activer toutes les caméras</span>
                   </button>
                 )}
 
-                {/* Button to force real cameras for all */}
-                {participants.filter(p => p.id !== currentUserId).length > 0 && (
+                {/* Control buttons grid */}
+                <div className="grid grid-cols-2 gap-3">
                   <button
                     onClick={() => {
-                      console.log('🔄 Force caméras réelles pour tous');
-                      participants.forEach(participant => {
-                        if (participant.id !== currentUserId) {
-                          // Clear existing stream first
-                          const existingStream = remoteStreams.get(participant.id);
-                          if (existingStream) {
-                            existingStream.getTracks().forEach(track => track.stop());
-                            if (existingStream.animationInterval) {
-                              clearInterval(existingStream.animationInterval);
-                            }
-                          }
-                          // Try real camera
-                          simulateRealRemoteStream(participant);
-                        }
-                      });
-                    }}
-                    className="w-full bg-orange-600 hover:bg-orange-700 text-white text-xs py-2 px-3 rounded-lg"
-                  >
-                    📹 Forcer caméras réelles
-                  </button>
-                )}
-
-                {/* Buttons to control local camera */}
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    onClick={() => {
-                      console.log('🔄 Tentative caméra réelle');
                       setupVideoStream(false);
                     }}
-                    className="bg-green-600 hover:bg-green-700 text-white text-xs py-2 px-2 rounded-lg"
+                    className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white text-xs py-2 px-3 rounded-xl transition-all duration-300 transform hover:scale-105 focus:ring-2 focus:ring-green-500/50 flex items-center justify-center space-x-1"
                   >
-                    📹 Caméra réelle
+                    <FaVideo className="text-xs" />
+                    <span>Caméra réelle</span>
                   </button>
                   <button
                     onClick={() => {
-                      console.log('🎨 Mode simulé');
                       setupVideoStream(true);
                     }}
-                    className="bg-purple-600 hover:bg-purple-700 text-white text-xs py-2 px-2 rounded-lg"
+                    className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white text-xs py-2 px-3 rounded-xl transition-all duration-300 transform hover:scale-105 focus:ring-2 focus:ring-purple-500/50 flex items-center justify-center space-x-1"
                   >
-                    🎨 Mode simulé
+                    <FaCog className="text-xs" />
+                    <span>Mode simulé</span>
                   </button>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Chat panel */}
+          {/* Responsive modern chat panel */}
           {isChatOpen && (
-            <div className="w-full lg:w-1/4 bg-gray-800 border-l border-gray-700 flex flex-col">
-              <div className="p-3 border-b border-gray-700 font-medium flex items-center">
-                <span>Chat sécurisé</span>
-                <FaShieldAlt className="ml-2 text-green-500 text-sm" />
+            <div className="w-full lg:w-1/3 bg-black/20 backdrop-blur-lg border-t lg:border-t-0 lg:border-l border-white/10 flex flex-col h-1/2 lg:h-full">
+              {/* Chat header */}
+              <div className="p-3 md:p-4 border-b border-white/10 flex items-center justify-between flex-shrink-0">
+                <div className="flex items-center space-x-2 md:space-x-3 min-w-0">
+                  <div className="w-6 h-6 md:w-8 md:h-8 bg-gradient-to-r from-green-500 to-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <FaComments className="text-white text-xs md:text-sm" />
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="font-semibold text-white text-sm md:text-base">Chat Sécurisé</h3>
+                    <div className="flex items-center space-x-1 md:space-x-2 text-xs text-gray-400">
+                      <FaShieldAlt className="text-green-400" />
+                      <span className="hidden sm:inline">Chiffrement E2E</span>
+                      <span className="sm:hidden">E2E</span>
+                    </div>
+                  </div>
+                </div>
+                <button
+                  onClick={toggleChat}
+                  className="p-1.5 md:p-2 bg-white/10 backdrop-blur-sm rounded-lg hover:bg-white/20 transition-all duration-300 flex-shrink-0"
+                >
+                  <FaTimes className="text-gray-300 text-sm" />
+                </button>
               </div>
 
-              <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-4 space-y-3">
+              {/* Messages area */}
+              <div
+                ref={chatContainerRef}
+                className="flex-1 overflow-y-auto p-3 md:p-4 space-y-3 md:space-y-4 custom-scrollbar min-h-0"
+              >
                 {messages.map((message, index) => (
                   <div
                     key={message.id || `message-${index}`}
                     className={`${
                       message.sender === 'system'
-                        ? 'text-center text-gray-400 text-sm py-1'
+                        ? 'flex justify-center'
                         : message.sender === 'you'
                           ? 'flex justify-end'
                           : 'flex justify-start'
@@ -1164,25 +1293,28 @@ const VideoCallComponent = memo(
                   >
                     {message.sender === 'system' ? (
                       <div
-                        className={`py-1 px-3 rounded-full text-xs ${message.isError ? 'bg-red-900' : 'bg-green-900'}`}
+                        className={`max-w-[90%] sm:max-w-[80%] px-3 md:px-4 py-1.5 md:py-2 rounded-full text-xs font-medium border backdrop-blur-sm ${
+                          message.isError
+                            ? 'bg-red-500/20 border-red-400/30 text-red-300'
+                            : 'bg-green-500/20 border-green-400/30 text-green-300'
+                        }`}
                       >
                         {message.text}
                       </div>
                     ) : (
                       <div
-                        className={`max-w-[75%] px-3 py-2 rounded-lg ${
+                        className={`max-w-[90%] sm:max-w-[85%] px-3 md:px-4 py-2 md:py-3 rounded-xl md:rounded-2xl backdrop-blur-sm border ${
                           message.sender === 'you'
-                            ? 'bg-primary-600 text-white rounded-tr-none'
-                            : 'bg-gray-700 text-white rounded-tl-none'
-                        }`}
+                            ? 'bg-blue-600/80 border-blue-500/30 text-white rounded-tr-md'
+                            : 'bg-white/10 border-white/20 text-white rounded-tl-md'
+                        } shadow-lg`}
                       >
-                        <div className="text-sm">{message.text}</div>
-                        <div className="text-xs opacity-70 text-right mt-1 flex items-center justify-end">
+                        <div className="text-xs md:text-sm leading-relaxed break-words">
+                          {message.text}
+                        </div>
+                        <div className="text-xs opacity-70 mt-1 md:mt-2 flex items-center justify-end space-x-1 md:space-x-2">
                           <span>{formatTime(message.timestamp)}</span>
-                          <FaShieldAlt
-                            className="ml-1 text-green-400"
-                            style={{ fontSize: '8px' }}
-                          />
+                          <FaShieldAlt className="text-green-400" style={{ fontSize: '8px' }} />
                         </div>
                       </div>
                     )}
@@ -1190,105 +1322,220 @@ const VideoCallComponent = memo(
                 ))}
               </div>
 
-              <form onSubmit={handleSendMessage} className="p-3 border-t border-gray-700 flex">
-                <input
-                  type="text"
-                  placeholder="Message sécurisé..."
-                  value={newMessage}
-                  onChange={e => setNewMessage(e.target.value)}
-                  className="flex-1 bg-gray-700 text-white rounded-l-lg px-3 py-2 focus:outline-none"
-                  disabled={!isSecurityVerified}
-                />
-                <button
-                  type="submit"
-                  className="bg-primary-600 text-white px-4 rounded-r-lg hover:bg-primary-700 disabled:opacity-50"
-                  disabled={!isSecurityVerified}
-                >
-                  <FaShieldAlt className="text-xs" />
-                </button>
+              {/* Message input */}
+              <form
+                onSubmit={handleSendMessage}
+                className="p-3 md:p-4 border-t border-white/10 flex-shrink-0"
+              >
+                <div className="flex space-x-2 md:space-x-3">
+                  <input
+                    type="text"
+                    placeholder="Tapez votre message..."
+                    value={newMessage}
+                    onChange={e => setNewMessage(e.target.value)}
+                    className="flex-1 bg-white/10 backdrop-blur-sm border border-white/20 text-white rounded-lg md:rounded-xl px-3 md:px-4 py-2 md:py-3 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 placeholder-gray-400 transition-all duration-300 text-sm md:text-base"
+                    disabled={!isSecurityVerified}
+                  />
+                  <button
+                    type="submit"
+                    className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 md:px-6 py-2 md:py-3 rounded-lg md:rounded-xl hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 transform hover:scale-105 focus:ring-2 focus:ring-blue-500/50 flex items-center space-x-2 flex-shrink-0"
+                    disabled={!isSecurityVerified || !newMessage.trim()}
+                  >
+                    <FaPaperPlane className="text-xs md:text-sm" />
+                    <span className="hidden sm:inline text-sm">Envoyer</span>
+                  </button>
+                </div>
               </form>
             </div>
           )}
         </div>
 
-        {/* Controls */}
-        <div className="bg-gray-800 p-4 flex justify-center space-x-4">
-          <button
-            onClick={toggleMute}
-            className={`p-3 rounded-full ${isMuted ? 'bg-red-600' : 'bg-gray-700 hover:bg-gray-600'} ${!isSecurityVerified ? 'opacity-50 cursor-not-allowed' : ''}`}
-            disabled={!isSecurityVerified}
-          >
-            {isMuted ? <FaMicrophoneSlash size={20} /> : <FaMicrophone size={20} />}
-          </button>
-
-          <button
-            onClick={toggleVideo}
-            className={`p-3 rounded-full ${isVideoOff ? 'bg-red-600' : 'bg-gray-700 hover:bg-gray-600'} ${!isSecurityVerified ? 'opacity-50 cursor-not-allowed' : ''}`}
-            disabled={!isSecurityVerified}
-          >
-            {isVideoOff ? <FaVideoSlash size={20} /> : <FaVideo size={20} />}
-          </button>
-
-          <button
-            onClick={toggleChat}
-            className={`p-3 rounded-full ${isChatOpen ? 'bg-primary-600' : 'bg-gray-700 hover:bg-gray-600'}`}
-          >
-            {isChatOpen ? <FaCommentSlash size={20} /> : <FaComments size={20} />}
-          </button>
-
-          <button
-            onClick={handleShareScreen}
-            className={`p-3 rounded-full bg-gray-700 hover:bg-gray-600 ${!isSecurityVerified ? 'opacity-50 cursor-not-allowed' : ''}`}
-            disabled={!isSecurityVerified}
-          >
-            <FaDesktop size={20} />
-          </button>
-
-          <button onClick={handleEndCall} className="p-3 rounded-full bg-red-600 hover:bg-red-700">
-            <FaPhone size={20} style={{ transform: 'rotate(135deg)' }} />
-          </button>
-        </div>
-
-        {/* Real participants list */}
-        <div className="bg-gray-800 border-t border-gray-700 p-3">
-          <div className="flex justify-between items-center mb-2">
-            <div className="text-xs text-gray-400 flex items-center">
-              <span>{sessionData ? sessionData.title : 'Session Vidéo'}</span>
-              <FaShieldAlt className="ml-2 text-green-500" />
+        {/* Responsive modern control bar */}
+        <div className="bg-black/30 backdrop-blur-lg border-t border-white/10 p-3 md:p-4 lg:p-6">
+          <div className="flex justify-center items-center space-x-2 sm:space-x-3 lg:space-x-4">
+            {/* Audio control */}
+            <div className="relative group">
+              <button
+                onClick={toggleMute}
+                className={`p-2 sm:p-3 lg:p-4 rounded-lg lg:rounded-xl transition-all duration-300 transform hover:scale-110 focus:ring-4 focus:ring-white/20 ${
+                  isMuted
+                    ? 'bg-red-500/80 backdrop-blur-sm hover:bg-red-600/80 shadow-lg shadow-red-500/25'
+                    : 'bg-white/20 backdrop-blur-sm hover:bg-white/30 border border-white/20'
+                } ${!isSecurityVerified ? 'opacity-50 cursor-not-allowed' : ''}`}
+                disabled={!isSecurityVerified}
+              >
+                {isMuted ? (
+                  <FaMicrophoneSlash size={16} className="sm:w-5 sm:h-5 lg:w-6 lg:h-6" />
+                ) : (
+                  <FaMicrophone size={16} className="sm:w-5 sm:h-5 lg:w-6 lg:h-6" />
+                )}
+              </button>
+              <div className="absolute -top-10 lg:-top-12 left-1/2 transform -translate-x-1/2 bg-black/80 backdrop-blur-sm text-white text-xs px-2 lg:px-3 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none hidden md:block">
+                {isMuted ? 'Réactiver le micro' : 'Couper le micro'}
+              </div>
             </div>
-            <div className="text-xs text-gray-500">
-              {participants.filter(p => p.isConnected).length}/{participants.length} connecté(s) |{' '}
-              {participants.filter(p => p.hasVideo).length} vidéo(s)
+
+            {/* Video control */}
+            <div className="relative group">
+              <button
+                onClick={toggleVideo}
+                className={`p-2 sm:p-3 lg:p-4 rounded-lg lg:rounded-xl transition-all duration-300 transform hover:scale-110 focus:ring-4 focus:ring-white/20 ${
+                  isVideoOff
+                    ? 'bg-red-500/80 backdrop-blur-sm hover:bg-red-600/80 shadow-lg shadow-red-500/25'
+                    : 'bg-white/20 backdrop-blur-sm hover:bg-white/30 border border-white/20'
+                } ${!isSecurityVerified ? 'opacity-50 cursor-not-allowed' : ''}`}
+                disabled={!isSecurityVerified}
+              >
+                {isVideoOff ? (
+                  <FaVideoSlash size={16} className="sm:w-5 sm:h-5 lg:w-6 lg:h-6" />
+                ) : (
+                  <FaVideo size={16} className="sm:w-5 sm:h-5 lg:w-6 lg:h-6" />
+                )}
+              </button>
+              <div className="absolute -top-10 lg:-top-12 left-1/2 transform -translate-x-1/2 bg-black/80 backdrop-blur-sm text-white text-xs px-2 lg:px-3 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none hidden md:block">
+                {isVideoOff ? 'Réactiver la caméra' : 'Couper la caméra'}
+              </div>
+            </div>
+
+            {/* Chat toggle */}
+            <div className="relative group">
+              <button
+                onClick={toggleChat}
+                className={`p-2 sm:p-3 lg:p-4 rounded-lg lg:rounded-xl transition-all duration-300 transform hover:scale-110 focus:ring-4 focus:ring-white/20 ${
+                  isChatOpen
+                    ? 'bg-gradient-to-r from-blue-500/80 to-purple-600/80 backdrop-blur-sm shadow-lg shadow-blue-500/25'
+                    : 'bg-white/20 backdrop-blur-sm hover:bg-white/30 border border-white/20'
+                }`}
+              >
+                {isChatOpen ? (
+                  <FaCommentSlash size={16} className="sm:w-5 sm:h-5 lg:w-6 lg:h-6" />
+                ) : (
+                  <FaComments size={16} className="sm:w-5 sm:h-5 lg:w-6 lg:h-6" />
+                )}
+              </button>
+              <div className="absolute -top-10 lg:-top-12 left-1/2 transform -translate-x-1/2 bg-black/80 backdrop-blur-sm text-white text-xs px-2 lg:px-3 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none hidden md:block">
+                {isChatOpen ? 'Fermer le chat' : 'Ouvrir le chat'}
+              </div>
+            </div>
+
+            {/* Screen share - Hidden on small screens */}
+            <div className="relative group hidden sm:block">
+              <button
+                onClick={handleShareScreen}
+                className={`p-2 sm:p-3 lg:p-4 rounded-lg lg:rounded-xl bg-white/20 backdrop-blur-sm hover:bg-white/30 border border-white/20 transition-all duration-300 transform hover:scale-110 focus:ring-4 focus:ring-white/20 ${
+                  !isSecurityVerified ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
+                disabled={!isSecurityVerified}
+              >
+                <FaDesktop size={16} className="sm:w-5 sm:h-5 lg:w-6 lg:h-6" />
+              </button>
+              <div className="absolute -top-10 lg:-top-12 left-1/2 transform -translate-x-1/2 bg-black/80 backdrop-blur-sm text-white text-xs px-2 lg:px-3 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none hidden md:block">
+                Partager l&apos;écran
+              </div>
+            </div>
+
+            {/* Spacer */}
+            <div className="w-px h-6 lg:h-8 bg-white/20 hidden sm:block"></div>
+
+            {/* End call button */}
+            <div className="relative group">
+              <button
+                onClick={handleEndCall}
+                className="p-2 sm:p-3 lg:p-4 rounded-lg lg:rounded-xl bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 transition-all duration-300 transform hover:scale-110 focus:ring-4 focus:ring-red-500/50 shadow-lg shadow-red-500/25"
+              >
+                <FaPhone
+                  size={16}
+                  className="sm:w-5 sm:h-5 lg:w-6 lg:h-6"
+                  style={{ transform: 'rotate(135deg)' }}
+                />
+              </button>
+              <div className="absolute -top-10 lg:-top-12 left-1/2 transform -translate-x-1/2 bg-black/80 backdrop-blur-sm text-white text-xs px-2 lg:px-3 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none hidden md:block">
+                Terminer l&apos;appel
+              </div>
             </div>
           </div>
-          <div className="flex flex-wrap gap-3">
+
+          {/* Responsive quick stats */}
+          <div className="mt-3 lg:mt-4 flex justify-center">
+            <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4 lg:gap-6 text-xs sm:text-sm text-gray-400">
+              <div className="flex items-center space-x-1 sm:space-x-2">
+                <FaUsers className="text-blue-400" />
+                <span>{participants.filter(p => p.isConnected).length} connecté(s)</span>
+              </div>
+              <div className="flex items-center space-x-1 sm:space-x-2">
+                <FaVideo className="text-green-400" />
+                <span className="hidden sm:inline">
+                  {participants.filter(p => p.hasVideo).length} caméra(s)
+                </span>
+                <span className="sm:hidden">
+                  {participants.filter(p => p.hasVideo).length} vidéo
+                </span>
+              </div>
+              <div className="flex items-center space-x-1 sm:space-x-2">
+                <FaShieldAlt className="text-green-400" />
+                <span>Sécurisé</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Participants status bar */}
+        <div className="bg-black/20 backdrop-blur-lg border-t border-white/10 px-6 py-3">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center space-x-3">
+              <div className="flex items-center space-x-2 text-sm">
+                <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-blue-600 rounded-lg flex items-center justify-center">
+                  <FaUsers className="text-white text-xs" />
+                </div>
+                <span className="text-white font-medium">
+                  {sessionData ? sessionData.title : 'Session Vidéo'}
+                </span>
+                <FaShieldAlt className="text-green-400 text-xs" />
+              </div>
+            </div>
+            <div className="text-xs text-gray-400 flex items-center space-x-4">
+              <span>
+                {participants.filter(p => p.isConnected).length}/{participants.length} connecté(s)
+              </span>
+              <div className="w-px h-4 bg-white/20"></div>
+              <span>{participants.filter(p => p.hasVideo).length} vidéo(s) active(s)</span>
+            </div>
+          </div>
+
+          {/* Participants list */}
+          <div className="mt-3 flex flex-wrap gap-2">
             {participants.map((participant, index) => (
               <div
                 key={participant.id || `participant-${index}`}
-                className={`flex items-center text-sm px-3 py-1 rounded-full border ${
+                className={`flex items-center text-xs px-3 py-2 rounded-xl border backdrop-blur-sm transition-all duration-300 ${
                   participant.id === currentUserId
-                    ? 'bg-blue-900 border-blue-600 text-blue-200'
-                    : 'bg-gray-700 border-gray-600 text-gray-200'
+                    ? 'bg-blue-500/20 border-blue-400/30 text-blue-200'
+                    : 'bg-white/10 border-white/20 text-gray-200'
                 }`}
               >
                 <div
-                  className={`w-2 h-2 rounded-full mr-2 ${participant.isConnected ? 'bg-green-500' : 'bg-gray-500'}`}
+                  className={`w-2 h-2 rounded-full mr-2 ${
+                    participant.isConnected ? 'bg-green-400 animate-pulse' : 'bg-gray-500'
+                  }`}
                 ></div>
                 {participant.hasVideo && (
-                  <div className="w-2 h-2 rounded-full bg-blue-500 mr-2"></div>
+                  <div className="w-2 h-2 rounded-full bg-blue-400 mr-2 animate-pulse"></div>
                 )}
-                <span className="mr-1">
+                <span className="mr-1 font-medium">
                   {participant.id === currentUserId ? 'Vous' : participant.name}
                 </span>
-                <span className="text-xs text-gray-400">({participant.role})</span>
+                <span className="text-gray-400">
+                  ({participant.role === 'professional' ? 'Pro' : 'Client'})
+                </span>
                 {participant.isSecure && (
-                  <FaShieldAlt className="ml-1 text-green-500" style={{ fontSize: '10px' }} />
+                  <FaShieldAlt className="ml-2 text-green-400" style={{ fontSize: '8px' }} />
                 )}
               </div>
             ))}
           </div>
           {participants.length === 0 && (
-            <div className="text-center text-gray-500 text-sm py-2">
+            <div className="text-center text-gray-400 text-sm py-4 bg-white/5 rounded-xl border border-white/10 mt-3">
+              <FaUsers className="mx-auto mb-2 text-gray-500" />
               Chargement des participants autorisés...
             </div>
           )}
