@@ -19,13 +19,20 @@ const notificationSchema = new mongoose.Schema({
     type: String,
     enum: [
       'message', 
-      'order_placed', 
+      'order_placed',
+      'order_processing',
       'order_shipped', 
       'order_delivered', 
       'order_cancelled',
       'payment_received', 
       'appointment_scheduled', 
       'appointment_cancelled',
+      'new_professional',
+      'new_client',
+      'new_contact',
+      'new_order',
+      'new_event',
+      'session_cancelled',
       'system'
     ],
     default: 'system'

@@ -206,7 +206,11 @@ const ProfessionalAnalyticsPage = () => {
         />
         <ProfessionalDashboardCard
           title="Revenus (MAD)"
-          value={analytics.overview.revenue.total.toLocaleString()}
+          value={
+            analytics.overview.revenue.total
+              ? analytics.overview.revenue.total.toLocaleString()
+              : '0'
+          }
           icon={CreditCardIcon}
           color="blue"
           trend={analytics.overview.revenue.trend}
@@ -322,7 +326,7 @@ const ProfessionalAnalyticsPage = () => {
                       {service.sessions}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {service.revenue.toLocaleString()}
+                      {service.revenue ? service.revenue.toLocaleString() : '0'}
                     </td>
                   </tr>
                 ))}
@@ -371,7 +375,7 @@ const ProfessionalAnalyticsPage = () => {
                       {product.sales}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {product.revenue.toLocaleString()}
+                      {product.revenue ? product.revenue.toLocaleString() : '0'}
                     </td>
                   </tr>
                 ))}

@@ -14,90 +14,115 @@ const VideoCallPage = () => {
   const [loading, setLoading] = useState(true);
   const [sessionData, setSessionData] = useState(null);
   const [error, setError] = useState(null);
+  const [videoAccessToken, setVideoAccessToken] = useState(null);
 
   // Get the correct user ID (the user object uses 'id' instead of '_id')
   const userId = user?.id || user?._id;
 
   useEffect(() => {
-    if (!user || !userId) return;
+    if (!user || !userId) {
+      setError('Vous devez être connecté pour accéder à cette session');
+      setLoading(false);
+      return;
+    }
 
-    const fetchSessionData = async () => {
+    const fetchSecureSessionData = async () => {
       try {
         setLoading(true);
         const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
         const token = localStorage.getItem('token');
 
-        // Récupérer les détails de la session
-        const response = await axios.get(`${API_URL}/api/sessions/${sessionId}`, {
+        if (!token) {
+          setError("Token d'authentification manquant");
+          return;
+        }
+
+        // Use the secure video access endpoint
+        const response = await axios.get(`${API_URL}/api/sessions/${sessionId}/video-access`, {
           headers: { Authorization: `Bearer ${token}` },
         });
 
         if (!response.data.success) {
-          setError('Impossible de charger les données de la session');
+          setError(response.data.message || 'Impossible de charger les données de la session');
           return;
         }
 
-        const session = response.data.session;
+        const { session, user: sessionUser, videoAccessToken } = response.data;
 
-        // Vérifier si la session est configurée pour l'appel vidéo intégré
-        if (!session.useBuiltInVideo) {
-          setError("Cette session n'est pas configurée pour l'appel vidéo intégré");
-          return;
-        }
+        // Store the video access token for validation
+        setVideoAccessToken(videoAccessToken);
 
-        // Vérifier si l'utilisateur est autorisé à rejoindre cette session
-        const isParticipant = session.participants.some(participant => {
-          const participantId = typeof participant === 'object' ? participant._id : participant;
-          return participantId === userId || participantId.toString() === userId.toString();
-        });
-
-        const isProfessional =
-          session.professionalId &&
-          (session.professionalId._id === userId ||
-            session.professionalId._id?.toString() === userId?.toString() ||
-            (session.professionalId.userId && session.professionalId.userId === userId) ||
-            (session.professionalId.userId &&
-              session.professionalId.userId.toString() === userId.toString()));
-
-        if (!isParticipant && !isProfessional && user.role !== 'admin') {
-          setError("Vous n'êtes pas autorisé à rejoindre cette session");
-          return;
-        }
-
-        // Créer l'objet sessionData
+        // Create the session data object
         const sessionData = {
-          sessionId: session._id,
+          sessionId: session.id,
           title: session.title,
           status: session.status,
           startTime: new Date(session.startTime),
-          endTime: new Date(new Date(session.startTime).getTime() + session.duration * 60000),
+          endTime: new Date(session.endTime),
+          duration: session.duration,
           professional: {
-            id:
-              session.professionalId.userId || session.professionalId._id || session.professionalId,
-            name: session.professionalId.businessName || 'Professionnel',
+            id: session.professional.id,
+            name: session.professional.name,
           },
-          client: {
-            id: userId,
-            name: `${user.firstName} ${user.lastName}`,
+          user: {
+            id: sessionUser.id,
+            name: sessionUser.name,
+            role: sessionUser.role,
           },
+          maxParticipants: session.maxParticipants,
+          currentParticipants: session.currentParticipants,
         };
 
         setSessionData(sessionData);
+
+        // Verify token periodically to ensure continued access
+        const verifyInterval = setInterval(async () => {
+          try {
+            await axios.post(`${API_URL}/api/sessions/video-verify-token`, {
+              videoAccessToken,
+            });
+          } catch (error) {
+            console.error('Token verification failed:', error);
+            clearInterval(verifyInterval);
+            setError('Votre session a expiré. Veuillez vous reconnecter.');
+            toast.error('Session expirée');
+          }
+        }, 60000); // Verify every minute
+
+        // Cleanup interval on component unmount
+        return () => clearInterval(verifyInterval);
       } catch (err) {
-        console.error('Error fetching session data:', err);
-        setError('Impossible de charger les données de la session');
+        console.error('Error fetching secure session data:', err);
+
+        if (err.response?.status === 403) {
+          setError(err.response.data.message || 'Accès refusé à cette session');
+        } else if (err.response?.status === 404) {
+          setError('Session non trouvée');
+        } else if (err.response?.status === 401) {
+          setError('Authentification requise');
+        } else {
+          setError('Erreur lors du chargement de la session');
+        }
+
         toast.error('Erreur lors du chargement de la session vidéo');
       } finally {
         setLoading(false);
       }
     };
 
-    fetchSessionData();
+    fetchSecureSessionData();
   }, [sessionId, user, userId]);
 
   const handleEndCall = () => {
+    // Clear the video access token
+    setVideoAccessToken(null);
     toast.success('Vous avez quitté la session');
     navigate('/sessions');
+  };
+
+  const handleSecurityError = errorMessage => {
+    setError(errorMessage);
+    toast.error(errorMessage);
   };
 
   if (loading) {
@@ -105,7 +130,7 @@ const VideoCallPage = () => {
       <div className="min-h-screen flex items-center justify-center bg-gray-900">
         <div className="text-center text-white">
           <LoadingSpinner />
-          <p className="mt-4">Préparation de votre session vidéo...</p>
+          <p className="mt-4">Vérification des autorisations...</p>
         </div>
       </div>
     );
@@ -115,26 +140,32 @@ const VideoCallPage = () => {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-900">
         <div className="text-center text-white max-w-md p-6 bg-gray-800 rounded-lg">
-          <div className="text-red-500 text-5xl mb-4">⚠️</div>
-          <h2 className="text-xl font-bold mb-2">Erreur de connexion</h2>
+          <div className="text-red-500 text-5xl mb-4">🔒</div>
+          <h2 className="text-xl font-bold mb-2">Accès refusé</h2>
           <p className="mb-6">{error}</p>
           <button
             onClick={() => navigate('/sessions')}
-            className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+            className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 mr-2"
           >
             Retour aux sessions
+          </button>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
+          >
+            Réessayer
           </button>
         </div>
       </div>
     );
   }
 
-  if (!sessionData) {
+  if (!sessionData || !videoAccessToken) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-900">
         <div className="text-center text-white max-w-md p-6 bg-gray-800 rounded-lg">
-          <h2 className="text-xl font-bold mb-2">Session introuvable</h2>
-          <p className="mb-6">Cette session n'existe pas ou a expiré.</p>
+          <h2 className="text-xl font-bold mb-2">Session inaccessible</h2>
+          <p className="mb-6">Impossible d'accéder à cette session vidéo.</p>
           <button
             onClick={() => navigate('/sessions')}
             className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
@@ -150,10 +181,13 @@ const VideoCallPage = () => {
     <VideoCallComponent
       sessionId={sessionData.sessionId}
       professionalId={sessionData.professional.id}
-      clientId={sessionData.client.id}
-      currentUserId={userId}
-      currentUserRole={user.role}
+      clientId={sessionData.user.id}
+      currentUserId={sessionData.user.id}
+      currentUserRole={sessionData.user.role}
+      currentUserName={sessionData.user.name}
+      videoAccessToken={videoAccessToken}
       onEndCall={handleEndCall}
+      onSecurityError={handleSecurityError}
     />
   );
 };

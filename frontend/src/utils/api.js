@@ -77,9 +77,12 @@ export const userAPI = {
     axios.post(`${API_URL}/api/uploads/profile-image`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     }),
-  getNotifications: () => axios.get(`${API_URL}/api/users/notifications`),
+  getNotifications: () => axios.get(`${API_URL}/api/notifications`),
   markNotificationRead: notificationId =>
-    axios.put(`${API_URL}/api/users/notifications/${notificationId}/read`),
+    axios.post(`${API_URL}/api/notifications/${notificationId}/mark-read`),
+  markAllNotificationsRead: () => axios.post(`${API_URL}/api/notifications/mark-all-read`),
+  deleteNotification: notificationId =>
+    axios.delete(`${API_URL}/api/notifications/${notificationId}`),
   getFavorites: () => axios.get(`${API_URL}/api/users/favorites`),
   addFavorite: professionalId => axios.post(`${API_URL}/api/users/favorites`, { professionalId }),
   removeFavorite: professionalId =>

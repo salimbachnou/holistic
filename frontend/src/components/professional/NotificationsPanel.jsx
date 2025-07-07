@@ -7,11 +7,13 @@ import {
   XMarkIcon,
   ArrowPathIcon,
 } from '@heroicons/react/24/outline';
-import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { toast } from 'react-hot-toast';
 import { Link } from 'react-router-dom';
 import { io } from 'socket.io-client';
+
+import apiService from '../../services/api.service';
 
 const NOTIFICATIONS_TYPES = {
   MESSAGE: 'message',
@@ -21,6 +23,17 @@ const NOTIFICATIONS_TYPES = {
   PAYMENT_RECEIVED: 'payment_received',
   NEW_CLIENT: 'new_client',
   SYSTEM: 'system',
+  ORDER_PLACED: 'order_placed',
+  ORDER_SHIPPED: 'order_shipped',
+  ORDER_DELIVERED: 'order_delivered',
+  ORDER_CANCELLED: 'order_cancelled',
+  APPOINTMENT_SCHEDULED: 'appointment_scheduled',
+  APPOINTMENT_CANCELLED: 'appointment_cancelled',
+  SESSION_CANCELLED: 'session_cancelled',
+  NEW_ORDER: 'new_order',
+  NEW_CONTACT: 'new_contact',
+  NEW_PROFESSIONAL: 'new_professional',
+  NEW_EVENT: 'new_event',
 };
 
 const NotificationsPanel = ({ user }) => {
@@ -31,6 +44,8 @@ const NotificationsPanel = ({ user }) => {
   const socketRef = useRef(null);
   const panelRef = useRef(null);
   const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
+  console.log('NotificationsPanel: Rendering with user:', user);
 
   // Handle click outside to close panel
   useEffect(() => {
@@ -48,131 +63,89 @@ const NotificationsPanel = ({ user }) => {
 
   // Fonction pour récupérer les notifications, mémorisée avec useCallback
   const fetchNotifications = useCallback(async () => {
-    if (!user?._id) {
-      console.log('NotificationsPanel: No user ID, skipping fetch');
+    console.log('NotificationsPanel: fetchNotifications called with user:', user);
+
+    if (!user) {
+      console.log('NotificationsPanel: User object is null/undefined, skipping fetch');
+      return;
+    }
+
+    const userId = user._id || user.id;
+    if (!userId) {
+      console.log('NotificationsPanel: User ID is missing, user object:', user);
       return;
     }
 
     try {
-      console.log('NotificationsPanel: Fetching notifications...');
+      console.log('NotificationsPanel: Fetching notifications for user ID:', userId);
       setLoading(true);
-      const token = localStorage.getItem('token');
-      console.log('NotificationsPanel: Token exists:', !!token);
 
-      if (!token) {
-        console.log('NotificationsPanel: No token, skipping fetch');
-        setLoading(false);
-        return;
+      const response = await apiService.get('/notifications');
+      console.log('NotificationsPanel: API response:', response.data);
+
+      if (response.data.success) {
+        const notificationsData = response.data.notifications || [];
+        console.log('NotificationsPanel: Notifications from API:', notificationsData);
+
+        setNotifications(notificationsData);
+        setUnreadCount(notificationsData.filter(n => !n.read).length);
+      } else {
+        console.warn('NotificationsPanel: API returned unsuccessful response');
+        setNotifications([]);
+        setUnreadCount(0);
       }
-
-      let notificationsData = [];
-
-      try {
-        console.log('NotificationsPanel: Making API request...');
-        const response = await axios.get(`${apiUrl}/api/notifications`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
-        console.log('NotificationsPanel: API response:', response.data);
-        if (response.data.success) {
-          // Normaliser les données MongoDB
-          notificationsData = normalizeMongoData(response.data.notifications) || [];
-          console.log('NotificationsPanel: Normalized notifications from API:', notificationsData);
-        }
-      } catch (error) {
-        console.error('NotificationsPanel: Error fetching notifications from API:', error);
-
-        // For demo, we'll use mock data
-        console.log('NotificationsPanel: Using mock data');
-        notificationsData = [
-          {
-            _id: '1',
-            type: NOTIFICATIONS_TYPES.MESSAGE,
-            title: 'Nouveau message',
-            message: 'Bonjour, je suis intéressé par votre service...',
-            sender: {
-              _id: '123',
-              name: 'Marie Dupont',
-              avatar: 'https://randomuser.me/api/portraits/women/32.jpg',
-            },
-            createdAt: new Date(Date.now() - 1000 * 60 * 5).toISOString(), // 5 min ago
-            read: false,
-            link: '/dashboard/professional/messages',
-          },
-          {
-            _id: '2',
-            type: NOTIFICATIONS_TYPES.BOOKING_REQUEST,
-            title: 'Nouvelle demande de réservation',
-            message: 'Pour le 15 juin à 14h00',
-            sender: {
-              _id: '456',
-              name: 'Jean Martin',
-              avatar: null,
-            },
-            createdAt: new Date(Date.now() - 1000 * 60 * 30).toISOString(), // 30 min ago
-            read: false,
-            link: '/dashboard/professional/sessions',
-          },
-          {
-            _id: '3',
-            type: NOTIFICATIONS_TYPES.PAYMENT_RECEIVED,
-            title: 'Paiement reçu',
-            message: '75 MAD - Session de coaching',
-            sender: {
-              _id: '789',
-              name: 'Sophie Leclerc',
-              avatar: 'https://randomuser.me/api/portraits/women/44.jpg',
-            },
-            createdAt: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(), // 2 hours ago
-            read: true,
-            link: '/dashboard/professional/payments',
-          },
-        ];
-      }
-
-      console.log('NotificationsPanel: Setting notifications state:', notificationsData);
-      console.log('NotificationsPanel: Notifications length:', notificationsData.length);
-
-      setNotifications(notificationsData);
-      setUnreadCount(notificationsData.filter(n => !n.read).length);
     } catch (error) {
-      console.error('NotificationsPanel: Error in fetchNotifications:', error);
+      console.error('NotificationsPanel: Error fetching notifications:', error);
+      toast.error('Erreur lors du chargement des notifications');
+      setNotifications([]);
+      setUnreadCount(0);
     } finally {
       setLoading(false);
     }
-  }, [user, apiUrl]);
+  }, [user]);
 
   // Récupérer les notifications au chargement du composant
   useEffect(() => {
-    if (user?._id) {
-      console.log('NotificationsPanel: User ID changed, fetching notifications:', user._id);
+    console.log('NotificationsPanel: useEffect triggered, user:', user);
+    const userId = user?._id || user?.id;
+    if (userId) {
+      console.log('NotificationsPanel: User ID available, fetching notifications:', userId);
       fetchNotifications();
+    } else {
+      console.log('NotificationsPanel: User or user ID not available yet');
     }
   }, [user, fetchNotifications]);
 
   // Récupérer les notifications lorsque le panneau est ouvert
   useEffect(() => {
-    if (isOpen) {
-      console.log('NotificationsPanel: Panel opened, fetching notifications');
+    const userId = user?._id || user?.id;
+    if (isOpen && userId) {
+      console.log('NotificationsPanel: Panel opened with valid user, fetching notifications');
       fetchNotifications();
+    } else if (isOpen && !userId) {
+      console.log('NotificationsPanel: Panel opened but user ID not available');
     }
-  }, [isOpen, fetchNotifications]);
+  }, [isOpen, fetchNotifications, user]);
 
   // Connect to Socket.io and set up notification listening
   useEffect(() => {
-    if (!user?._id) return;
+    const userId = user?._id || user?.id;
+    if (!userId) {
+      console.log('NotificationsPanel: No user ID for socket connection');
+      return;
+    }
 
-    console.log('NotificationsPanel: Setting up socket connection for user:', user._id);
+    console.log('NotificationsPanel: Setting up socket connection for user:', userId);
     socketRef.current = io(apiUrl);
 
     // Join user's notification room
-    socketRef.current.emit('join-user-room', user._id);
+    socketRef.current.emit('join-user-room', userId);
 
     // Listen for incoming notifications
     socketRef.current.on('receive-notification', notification => {
       console.log('NotificationsPanel: Received new notification:', notification);
       // Add new notification to state
-      setNotifications(prev => [normalizeMongoData(notification), ...prev]);
+      setNotifications(prev => [notification, ...prev]);
 
       // Update unread count
       setUnreadCount(prev => prev + 1);
@@ -185,73 +158,23 @@ const NotificationsPanel = ({ user }) => {
     };
   }, [user, apiUrl]);
 
-  // Fonction pour normaliser les données MongoDB en JSON standard
-  const normalizeMongoData = data => {
-    if (!data) return data;
-
-    // Si c'est un tableau, normaliser chaque élément
-    if (Array.isArray(data)) {
-      return data.map(item => normalizeMongoData(item));
-    }
-
-    // Si c'est un objet
-    if (typeof data === 'object' && data !== null) {
-      // Cas spécial pour les ID MongoDB
-      if (data.$oid) {
-        return data.$oid;
-      }
-
-      // Cas spécial pour les dates MongoDB
-      if (data.$date) {
-        return new Date(data.$date).toISOString();
-      }
-
-      // Pour les autres objets, normaliser récursivement
-      const normalized = {};
-      for (const [key, value] of Object.entries(data)) {
-        normalized[key] = normalizeMongoData(value);
-      }
-      return normalized;
-    }
-
-    return data;
-  };
-
   const markAllAsRead = async () => {
     try {
-      const token = localStorage.getItem('token');
-
-      try {
-        await axios.post(
-          `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/notifications/mark-all-read`,
-          {},
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-      } catch (error) {
-        console.error('Error marking all notifications as read:', error);
-      }
+      await apiService.post('/notifications/mark-all-read');
 
       // Update UI immediately
       setNotifications(prev => prev.map(notification => ({ ...notification, read: true })));
       setUnreadCount(0);
+      toast.success('Toutes les notifications ont été marquées comme lues');
     } catch (error) {
       console.error('Error marking notifications as read:', error);
+      toast.error('Erreur lors du marquage des notifications');
     }
   };
 
   const markAsRead = async notificationId => {
     try {
-      const token = localStorage.getItem('token');
-
-      try {
-        await axios.post(
-          `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/notifications/${notificationId}/mark-read`,
-          {},
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-      } catch (error) {
-        console.error('Error marking notification as read:', error);
-      }
+      await apiService.post(`/notifications/${notificationId}/mark-read`);
 
       // Update UI immediately
       setNotifications(prev =>
@@ -262,6 +185,7 @@ const NotificationsPanel = ({ user }) => {
       setUnreadCount(prev => Math.max(0, prev - 1));
     } catch (error) {
       console.error('Error marking notification as read:', error);
+      toast.error('Erreur lors du marquage de la notification');
     }
   };
 
@@ -272,10 +196,20 @@ const NotificationsPanel = ({ user }) => {
       case NOTIFICATIONS_TYPES.BOOKING_REQUEST:
       case NOTIFICATIONS_TYPES.BOOKING_CONFIRMED:
       case NOTIFICATIONS_TYPES.BOOKING_CANCELLED:
+      case NOTIFICATIONS_TYPES.APPOINTMENT_SCHEDULED:
+      case NOTIFICATIONS_TYPES.APPOINTMENT_CANCELLED:
         return <ClockIcon className="h-6 w-6 text-purple-500" />;
       case NOTIFICATIONS_TYPES.PAYMENT_RECEIVED:
+      case NOTIFICATIONS_TYPES.ORDER_PLACED:
+      case NOTIFICATIONS_TYPES.ORDER_SHIPPED:
+      case NOTIFICATIONS_TYPES.ORDER_DELIVERED:
+      case NOTIFICATIONS_TYPES.NEW_ORDER:
         return <ShoppingBagIcon className="h-6 w-6 text-green-500" />;
+      case NOTIFICATIONS_TYPES.ORDER_CANCELLED:
+      case NOTIFICATIONS_TYPES.SESSION_CANCELLED:
+        return <ShoppingBagIcon className="h-6 w-6 text-red-500" />;
       case NOTIFICATIONS_TYPES.NEW_CLIENT:
+      case NOTIFICATIONS_TYPES.NEW_PROFESSIONAL:
         return <UserIcon className="h-6 w-6 text-orange-500" />;
       default:
         return <BellIcon className="h-6 w-6 text-gray-500" />;
@@ -299,11 +233,24 @@ const NotificationsPanel = ({ user }) => {
     }
   };
 
+  // Early return if user is not loaded yet
+  if (!user) {
+    console.log('NotificationsPanel: User not loaded yet, rendering placeholder');
+    return (
+      <div className="relative">
+        <button disabled className="relative p-2 text-gray-300 rounded-lg cursor-not-allowed">
+          <BellIcon className="h-6 w-6" />
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="relative" ref={panelRef}>
       <button
         onClick={() => {
           console.log('NotificationsPanel: Opening panel, notifications:', notifications);
+          console.log('NotificationsPanel: Current user when opening:', user);
           setIsOpen(!isOpen);
         }}
         className="relative p-2 text-gray-500 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-all duration-200"
@@ -363,7 +310,7 @@ const NotificationsPanel = ({ user }) => {
                   {notifications.map(notification => (
                     <Link
                       key={notification._id}
-                      to={notification.link}
+                      to={notification.link || '/dashboard/professional/notifications'}
                       className={`block p-4 hover:bg-gray-50 transition-colors duration-150 ${
                         !notification.read ? 'bg-primary-50' : ''
                       }`}
@@ -392,23 +339,15 @@ const NotificationsPanel = ({ user }) => {
                           <p className="text-sm text-gray-500 truncate mt-1">
                             {notification.message}
                           </p>
-                          {notification.sender && (
+                          {notification.data && notification.data.clientName && (
                             <div className="flex items-center mt-2">
-                              {notification.sender.avatar ? (
-                                <img
-                                  src={notification.sender.avatar}
-                                  alt={notification.sender.name}
-                                  className="h-6 w-6 rounded-full mr-2 border border-white shadow-sm"
-                                />
-                              ) : (
-                                <div className="h-6 w-6 rounded-full bg-gradient-lotus flex items-center justify-center mr-2 shadow-sm text-white">
-                                  <span className="text-xs">
-                                    {notification.sender.name.charAt(0)}
-                                  </span>
-                                </div>
-                              )}
+                              <div className="h-6 w-6 rounded-full bg-gradient-lotus flex items-center justify-center mr-2 shadow-sm text-white">
+                                <span className="text-xs">
+                                  {notification.data.clientName.charAt(0)}
+                                </span>
+                              </div>
                               <span className="text-xs text-gray-600 font-medium">
-                                {notification.sender.name}
+                                {notification.data.clientName}
                               </span>
                             </div>
                           )}

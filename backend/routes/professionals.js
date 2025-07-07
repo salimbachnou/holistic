@@ -1009,17 +1009,19 @@ router.get('/clients', requireAuth, requireProfessional, async (req, res) => {
       // Increment total sessions and spent amount
       if (booking.status === 'completed') {
         clientData.totalSessions += 1;
-        clientData.totalSpent += booking.totalAmount.amount;
+        clientData.totalSpent += booking.totalAmount ? booking.totalAmount.amount || 0 : 0;
       }
 
       // Add to upcoming or past sessions
       const sessionInfo = {
         id: booking._id,
+        type: 'booking',
         date: booking.appointmentDate,
         time: booking.appointmentTime.start,
         service: booking.service.name,
-        payment: booking.totalAmount.amount,
-        status: booking.status
+        payment: booking.totalAmount ? booking.totalAmount.amount || 0 : 0,
+        status: booking.status,
+        location: booking.location
       };
 
       if (new Date(booking.appointmentDate) > new Date()) {
@@ -1063,17 +1065,19 @@ router.get('/clients', requireAuth, requireProfessional, async (req, res) => {
         // Increment total sessions and spent amount
         if (session.status === 'completed') {
           clientData.totalSessions += 1;
-          clientData.totalSpent += session.price;
+          clientData.totalSpent += session.price || 0;
         }
 
         // Add to upcoming or past sessions
         const sessionInfo = {
           id: session._id,
+          type: 'session',
           date: session.startTime,
           time: new Date(session.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           service: session.title,
-          payment: session.price,
-          status: session.status
+          payment: session.price || 0,
+          status: session.status,
+          location: session.isOnline() ? { type: 'online', onlineLink: session.meetingLink } : { type: 'in_person', address: { street: session.location } }
         };
 
         if (new Date(session.startTime) > new Date()) {
@@ -1100,7 +1104,7 @@ router.get('/clients', requireAuth, requireProfessional, async (req, res) => {
       
       // Calculate total spent on this professional's products
       const totalSpentOnProducts = professionalItems.reduce((sum, item) => 
-        sum + (item.price * item.quantity), 0
+        sum + ((item.price || 0) * (item.quantity || 1)), 0
       );
       
       if (!clientsMap.has(clientId)) {
@@ -1112,7 +1116,7 @@ router.get('/clients', requireAuth, requireProfessional, async (req, res) => {
           image: client.profileImage || '',
           lastVisit: order.createdAt,
           totalSessions: 0,
-          totalSpent: totalSpentOnProducts,
+          totalSpent: totalSpentOnProducts || 0,
           status: 'active',
           tags: ['Client Boutique'],
           notes: '',
@@ -1129,7 +1133,7 @@ router.get('/clients', requireAuth, requireProfessional, async (req, res) => {
         }
         
         // Add to total spent
-        clientData.totalSpent += totalSpentOnProducts;
+        clientData.totalSpent += totalSpentOnProducts || 0;
         
         // Add tag if not already present
         if (!clientData.tags.includes('Client Boutique')) {
@@ -1295,7 +1299,7 @@ router.get('/clients/:id', requireAuth, requireProfessional, async (req, res) =>
     bookings.forEach(booking => {
       if (booking.status === 'completed') {
         totalSessions += 1;
-        totalSpent += booking.totalAmount.amount;
+        totalSpent += booking.totalAmount ? booking.totalAmount.amount || 0 : 0;
       }
 
       if (!lastVisit || new Date(booking.appointmentDate) > new Date(lastVisit)) {
@@ -1308,7 +1312,7 @@ router.get('/clients/:id', requireAuth, requireProfessional, async (req, res) =>
         date: booking.appointmentDate,
         time: booking.appointmentTime.start,
         service: booking.service.name,
-        payment: booking.totalAmount.amount,
+        payment: booking.totalAmount ? booking.totalAmount.amount || 0 : 0,
         status: booking.status,
         location: booking.location
       };
@@ -1324,7 +1328,7 @@ router.get('/clients/:id', requireAuth, requireProfessional, async (req, res) =>
     sessions.forEach(session => {
       if (session.status === 'completed') {
         totalSessions += 1;
-        totalSpent += session.price;
+        totalSpent += session.price || 0;
       }
 
       if (!lastVisit || new Date(session.startTime) > new Date(lastVisit)) {
@@ -1337,7 +1341,7 @@ router.get('/clients/:id', requireAuth, requireProfessional, async (req, res) =>
         date: session.startTime,
         time: new Date(session.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         service: session.title,
-        payment: session.price,
+        payment: session.price || 0,
         status: session.status,
         location: session.isOnline() ? { type: 'online', onlineLink: session.meetingLink } : { type: 'in_person', address: { street: session.location } }
       };
@@ -1360,11 +1364,11 @@ router.get('/clients/:id', requireAuth, requireProfessional, async (req, res) =>
       
       // Calculate total spent on this professional's products
       const totalSpentOnProducts = professionalItems.reduce((sum, item) => 
-        sum + (item.price * item.quantity), 0
+        sum + ((item.price || 0) * (item.quantity || 1)), 0
       );
       
       // Add to total spent
-      totalSpent += totalSpentOnProducts;
+      totalSpent += totalSpentOnProducts || 0;
       
       // Update last visit if this order is more recent
       if (!lastVisit || new Date(order.createdAt) > new Date(lastVisit)) {

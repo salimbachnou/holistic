@@ -8,21 +8,29 @@ import {
   ShoppingBagIcon,
   TrashIcon,
 } from '@heroicons/react/24/outline';
-import axios from 'axios';
 import React, { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { Link } from 'react-router-dom';
 
 import { useAuth } from '../contexts/AuthContext';
+import { userAPI } from '../utils/api';
 
 const NOTIFICATIONS_TYPES = {
   MESSAGE: 'message',
   ORDER_PLACED: 'order_placed',
+  ORDER_PROCESSING: 'order_processing',
   ORDER_SHIPPED: 'order_shipped',
   ORDER_DELIVERED: 'order_delivered',
   ORDER_CANCELLED: 'order_cancelled',
+  PAYMENT_RECEIVED: 'payment_received',
   APPOINTMENT_SCHEDULED: 'appointment_scheduled',
   APPOINTMENT_CANCELLED: 'appointment_cancelled',
+  NEW_PROFESSIONAL: 'new_professional',
+  NEW_CLIENT: 'new_client',
+  NEW_CONTACT: 'new_contact',
+  NEW_ORDER: 'new_order',
+  NEW_EVENT: 'new_event',
+  SESSION_CANCELLED: 'session_cancelled',
   SYSTEM: 'system',
 };
 
@@ -71,13 +79,9 @@ const NotificationsPage = () => {
   const fetchNotifications = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
 
       try {
-        const response = await axios.get(
-          `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/notifications`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
+        const response = await userAPI.getNotifications();
 
         if (response.data.success) {
           // Normaliser les données MongoDB
@@ -133,15 +137,8 @@ const NotificationsPage = () => {
 
   const markAllAsRead = async () => {
     try {
-      const token = localStorage.getItem('token');
-
       try {
-        await axios.post(
-          `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/notifications/mark-all-read`,
-          {},
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-
+        await userAPI.markAllNotificationsRead();
         toast.success('Toutes les notifications ont été marquées comme lues');
       } catch (error) {
         console.error('Error marking all notifications as read:', error);
@@ -158,14 +155,8 @@ const NotificationsPage = () => {
 
   const markAsRead = async notificationId => {
     try {
-      const token = localStorage.getItem('token');
-
       try {
-        await axios.post(
-          `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/notifications/${notificationId}/mark-read`,
-          {},
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
+        await userAPI.markNotificationRead(notificationId);
       } catch (error) {
         console.error('Error marking notification as read:', error);
         toast.error('Erreur lors du marquage de la notification');
@@ -185,14 +176,8 @@ const NotificationsPage = () => {
 
   const deleteNotification = async notificationId => {
     try {
-      const token = localStorage.getItem('token');
-
       try {
-        await axios.delete(
-          `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/notifications/${notificationId}`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-
+        await userAPI.deleteNotification(notificationId);
         toast.success('Notification supprimée');
       } catch (error) {
         console.error('Error deleting notification:', error);
@@ -212,14 +197,22 @@ const NotificationsPage = () => {
       case NOTIFICATIONS_TYPES.MESSAGE:
         return <ChatBubbleLeftIcon className="h-6 w-6 text-blue-500" />;
       case NOTIFICATIONS_TYPES.APPOINTMENT_SCHEDULED:
+        return <ClockIcon className="h-6 w-6 text-green-500" />;
       case NOTIFICATIONS_TYPES.APPOINTMENT_CANCELLED:
-        return <ClockIcon className="h-6 w-6 text-purple-500" />;
+        return <ClockIcon className="h-6 w-6 text-red-500" />;
       case NOTIFICATIONS_TYPES.ORDER_PLACED:
+      case NOTIFICATIONS_TYPES.ORDER_PROCESSING:
+        return <ShoppingBagIcon className="h-6 w-6 text-blue-500" />;
       case NOTIFICATIONS_TYPES.ORDER_SHIPPED:
+        return <ShoppingBagIcon className="h-6 w-6 text-orange-500" />;
       case NOTIFICATIONS_TYPES.ORDER_DELIVERED:
+      case NOTIFICATIONS_TYPES.PAYMENT_RECEIVED:
         return <ShoppingBagIcon className="h-6 w-6 text-green-500" />;
       case NOTIFICATIONS_TYPES.ORDER_CANCELLED:
+      case NOTIFICATIONS_TYPES.SESSION_CANCELLED:
         return <ExclamationTriangleIcon className="h-6 w-6 text-red-500" />;
+      case NOTIFICATIONS_TYPES.NEW_EVENT:
+        return <ClockIcon className="h-6 w-6 text-purple-500" />;
       default:
         return <BellIcon className="h-6 w-6 text-gray-500" />;
     }

@@ -4,11 +4,21 @@ const { fr } = require('date-fns/locale');
 
 // Create email transporter
 const createTransporter = () => {
+  // Check if email credentials are configured
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+    console.warn('Email credentials not configured. Email sending will be skipped.');
+    return null;
+  }
+
   return nodemailer.createTransport({
     service: 'gmail',
     auth: {
       user: process.env.EMAIL_USER,
       pass: process.env.EMAIL_PASS
+    },
+    // Ignore self-signed certificates in development
+    tls: {
+      rejectUnauthorized: process.env.NODE_ENV === 'production'
     }
   });
 };
@@ -17,6 +27,12 @@ const createTransporter = () => {
 const sendBookingConfirmationToClient = async (booking, client, professional) => {
   try {
     const transporter = createTransporter();
+    
+    // Skip email sending if transporter is not configured
+    if (!transporter) {
+      console.log('Email service not configured. Skipping booking confirmation email to client.');
+      return false;
+    }
     
     const statusText = booking.status === 'confirmed' 
       ? 'confirmée' 
@@ -108,6 +124,12 @@ const sendBookingNotificationToProfessional = async (booking, client, profession
   try {
     const transporter = createTransporter();
     
+    // Skip email sending if transporter is not configured
+    if (!transporter) {
+      console.log('Email service not configured. Skipping booking notification email to professional.');
+      return false;
+    }
+    
     const formattedDate = format(new Date(booking.appointmentDate), 'EEEE d MMMM yyyy', { locale: fr });
     
     const mailOptions = {
@@ -193,6 +215,12 @@ const sendBookingStatusUpdateToClient = async (booking, client, professional, st
   try {
     const transporter = createTransporter();
     
+    // Skip email sending if transporter is not configured
+    if (!transporter) {
+      console.log('Email service not configured. Skipping booking status update email to client.');
+      return false;
+    }
+
     let statusText = '';
     let statusColor = '';
     let additionalText = '';
@@ -272,6 +300,12 @@ const sendPaymentConfirmationEmail = async (booking, client, professional) => {
   try {
     const transporter = createTransporter();
     
+    // Skip email sending if transporter is not configured
+    if (!transporter) {
+      console.log('Email service not configured. Skipping payment confirmation email.');
+      return false;
+    }
+
     const formattedDate = format(new Date(booking.appointmentDate), 'EEEE d MMMM yyyy', { locale: fr });
     
     const mailOptions = {

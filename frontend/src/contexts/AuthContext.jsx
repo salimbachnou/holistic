@@ -28,6 +28,8 @@ export const AuthProvider = ({ children }) => {
   const checkAuthStatus = async () => {
     try {
       const token = localStorage.getItem('token');
+      console.log('AuthContext: checking auth status, token exists:', !!token);
+
       if (!token) {
         setLoading(false);
         return;
@@ -37,10 +39,13 @@ export const AuthProvider = ({ children }) => {
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
 
       const response = await authAPI.getCurrentUser();
+      console.log('AuthContext: getCurrentUser response:', response.data);
+
       if (response.data.success) {
         setUser(response.data.user);
         setIsAuthenticated(true);
         setAuthError(null);
+        console.log('AuthContext: user authenticated:', response.data.user);
       }
     } catch (error) {
       console.error('Auth check failed:', error);

@@ -7,20 +7,29 @@ import {
   XMarkIcon,
   ArrowPathIcon,
 } from '@heroicons/react/24/outline';
-import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { io } from 'socket.io-client';
 
+import { userAPI } from '../../utils/api';
+
 const NOTIFICATIONS_TYPES = {
   MESSAGE: 'message',
   ORDER_PLACED: 'order_placed',
+  ORDER_PROCESSING: 'order_processing',
   ORDER_SHIPPED: 'order_shipped',
   ORDER_DELIVERED: 'order_delivered',
   ORDER_CANCELLED: 'order_cancelled',
+  PAYMENT_RECEIVED: 'payment_received',
   APPOINTMENT_SCHEDULED: 'appointment_scheduled',
   APPOINTMENT_CANCELLED: 'appointment_cancelled',
+  NEW_PROFESSIONAL: 'new_professional',
+  NEW_CLIENT: 'new_client',
+  NEW_CONTACT: 'new_contact',
+  NEW_ORDER: 'new_order',
+  NEW_EVENT: 'new_event',
+  SESSION_CANCELLED: 'session_cancelled',
   SYSTEM: 'system',
 };
 
@@ -49,7 +58,8 @@ const ClientNotificationsPanel = ({ user }) => {
 
   // Fonction pour récupérer les notifications, mémorisée avec useCallback
   const fetchNotifications = useCallback(async () => {
-    if (!user?._id) {
+    const userId = user?._id || user?.id;
+    if (!userId) {
       console.log('ClientNotificationsPanel: No user ID, skipping fetch');
       return;
     }
@@ -57,22 +67,12 @@ const ClientNotificationsPanel = ({ user }) => {
     try {
       console.log('ClientNotificationsPanel: Fetching notifications...');
       setLoading(true);
-      const token = localStorage.getItem('token');
-      console.log('ClientNotificationsPanel: Token exists:', !!token);
-
-      if (!token) {
-        console.log('ClientNotificationsPanel: No token, skipping fetch');
-        setLoading(false);
-        return;
-      }
 
       let notificationsData = [];
 
       try {
         console.log('ClientNotificationsPanel: Making API request...');
-        const response = await axios.get(`${apiUrl}/api/notifications`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const response = await userAPI.getNotifications();
 
         console.log('ClientNotificationsPanel: API response:', response.data);
         if (response.data.success) {
@@ -159,8 +159,9 @@ const ClientNotificationsPanel = ({ user }) => {
 
   // Récupérer les notifications au chargement du composant
   useEffect(() => {
-    if (user?._id) {
-      console.log('ClientNotificationsPanel: User ID changed, fetching notifications:', user._id);
+    const userId = user?._id || user?.id;
+    if (userId) {
+      console.log('ClientNotificationsPanel: User ID changed, fetching notifications:', userId);
       fetchNotifications();
     }
   }, [user, fetchNotifications]);
@@ -175,13 +176,14 @@ const ClientNotificationsPanel = ({ user }) => {
 
   // Connect to Socket.io and set up notification listening
   useEffect(() => {
-    if (!user?._id) return;
+    const userId = user?._id || user?.id;
+    if (!userId) return;
 
-    console.log('ClientNotificationsPanel: Setting up socket connection for user:', user._id);
+    console.log('ClientNotificationsPanel: Setting up socket connection for user:', userId);
     socketRef.current = io(apiUrl);
 
     // Join user's notification room
-    socketRef.current.emit('join-user-room', user._id);
+    socketRef.current.emit('join-user-room', userId);
 
     // Listen for incoming notifications
     socketRef.current.on('receive-notification', notification => {
@@ -311,14 +313,8 @@ const ClientNotificationsPanel = ({ user }) => {
 
   const markAllAsRead = async () => {
     try {
-      const token = localStorage.getItem('token');
-
       try {
-        await axios.post(
-          `${apiUrl}/api/notifications/mark-all-read`,
-          {},
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
+        await userAPI.markAllNotificationsRead();
       } catch (error) {
         console.error('Error marking all notifications as read:', error);
       }
@@ -333,14 +329,8 @@ const ClientNotificationsPanel = ({ user }) => {
 
   const markAsRead = async notificationId => {
     try {
-      const token = localStorage.getItem('token');
-
       try {
-        await axios.post(
-          `${apiUrl}/api/notifications/${notificationId}/mark-read`,
-          {},
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
+        await userAPI.markNotificationRead(notificationId);
       } catch (error) {
         console.error('Error marking notification as read:', error);
       }
@@ -362,14 +352,22 @@ const ClientNotificationsPanel = ({ user }) => {
       case NOTIFICATIONS_TYPES.MESSAGE:
         return <ChatBubbleLeftIcon className="h-6 w-6 text-blue-500" />;
       case NOTIFICATIONS_TYPES.APPOINTMENT_SCHEDULED:
+        return <ClockIcon className="h-6 w-6 text-green-500" />;
       case NOTIFICATIONS_TYPES.APPOINTMENT_CANCELLED:
-        return <ClockIcon className="h-6 w-6 text-purple-500" />;
+        return <ClockIcon className="h-6 w-6 text-red-500" />;
       case NOTIFICATIONS_TYPES.ORDER_PLACED:
+      case NOTIFICATIONS_TYPES.ORDER_PROCESSING:
+        return <ShoppingBagIcon className="h-6 w-6 text-blue-500" />;
       case NOTIFICATIONS_TYPES.ORDER_SHIPPED:
+        return <ShoppingBagIcon className="h-6 w-6 text-orange-500" />;
       case NOTIFICATIONS_TYPES.ORDER_DELIVERED:
+      case NOTIFICATIONS_TYPES.PAYMENT_RECEIVED:
         return <ShoppingBagIcon className="h-6 w-6 text-green-500" />;
       case NOTIFICATIONS_TYPES.ORDER_CANCELLED:
+      case NOTIFICATIONS_TYPES.SESSION_CANCELLED:
         return <ExclamationTriangleIcon className="h-6 w-6 text-red-500" />;
+      case NOTIFICATIONS_TYPES.NEW_EVENT:
+        return <ClockIcon className="h-6 w-6 text-purple-500" />;
       default:
         return <BellIcon className="h-6 w-6 text-gray-500" />;
     }

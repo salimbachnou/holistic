@@ -27,6 +27,7 @@ import { GOOGLE_MAPS_API_KEY } from '../../config/maps';
 import { useAuth } from '../../contexts/AuthContext';
 import 'moment/locale/fr';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
+import './ProfessionalSessionsPage.css';
 
 moment.locale('fr');
 const localizer = momentLocalizer(moment);
@@ -155,7 +156,74 @@ const ProfessionalSessionsPage = () => {
     }
   };
 
+  const fetchSpecificBooking = async bookingId => {
+    try {
+      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      const token = localStorage.getItem('token');
+
+      const response = await axios.get(`${API_URL}/api/bookings/${bookingId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (response.data.success) {
+        toast.success('Nouvelle réservation chargée avec succès');
+        // Refresh the bookings list if a session is selected
+        if (selectedSession) {
+          fetchSessionBookings(selectedSession._id);
+        }
+        // Also refresh sessions to get updated data
+        fetchSessions();
+        return response.data.booking;
+      }
+    } catch (error) {
+      console.error('Error fetching specific booking:', error);
+      toast.error('Erreur lors du chargement de la réservation');
+    }
+  };
+
+  const refreshBookingRequests = async () => {
+    if (selectedSession) {
+      await fetchSessionBookings(selectedSession._id);
+      toast.success('Demandes de réservation actualisées');
+    } else {
+      toast.info('Veuillez sélectionner une session pour voir les demandes');
+    }
+  };
+
+  // Function to load a specific booking by ID (useful for debugging)
+  const loadSpecificBooking = async bookingId => {
+    try {
+      const booking = await fetchSpecificBooking(bookingId);
+      if (booking) {
+        console.log('Booking loaded:', booking);
+        // If the booking has a session, try to select that session
+        if (booking.service.sessionId) {
+          const session = sessions.find(s => s._id === booking.service.sessionId);
+          if (session) {
+            handleSessionSelect(session);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error loading specific booking:', error);
+    }
+  };
+
+  // Expose function to window for debugging
+  React.useEffect(() => {
+    window.loadSpecificBooking = loadSpecificBooking;
+    return () => {
+      delete window.loadSpecificBooking;
+    };
+  }, [sessions]);
+
   const handleSessionSelect = session => {
+    console.log('=== Session Selection Debug ===');
+    console.log('Selected session:', session);
+    console.log('Session professionalId:', session.professionalId);
+    console.log('Current user ID:', user?.id);
+    console.log('Current user:', user);
+
     setSelectedSession(session);
     setIsModalOpen(true);
     fetchSessionBookings(session._id);
@@ -496,606 +564,959 @@ const ProfessionalSessionsPage = () => {
     }
   };
 
-  const handleJoinVideoCall = () => {
-    // Debug logging
-    console.log('=== ProfessionalSessionsPage Debug ===');
-    console.log('user:', user);
-    console.log('user?.id:', user?.id);
-    console.log('user?._id:', user?._id);
-    console.log('user?.role:', user?.role);
-    console.log('selectedSession.professionalId:', selectedSession.professionalId);
+  const [videoAccessToken, setVideoAccessToken] = useState(null);
+  const [videoAccessError, setVideoAccessError] = useState(null);
 
-    setShowVideoCall(true);
-    setIsModalOpen(false);
+  const handleJoinVideoCall = async () => {
+    try {
+      // Debug logging
+      console.log('=== ProfessionalSessionsPage Debug ===');
+      console.log('user:', user);
+      console.log('user?.id:', user?.id);
+      console.log('user?._id:', user?._id);
+      console.log('user?.role:', user?.role);
+      console.log('selectedSession.professionalId:', selectedSession.professionalId);
+
+      // Get video access token
+      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      const token = localStorage.getItem('token');
+
+      toast.loading("Vérification de l'accès vidéo...", { id: 'video-access' });
+
+      const response = await axios.get(
+        `${API_URL}/api/sessions/${selectedSession._id}/video-access`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      if (response.data.success) {
+        setVideoAccessToken(response.data.videoAccessToken);
+        setVideoAccessError(null);
+        setShowVideoCall(true);
+        setIsModalOpen(false);
+        toast.success('Accès vidéo autorisé', { id: 'video-access' });
+      } else {
+        throw new Error(response.data.message || 'Accès vidéo refusé');
+      }
+    } catch (error) {
+      console.error('Video access error:', error);
+      const errorMessage = error.response?.data?.message || "Erreur lors de l'accès vidéo";
+      setVideoAccessError(errorMessage);
+      toast.error(errorMessage, { id: 'video-access' });
+    }
   };
 
   const handleEndVideoCall = () => {
     setShowVideoCall(false);
     setIsModalOpen(true);
+    setVideoAccessToken(null);
+    setVideoAccessError(null);
   };
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Gestion des Sessions</h1>
-        <button onClick={handleNewSession} className="btn-primary flex items-center">
-          <PlusIcon className="h-5 w-5 mr-2" />
-          Nouvelle Session
-        </button>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+      {/* Header moderne avec gradient */}
+      <div className="bg-white shadow-lg border-b border-gray-200">
+        <div className="container mx-auto px-6 py-8">
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                Gestion des Sessions
+              </h1>
+              <p className="text-gray-600 mt-2">Organisez et gérez vos sessions avec vos clients</p>
+            </div>
+            <div className="flex space-x-3">
+              <button
+                onClick={() => loadSpecificBooking('6868a28a160cd27b20e2b91f')}
+                className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white px-4 py-3 rounded-xl flex items-center shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
+                title="Charger la réservation de Samih Bachnou"
+              >
+                <svg className="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                  />
+                </svg>
+                Charger Réservation
+              </button>
+              <button
+                onClick={fetchSessions}
+                className="bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700 text-white px-4 py-3 rounded-xl flex items-center shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
+                disabled={loading}
+              >
+                <svg
+                  className={`h-5 w-5 mr-2 ${loading ? 'animate-spin' : ''}`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                  />
+                </svg>
+                {loading ? 'Actualisation...' : 'Actualiser'}
+              </button>
+              <button
+                onClick={handleNewSession}
+                className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white px-6 py-3 rounded-xl flex items-center shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
+              >
+                <PlusIcon className="h-5 w-5 mr-2" />
+                Nouvelle Session
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
 
-      {loading ? (
-        <div className="flex justify-center my-12">
-          <div className="w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
-        </div>
-      ) : (
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <Calendar
-            localizer={localizer}
-            events={calendarEvents}
-            startAccessor="start"
-            endAccessor="end"
-            style={{ height: 600 }}
-            onSelectEvent={event => handleSessionSelect(event.resource)}
-            eventPropGetter={event => {
-              const status = event.resource.status;
-              let backgroundColor = '#4F46E5'; // default purple
+      {/* Contenu principal */}
+      <div className="container mx-auto px-6 py-8">
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-20">
+            <div className="relative">
+              <div className="w-16 h-16 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
+              <div className="absolute inset-0 w-16 h-16 border-4 border-purple-200 border-b-purple-600 rounded-full animate-ping"></div>
+            </div>
+            <p className="text-gray-600 mt-4 text-lg">Chargement de vos sessions...</p>
+          </div>
+        ) : (
+          <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+            {/* Header du calendrier */}
+            <div className="bg-gradient-to-r from-indigo-500 to-purple-600 px-6 py-4">
+              <h2 className="text-xl font-semibold text-white flex items-center">
+                <ClockIcon className="h-6 w-6 mr-2" />
+                Calendrier des Sessions
+              </h2>
+            </div>
 
-              if (status === 'cancelled') {
-                backgroundColor = '#EF4444'; // red
-              } else if (status === 'completed') {
-                backgroundColor = '#6B7280'; // gray
-              } else if (status === 'in_progress') {
-                backgroundColor = '#10B981'; // green
-              }
-
-              return { style: { backgroundColor } };
-            }}
-            views={['month', 'week', 'day', 'agenda']}
-            messages={{
-              agenda: 'Liste',
-              day: 'Jour',
-              month: 'Mois',
-              next: 'Suivant',
-              previous: 'Précédent',
-              today: "Aujourd'hui",
-              week: 'Semaine',
-            }}
-          />
-        </div>
-      )}
-
-      {/* Session Details Modal */}
-      {isModalOpen && selectedSession && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            {/* Calendrier avec style amélioré */}
             <div className="p-6">
-              <div className="flex justify-between items-start">
-                <h2 className="text-2xl font-bold text-gray-900">{selectedSession.title}</h2>
-                <button onClick={handleCloseModal} className="text-gray-500 hover:text-gray-700">
-                  <XMarkIcon className="h-6 w-6" />
-                </button>
+              <div className="calendar-container">
+                <Calendar
+                  localizer={localizer}
+                  events={calendarEvents}
+                  startAccessor="start"
+                  endAccessor="end"
+                  style={{ height: 650 }}
+                  onSelectEvent={event => handleSessionSelect(event.resource)}
+                  eventPropGetter={event => {
+                    const status = event.resource.status;
+                    let backgroundColor = '#4F46E5';
+                    const borderRadius = '8px';
+                    const border = 'none';
+
+                    if (status === 'cancelled') {
+                      backgroundColor = '#EF4444';
+                    } else if (status === 'completed') {
+                      backgroundColor = '#10B981';
+                    } else if (status === 'in_progress') {
+                      backgroundColor = '#F59E0B';
+                    }
+
+                    return {
+                      style: {
+                        backgroundColor,
+                        borderRadius,
+                        border,
+                        color: 'white',
+                        fontWeight: '500',
+                        fontSize: '14px',
+                      },
+                    };
+                  }}
+                  views={['month', 'week', 'day', 'agenda']}
+                  messages={{
+                    agenda: 'Liste',
+                    day: 'Jour',
+                    month: 'Mois',
+                    next: 'Suivant',
+                    previous: 'Précédent',
+                    today: "Aujourd'hui",
+                    week: 'Semaine',
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Session Details Modal */}
+        {isModalOpen && selectedSession && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+              {/* Header du modal avec gradient */}
+              <div className="bg-gradient-to-r from-indigo-500 to-purple-600 px-8 py-6 rounded-t-2xl">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h2 className="text-2xl font-bold text-white">{selectedSession.title}</h2>
+                    <div className="mt-2">
+                      <span
+                        className={`inline-block px-4 py-2 rounded-full text-sm font-medium ${
+                          selectedSession.status === 'scheduled'
+                            ? 'bg-blue-100 text-blue-800'
+                            : selectedSession.status === 'in_progress'
+                              ? 'bg-orange-100 text-orange-800'
+                              : selectedSession.status === 'completed'
+                                ? 'bg-green-100 text-green-800'
+                                : selectedSession.status === 'cancelled'
+                                  ? 'bg-red-100 text-red-800'
+                                  : 'bg-gray-100 text-gray-800'
+                        }`}
+                      >
+                        {selectedSession.status === 'scheduled' && 'Programmée'}
+                        {selectedSession.status === 'in_progress' && 'En cours'}
+                        {selectedSession.status === 'completed' && 'Terminée'}
+                        {selectedSession.status === 'cancelled' && 'Annulée'}
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleCloseModal}
+                    className="text-white hover:text-gray-200 transition-colors p-2 rounded-full hover:bg-white/10"
+                  >
+                    <XMarkIcon className="h-6 w-6" />
+                  </button>
+                </div>
               </div>
 
-              <div className="mt-4">
-                <span
-                  className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${getStatusClass(selectedSession.status)}`}
-                >
-                  {selectedSession.status === 'scheduled' && 'Programmée'}
-                  {selectedSession.status === 'in_progress' && 'En cours'}
-                  {selectedSession.status === 'completed' && 'Terminée'}
-                  {selectedSession.status === 'cancelled' && 'Annulée'}
-                </span>
-              </div>
+              <div className="p-8">
+                {/* Description */}
+                <div className="mb-8">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-3">Description</h3>
+                  <p className="text-gray-700 bg-gray-50 p-4 rounded-xl border">
+                    {selectedSession.description}
+                  </p>
+                </div>
 
-              <div className="mt-6 space-y-4">
-                <p className="text-gray-700">{selectedSession.description}</p>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="flex items-center text-gray-600">
-                    <ClockIcon className="h-5 w-5 mr-2" />
-                    <span>
-                      {formatDate(selectedSession.startTime)} ({selectedSession.duration} min)
-                    </span>
+                {/* Informations principales */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                  <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-6 rounded-xl border border-blue-100">
+                    <div className="flex items-center text-blue-700 mb-2">
+                      <ClockIcon className="h-5 w-5 mr-2" />
+                      <span className="font-medium">Horaires</span>
+                    </div>
+                    <p className="text-gray-700">{formatDate(selectedSession.startTime)}</p>
+                    <p className="text-sm text-gray-600 mt-1">
+                      Durée: {selectedSession.duration} minutes
+                    </p>
                   </div>
 
-                  <div className="flex items-center text-gray-600">
-                    <UserGroupIcon className="h-5 w-5 mr-2" />
-                    <span>
+                  <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-6 rounded-xl border border-purple-100">
+                    <div className="flex items-center text-purple-700 mb-2">
+                      <UserGroupIcon className="h-5 w-5 mr-2" />
+                      <span className="font-medium">Participants</span>
+                    </div>
+                    <p className="text-gray-700">
                       {selectedSession.participants?.length || 0} /{' '}
-                      {selectedSession.maxParticipants} participants
-                    </span>
+                      {selectedSession.maxParticipants}
+                    </p>
+                    <p className="text-sm text-gray-600 mt-1">places disponibles</p>
                   </div>
 
-                  <div className="flex items-center text-gray-600">
-                    <CurrencyEuroIcon className="h-5 w-5 mr-2" />
-                    <span>{selectedSession.price} MAD</span>
+                  <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-6 rounded-xl border border-green-100">
+                    <div className="flex items-center text-green-700 mb-2">
+                      <CurrencyEuroIcon className="h-5 w-5 mr-2" />
+                      <span className="font-medium">Prix</span>
+                    </div>
+                    <p className="text-2xl font-bold text-green-700">{selectedSession.price} MAD</p>
                   </div>
 
-                  <div className="flex items-center text-gray-600">
-                    <UserIcon className="h-5 w-5 mr-2" />
-                    <span>{selectedSession.category}</span>
+                  <div className="bg-gradient-to-br from-orange-50 to-yellow-50 p-6 rounded-xl border border-orange-100">
+                    <div className="flex items-center text-orange-700 mb-2">
+                      <UserIcon className="h-5 w-5 mr-2" />
+                      <span className="font-medium">Catégorie</span>
+                    </div>
+                    <p className="text-gray-700 capitalize">{selectedSession.category}</p>
                   </div>
                 </div>
 
+                {/* Informations de lieu/réunion */}
                 {selectedSession.location && (
-                  <div>
-                    <div className="mt-2 text-gray-600 flex items-start">
-                      <MapPinIcon className="h-5 w-5 mr-2 mt-0.5 flex-shrink-0" />
-                      <span>
-                        <strong>Lieu:</strong> {selectedSession.location}
-                      </span>
-                    </div>
+                  <div className="mb-8">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                      <MapPinIcon className="h-5 w-5 mr-2 text-indigo-600" />
+                      Lieu de la session
+                    </h3>
+                    <div className="bg-gray-50 p-6 rounded-xl border">
+                      <p className="text-gray-700 font-medium mb-4">{selectedSession.location}</p>
 
-                    {selectedSession.locationCoordinates &&
-                      selectedSession.locationCoordinates.lat &&
-                      selectedSession.locationCoordinates.lng &&
-                      isLoaded && (
-                        <div className="mt-3 h-48 rounded-lg overflow-hidden shadow-sm border">
-                          <GoogleMap
-                            mapContainerStyle={{ width: '100%', height: '100%' }}
-                            center={{
-                              lat: selectedSession.locationCoordinates.lat,
-                              lng: selectedSession.locationCoordinates.lng,
-                            }}
-                            zoom={14}
-                            options={{ disableDefaultUI: true, zoomControl: true }}
-                          >
-                            <Marker
-                              position={{
+                      {selectedSession.locationCoordinates &&
+                        selectedSession.locationCoordinates.lat &&
+                        selectedSession.locationCoordinates.lng &&
+                        isLoaded && (
+                          <div className="h-64 rounded-xl overflow-hidden shadow-lg border border-gray-200">
+                            <GoogleMap
+                              mapContainerStyle={{ width: '100%', height: '100%' }}
+                              center={{
                                 lat: selectedSession.locationCoordinates.lat,
                                 lng: selectedSession.locationCoordinates.lng,
                               }}
-                            />
-                          </GoogleMap>
-                        </div>
-                      )}
+                              zoom={15}
+                              options={{
+                                disableDefaultUI: true,
+                                zoomControl: true,
+                                styles: [
+                                  {
+                                    featureType: 'all',
+                                    stylers: [{ saturation: -20 }],
+                                  },
+                                ],
+                              }}
+                            >
+                              <Marker
+                                position={{
+                                  lat: selectedSession.locationCoordinates.lat,
+                                  lng: selectedSession.locationCoordinates.lng,
+                                }}
+                              />
+                            </GoogleMap>
+                          </div>
+                        )}
+                    </div>
                   </div>
                 )}
 
                 {selectedSession.category === 'online' && (
-                  <div className="mt-2 text-gray-600">
-                    {selectedSession.useBuiltInVideo ? (
-                      <div>
-                        <strong>Type de réunion:</strong> Appel vidéo intégré
-                        <button
-                          onClick={handleJoinVideoCall}
-                          className="mt-2 btn-sm bg-primary-500 hover:bg-primary-600 text-white rounded px-4 py-2 flex items-center"
-                        >
-                          <FaVideo className="mr-2" /> Rejoindre l'appel vidéo
-                        </button>
-                      </div>
-                    ) : (
-                      <div>
-                        <strong>Lien de réunion:</strong>{' '}
-                        <a
-                          href={selectedSession.meetingLink}
-                          className="text-primary-600 hover:text-primary-800"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          {selectedSession.meetingLink}
-                        </a>
-                      </div>
-                    )}
+                  <div className="mb-8">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                      <FaVideo className="mr-2 text-indigo-600" />
+                      Réunion en ligne
+                    </h3>
+                    <div className="bg-gradient-to-br from-indigo-50 to-purple-50 p-6 rounded-xl border border-indigo-100">
+                      {selectedSession.useBuiltInVideo ? (
+                        <div>
+                          <p className="text-gray-700 mb-4">
+                            <strong>Type:</strong> Appel vidéo intégré
+                          </p>
+                          <button
+                            onClick={handleJoinVideoCall}
+                            className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white px-6 py-3 rounded-xl flex items-center shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
+                          >
+                            <FaVideo className="mr-2" />
+                            Rejoindre l'appel vidéo
+                          </button>
+                        </div>
+                      ) : (
+                        <div>
+                          <p className="text-gray-700 mb-3">
+                            <strong>Lien de réunion:</strong>
+                          </p>
+                          <a
+                            href={selectedSession.meetingLink}
+                            className="inline-flex items-center bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-xl transition-colors duration-300"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            Rejoindre la réunion
+                            <svg
+                              className="ml-2 h-4 w-4"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                              />
+                            </svg>
+                          </a>
+                        </div>
+                      )}
+
+                      {/* Video Access Error Display */}
+                      {videoAccessError && (
+                        <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-xl">
+                          <div className="flex items-center">
+                            <ExclamationTriangleIcon className="h-5 w-5 text-red-600 mr-2" />
+                            <span className="text-red-800 font-medium">Erreur d'accès vidéo</span>
+                          </div>
+                          <p className="text-red-700 mt-2 text-sm">{videoAccessError}</p>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
 
                 {selectedSession.notes && (
-                  <div className="mt-2 text-gray-600">
-                    <strong>Notes:</strong> {selectedSession.notes}
+                  <div className="mb-8">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                      Notes additionnelles
+                    </h3>
+                    <div className="bg-yellow-50 p-4 rounded-xl border border-yellow-200">
+                      <p className="text-gray-700">{selectedSession.notes}</p>
+                    </div>
                   </div>
                 )}
-              </div>
-
-              <div className="mt-8">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                  Demandes de réservation
-                </h3>
-
-                {isLoadingRequests ? (
-                  <div className="text-center py-4">
-                    <div className="w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
-                    <p className="text-gray-500 mt-2">Chargement des demandes...</p>
+                {/* Section des demandes de réservation */}
+                <div className="border-t border-gray-200 pt-8">
+                  <div className="flex justify-between items-center mb-6">
+                    <h3 className="text-xl font-semibold text-gray-900 flex items-center">
+                      <UserGroupIcon className="h-6 w-6 mr-2 text-indigo-600" />
+                      Demandes de réservation
+                      <span className="ml-3 bg-indigo-100 text-indigo-800 text-sm font-medium px-3 py-1 rounded-full">
+                        {bookingRequests.length}
+                      </span>
+                    </h3>
+                    <button
+                      onClick={refreshBookingRequests}
+                      className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white px-4 py-2 rounded-lg flex items-center transition-all duration-300 transform hover:-translate-y-1"
+                      disabled={isLoadingRequests}
+                    >
+                      <svg
+                        className={`h-4 w-4 mr-2 ${isLoadingRequests ? 'animate-spin' : ''}`}
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                        />
+                      </svg>
+                      {isLoadingRequests ? 'Actualisation...' : 'Actualiser'}
+                    </button>
                   </div>
-                ) : bookingRequests.length > 0 ? (
-                  <div className="space-y-4 max-h-60 overflow-y-auto">
-                    {bookingRequests.map(booking => (
-                      <div key={booking._id} className="border rounded-lg p-4">
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <div className="font-medium">
-                              {booking.client.firstName} {booking.client.lastName}
+
+                  {isLoadingRequests ? (
+                    <div className="flex flex-col items-center justify-center py-12">
+                      <div className="relative">
+                        <div className="w-10 h-10 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
+                      </div>
+                      <p className="text-gray-600 mt-4">Chargement des demandes...</p>
+                    </div>
+                  ) : bookingRequests.length > 0 ? (
+                    <div className="space-y-4 max-h-80 overflow-y-auto">
+                      {bookingRequests.map(booking => (
+                        <div
+                          key={booking._id}
+                          className="bg-gradient-to-r from-gray-50 to-white border border-gray-200 rounded-xl p-6 hover:shadow-md transition-shadow duration-300"
+                        >
+                          <div className="flex justify-between items-start mb-4">
+                            <div className="flex items-center space-x-4">
+                              <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold text-lg">
+                                {booking.client.firstName.charAt(0)}
+                                {booking.client.lastName.charAt(0)}
+                              </div>
+                              <div>
+                                <h4 className="font-semibold text-gray-900">
+                                  {booking.client.firstName} {booking.client.lastName}
+                                </h4>
+                                <p className="text-sm text-gray-600">{booking.client.email}</p>
+                                <p className="text-xs text-gray-500 mt-1">
+                                  Réservé le{' '}
+                                  {format(new Date(booking.createdAt), 'dd/MM/yyyy à HH:mm')}
+                                </p>
+                              </div>
                             </div>
-                            <div className="text-sm text-gray-500">{booking.client.email}</div>
-                            <div className="text-sm text-gray-600 mt-1">
-                              Réservé le {format(new Date(booking.createdAt), 'dd/MM/yyyy')}
-                            </div>
-                          </div>
-                          <div>
                             <span
-                              className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
+                              className={`px-4 py-2 rounded-full text-sm font-medium ${
                                 booking.status === 'pending'
-                                  ? 'bg-yellow-100 text-yellow-800'
+                                  ? 'bg-yellow-100 text-yellow-800 border border-yellow-200'
                                   : booking.status === 'confirmed'
-                                    ? 'bg-green-100 text-green-800'
+                                    ? 'bg-green-100 text-green-800 border border-green-200'
                                     : booking.status === 'cancelled'
-                                      ? 'bg-red-100 text-red-800'
-                                      : 'bg-gray-100 text-gray-800'
+                                      ? 'bg-red-100 text-red-800 border border-red-200'
+                                      : 'bg-gray-100 text-gray-800 border border-gray-200'
                               }`}
                             >
-                              {booking.status === 'pending' && 'En attente'}
-                              {booking.status === 'confirmed' && 'Confirmée'}
-                              {booking.status === 'cancelled' && 'Annulée'}
-                              {booking.status === 'completed' && 'Terminée'}
+                              {booking.status === 'pending' && '⏳ En attente'}
+                              {booking.status === 'confirmed' && '✅ Confirmée'}
+                              {booking.status === 'cancelled' && '❌ Annulée'}
+                              {booking.status === 'completed' && '🎉 Terminée'}
                             </span>
                           </div>
+
+                          {booking.clientNotes && (
+                            <div className="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-100">
+                              <p className="text-sm text-gray-700">
+                                <span className="font-medium text-blue-800">Notes du client:</span>{' '}
+                                {booking.clientNotes}
+                              </p>
+                            </div>
+                          )}
+
+                          {booking.status === 'pending' && (
+                            <div className="flex space-x-3">
+                              <button
+                                onClick={() => handleBookingStatusChange(booking._id, 'confirmed')}
+                                className="flex-1 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white px-4 py-3 rounded-xl flex items-center justify-center transition-all duration-300 transform hover:-translate-y-1"
+                              >
+                                <CheckIcon className="h-5 w-5 mr-2" />
+                                Accepter
+                              </button>
+                              <button
+                                onClick={() => handleBookingStatusChange(booking._id, 'cancelled')}
+                                className="flex-1 bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 text-white px-4 py-3 rounded-xl flex items-center justify-center transition-all duration-300 transform hover:-translate-y-1"
+                              >
+                                <XMarkIcon className="h-5 w-5 mr-2" />
+                                Refuser
+                              </button>
+                            </div>
+                          )}
                         </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-12">
+                      <UserGroupIcon className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                      <p className="text-gray-500 text-lg">Aucune demande de réservation</p>
+                      <p className="text-gray-400 text-sm mt-1">
+                        Les nouvelles demandes apparaîtront ici
+                      </p>
+                    </div>
+                  )}
+                </div>
 
-                        {booking.clientNotes && (
-                          <div className="mt-2 text-sm text-gray-600">
-                            <strong>Notes:</strong> {booking.clientNotes}
-                          </div>
-                        )}
-
-                        {booking.status === 'pending' && (
-                          <div className="mt-3 flex space-x-2">
-                            <button
-                              onClick={() => handleBookingStatusChange(booking._id, 'confirmed')}
-                              className="btn-sm bg-green-500 hover:bg-green-600 text-white flex items-center"
-                            >
-                              <CheckIcon className="h-4 w-4 mr-1" />
-                              Accepter
-                            </button>
-                            <button
-                              onClick={() => handleBookingStatusChange(booking._id, 'cancelled')}
-                              className="btn-sm bg-red-500 hover:bg-red-600 text-white flex items-center"
-                            >
-                              <XMarkIcon className="h-4 w-4 mr-1" />
-                              Refuser
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-gray-500 italic">Aucune demande de réservation</p>
-                )}
-              </div>
-
-              <div className="mt-8 flex justify-between">
-                <button
-                  onClick={() => handleEditSession(selectedSession)}
-                  className="btn-secondary flex items-center"
-                  disabled={
-                    selectedSession.status === 'completed' || selectedSession.status === 'cancelled'
-                  }
-                >
-                  <PencilIcon className="h-5 w-5 mr-2" />
-                  Modifier
-                </button>
-                <button
-                  onClick={() => setIsDeleteModalOpen(true)}
-                  className="btn-danger flex items-center"
-                  disabled={
-                    selectedSession.status === 'completed' || selectedSession.status === 'cancelled'
-                  }
-                >
-                  <TrashIcon className="h-5 w-5 mr-2" />
-                  Annuler
-                </button>
+                {/* Actions du modal */}
+                <div className="border-t border-gray-200 pt-8 flex justify-between">
+                  <button
+                    onClick={() => handleEditSession(selectedSession)}
+                    className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white px-6 py-3 rounded-xl flex items-center transition-all duration-300 transform hover:-translate-y-1 disabled:opacity-50 disabled:transform-none"
+                    disabled={
+                      selectedSession.status === 'completed' ||
+                      selectedSession.status === 'cancelled'
+                    }
+                  >
+                    <PencilIcon className="h-5 w-5 mr-2" />
+                    Modifier
+                  </button>
+                  <button
+                    onClick={() => setIsDeleteModalOpen(true)}
+                    className="bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 text-white px-6 py-3 rounded-xl flex items-center transition-all duration-300 transform hover:-translate-y-1 disabled:opacity-50 disabled:transform-none"
+                    disabled={
+                      selectedSession.status === 'completed' ||
+                      selectedSession.status === 'cancelled'
+                    }
+                  >
+                    <TrashIcon className="h-5 w-5 mr-2" />
+                    Annuler
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Video Call Modal */}
-      {showVideoCall && selectedSession && (
-        <div className="fixed inset-0 z-50">
-          <VideoCallComponent
-            sessionId={selectedSession._id}
-            professionalId={
-              selectedSession.professionalId.userId ||
-              selectedSession.professionalId._id ||
-              selectedSession.professionalId
-            }
-            clientId="demo-client-id"
-            currentUserId={user?.id || user?._id}
-            currentUserRole={user?.role}
-            onEndCall={handleEndVideoCall}
-          />
-        </div>
-      )}
+        {/* Video Call Modal */}
+        {showVideoCall && selectedSession && videoAccessToken && (
+          <div className="fixed inset-0 z-50">
+            <VideoCallComponent
+              sessionId={selectedSession._id}
+              professionalId={
+                selectedSession.professionalId.userId ||
+                selectedSession.professionalId._id ||
+                selectedSession.professionalId
+              }
+              clientId="demo-client-id"
+              currentUserId={user?.id || user?._id}
+              currentUserRole={user?.role}
+              currentUserName={user?.fullName || `${user?.firstName} ${user?.lastName}`}
+              videoAccessToken={videoAccessToken}
+              onEndCall={handleEndVideoCall}
+              onSecurityError={error => {
+                console.error('Video security error:', error);
+                setVideoAccessError(error);
+                toast.error(`Erreur de sécurité: ${error}`);
+                handleEndVideoCall();
+              }}
+            />
+          </div>
+        )}
 
-      {/* Session Form Modal */}
-      {isFormModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex justify-between items-start mb-6">
-                <h2 className="text-2xl font-bold text-gray-900">
-                  {isEditing ? 'Modifier la session' : 'Créer une nouvelle session'}
-                </h2>
-                <button
-                  onClick={handleCloseFormModal}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  <XMarkIcon className="h-6 w-6" />
-                </button>
+        {/* Session Form Modal */}
+        {isFormModalOpen && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+              {/* Header du modal avec gradient */}
+              <div className="bg-gradient-to-r from-indigo-500 to-purple-600 px-8 py-6">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h2 className="text-2xl font-bold text-white">
+                      {isEditing ? 'Modifier la session' : 'Créer une nouvelle session'}
+                    </h2>
+                    <p className="text-indigo-100 mt-1">
+                      {isEditing
+                        ? 'Modifiez les détails de votre session'
+                        : 'Configurez votre nouvelle session'}
+                    </p>
+                  </div>
+                  <button
+                    onClick={handleCloseFormModal}
+                    className="text-white hover:text-gray-200 transition-colors p-2 rounded-full hover:bg-white/10"
+                  >
+                    <XMarkIcon className="h-6 w-6" />
+                  </button>
+                </div>
               </div>
 
-              <form onSubmit={handleFormSubmit}>
-                <div className="space-y-4">
-                  <div>
-                    <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
-                      Titre *
-                    </label>
-                    <input
-                      type="text"
-                      id="title"
-                      name="title"
-                      value={formData.title}
-                      onChange={handleInputChange}
-                      className="input-field w-full"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label
-                      htmlFor="description"
-                      className="block text-sm font-medium text-gray-700 mb-1"
-                    >
-                      Description *
-                    </label>
-                    <textarea
-                      id="description"
-                      name="description"
-                      value={formData.description}
-                      onChange={handleInputChange}
-                      rows="3"
-                      className="input-field w-full"
-                      required
-                    ></textarea>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label
-                        htmlFor="startTime"
-                        className="block text-sm font-medium text-gray-700 mb-1"
-                      >
-                        Date et heure de début *
-                      </label>
-                      <input
-                        type="datetime-local"
-                        id="startTime"
-                        name="startTime"
-                        value={formData.startTime}
-                        onChange={handleInputChange}
-                        className="input-field w-full"
-                        required
-                      />
-                    </div>
-
-                    <div>
-                      <label
-                        htmlFor="duration"
-                        className="block text-sm font-medium text-gray-700 mb-1"
-                      >
-                        Durée (minutes) *
-                      </label>
-                      <input
-                        type="number"
-                        id="duration"
-                        name="duration"
-                        value={formData.duration}
-                        onChange={handleInputChange}
-                        min="15"
-                        max="480"
-                        className="input-field w-full"
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label
-                        htmlFor="maxParticipants"
-                        className="block text-sm font-medium text-gray-700 mb-1"
-                      >
-                        Nombre maximum de participants *
-                      </label>
-                      <input
-                        type="number"
-                        id="maxParticipants"
-                        name="maxParticipants"
-                        value={formData.maxParticipants}
-                        onChange={handleInputChange}
-                        min="1"
-                        max="100"
-                        className="input-field w-full"
-                        required
-                      />
-                    </div>
-
-                    <div>
-                      <label
-                        htmlFor="price"
-                        className="block text-sm font-medium text-gray-700 mb-1"
-                      >
-                        Prix (MAD) *
-                      </label>
-                      <input
-                        type="number"
-                        id="price"
-                        name="price"
-                        value={formData.price}
-                        onChange={handleInputChange}
-                        min="0"
-                        step="0.01"
-                        className="input-field w-full"
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label
-                      htmlFor="category"
-                      className="block text-sm font-medium text-gray-700 mb-1"
-                    >
-                      Catégorie *
-                    </label>
-                    <select
-                      id="category"
-                      name="category"
-                      value={formData.category}
-                      onChange={handleInputChange}
-                      className="input-field w-full"
-                      required
-                    >
-                      <option value="individual">Individuelle</option>
-                      <option value="group">Groupe</option>
-                      <option value="online">En ligne</option>
-                      <option value="workshop">Atelier</option>
-                      <option value="retreat">Retraite</option>
-                    </select>
-                  </div>
-
-                  {formData.category === 'online' && (
-                    <div className="mt-4">
-                      <div className="mb-4">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Type de réunion en ligne *
-                        </label>
-                        <div className="flex space-x-4">
-                          <label className="inline-flex items-center">
-                            <input
-                              type="radio"
-                              name="useBuiltInVideo"
-                              checked={!formData.useBuiltInVideo}
-                              onChange={() =>
-                                setFormData(prev => ({ ...prev, useBuiltInVideo: false }))
-                              }
-                              className="form-radio h-4 w-4 text-primary-600"
-                            />
-                            <span className="ml-2">Lien externe (Zoom, Teams, etc.)</span>
-                          </label>
-                          <label className="inline-flex items-center">
-                            <input
-                              type="radio"
-                              name="useBuiltInVideo"
-                              checked={formData.useBuiltInVideo}
-                              onChange={() =>
-                                setFormData(prev => ({
-                                  ...prev,
-                                  useBuiltInVideo: true,
-                                  meetingLink: '',
-                                }))
-                              }
-                              className="form-radio h-4 w-4 text-primary-600"
-                            />
-                            <span className="ml-2">Appel vidéo intégré</span>
-                          </label>
-                        </div>
-                      </div>
-
-                      {!formData.useBuiltInVideo && (
+              {/* Contenu du formulaire avec scroll */}
+              <div className="overflow-y-auto max-h-[calc(90vh-120px)]">
+                <form onSubmit={handleFormSubmit} className="p-8">
+                  <div className="space-y-8">
+                    {/* Informations de base */}
+                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-xl border border-blue-200">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                        <svg
+                          className="h-5 w-5 mr-2 text-blue-600"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                          />
+                        </svg>
+                        Informations de base
+                      </h3>
+                      <div className="space-y-4">
                         <div>
                           <label
-                            htmlFor="meetingLink"
-                            className="block text-sm font-medium text-gray-700 mb-1"
+                            htmlFor="title"
+                            className="block text-sm font-medium text-gray-700 mb-2"
                           >
-                            Lien de réunion *
+                            Titre de la session *
                           </label>
                           <input
-                            type="url"
-                            id="meetingLink"
-                            name="meetingLink"
-                            value={formData.meetingLink}
-                            onChange={handleInputChange}
-                            className="input-field w-full"
-                            placeholder="https://..."
-                            required={formData.category === 'online' && !formData.useBuiltInVideo}
-                          />
-                        </div>
-                      )}
-
-                      {formData.useBuiltInVideo && (
-                        <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                          <div className="flex items-center text-primary-600 mb-2">
-                            <FaVideo className="mr-2" />
-                            <span className="font-medium">Appel vidéo intégré</span>
-                          </div>
-                          <p className="text-sm text-gray-600">
-                            Cette session utilisera notre solution d'appel vidéo intégrée. Les
-                            participants pourront rejoindre directement depuis l'application sans
-                            logiciel supplémentaire.
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {formData.category !== 'online' && (
-                    <>
-                      <div>
-                        <label
-                          htmlFor="location"
-                          className="block text-sm font-medium text-gray-700 mb-1"
-                        >
-                          Lieu *{' '}
-                          <span className="text-xs font-normal text-gray-500">
-                            (Recherchez ou sélectionnez sur la carte)
-                          </span>
-                        </label>
-                        <div className="relative">
-                          <input
                             type="text"
-                            id="location"
-                            name="location"
-                            ref={searchInputRef}
-                            value={searchAddress}
-                            onChange={handleAddressInputChange}
-                            className="input-field w-full pl-10 pr-10"
-                            placeholder="Entrez une adresse ou cliquez sur la carte"
-                            required={formData.category !== 'online'}
+                            id="title"
+                            name="title"
+                            value={formData.title}
+                            onChange={handleInputChange}
+                            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors duration-200"
+                            placeholder="Ex: Session de méditation matinale"
+                            required
                           />
-                          <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-
-                          {/* Bouton pour effacer l'adresse */}
-                          {searchAddress && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setSearchAddress('');
-                                setSelectedLocation(null);
-                                setFormData(prev => ({
-                                  ...prev,
-                                  location: '',
-                                  locationCoordinates: { lat: null, lng: null },
-                                }));
-                              }}
-                              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                            >
-                              <XMarkIcon className="h-5 w-5" />
-                            </button>
-                          )}
                         </div>
 
-                        <div className="mt-2 flex space-x-2">
+                        <div>
+                          <label
+                            htmlFor="description"
+                            className="block text-sm font-medium text-gray-700 mb-2"
+                          >
+                            Description *
+                          </label>
+                          <textarea
+                            id="description"
+                            name="description"
+                            value={formData.description}
+                            onChange={handleInputChange}
+                            rows="4"
+                            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors duration-200"
+                            placeholder="Décrivez le contenu et les objectifs de votre session..."
+                            required
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Planification */}
+                    <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-6 rounded-xl border border-green-200">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                        <ClockIcon className="h-5 w-5 mr-2 text-green-600" />
+                        Planification
+                      </h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label
+                            htmlFor="startTime"
+                            className="block text-sm font-medium text-gray-700 mb-2"
+                          >
+                            Date et heure de début *
+                          </label>
+                          <input
+                            type="datetime-local"
+                            id="startTime"
+                            name="startTime"
+                            value={formData.startTime}
+                            onChange={handleInputChange}
+                            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors duration-200"
+                            required
+                          />
+                        </div>
+
+                        <div>
+                          <label
+                            htmlFor="duration"
+                            className="block text-sm font-medium text-gray-700 mb-2"
+                          >
+                            Durée (minutes) *
+                          </label>
+                          <input
+                            type="number"
+                            id="duration"
+                            name="duration"
+                            value={formData.duration}
+                            onChange={handleInputChange}
+                            min="15"
+                            max="480"
+                            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors duration-200"
+                            required
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Configuration */}
+                    <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-6 rounded-xl border border-purple-200">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                        <UserGroupIcon className="h-5 w-5 mr-2 text-purple-600" />
+                        Configuration
+                      </h3>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                          <label
+                            htmlFor="maxParticipants"
+                            className="block text-sm font-medium text-gray-700 mb-2"
+                          >
+                            Nombre maximum de participants *
+                          </label>
+                          <input
+                            type="number"
+                            id="maxParticipants"
+                            name="maxParticipants"
+                            value={formData.maxParticipants}
+                            onChange={handleInputChange}
+                            min="1"
+                            max="100"
+                            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors duration-200"
+                            required
+                          />
+                        </div>
+
+                        <div>
+                          <label
+                            htmlFor="price"
+                            className="block text-sm font-medium text-gray-700 mb-2"
+                          >
+                            Prix (MAD) *
+                          </label>
+                          <input
+                            type="number"
+                            id="price"
+                            name="price"
+                            value={formData.price}
+                            onChange={handleInputChange}
+                            min="0"
+                            step="0.01"
+                            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors duration-200"
+                            required
+                          />
+                        </div>
+
+                        <div>
+                          <label
+                            htmlFor="category"
+                            className="block text-sm font-medium text-gray-700 mb-2"
+                          >
+                            Catégorie *
+                          </label>
+                          <select
+                            id="category"
+                            name="category"
+                            value={formData.category}
+                            onChange={handleInputChange}
+                            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors duration-200"
+                            required
+                          >
+                            <option value="individual">Individuelle</option>
+                            <option value="group">Groupe</option>
+                            <option value="online">En ligne</option>
+                            <option value="workshop">Atelier</option>
+                            <option value="retreat">Retraite</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Section pour sessions en ligne */}
+                    {formData.category === 'online' && (
+                      <div className="bg-gradient-to-r from-indigo-50 to-blue-50 p-6 rounded-xl border border-indigo-200">
+                        <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                          <FaVideo className="mr-2 text-indigo-600" />
+                          Configuration en ligne
+                        </h3>
+
+                        <div className="mb-6">
+                          <label className="block text-sm font-medium text-gray-700 mb-3">
+                            Type de réunion en ligne *
+                          </label>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <label className="relative cursor-pointer">
+                              <input
+                                type="radio"
+                                name="useBuiltInVideo"
+                                checked={!formData.useBuiltInVideo}
+                                onChange={() =>
+                                  setFormData(prev => ({ ...prev, useBuiltInVideo: false }))
+                                }
+                                className="sr-only"
+                              />
+                              <div
+                                className={`p-4 rounded-xl border-2 transition-all duration-200 ${
+                                  !formData.useBuiltInVideo
+                                    ? 'border-indigo-500 bg-indigo-50 ring-2 ring-indigo-200'
+                                    : 'border-gray-300 bg-white hover:bg-gray-50'
+                                }`}
+                              >
+                                <div className="flex items-center">
+                                  <svg
+                                    className="h-5 w-5 text-indigo-600 mr-3"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
+                                    />
+                                  </svg>
+                                  <span className="font-medium text-gray-900">Lien externe</span>
+                                </div>
+                                <p className="text-sm text-gray-600 mt-2">
+                                  Zoom, Teams, Meet, etc.
+                                </p>
+                              </div>
+                            </label>
+
+                            <label className="relative cursor-pointer">
+                              <input
+                                type="radio"
+                                name="useBuiltInVideo"
+                                checked={formData.useBuiltInVideo}
+                                onChange={() =>
+                                  setFormData(prev => ({
+                                    ...prev,
+                                    useBuiltInVideo: true,
+                                    meetingLink: '',
+                                  }))
+                                }
+                                className="sr-only"
+                              />
+                              <div
+                                className={`p-4 rounded-xl border-2 transition-all duration-200 ${
+                                  formData.useBuiltInVideo
+                                    ? 'border-indigo-500 bg-indigo-50 ring-2 ring-indigo-200'
+                                    : 'border-gray-300 bg-white hover:bg-gray-50'
+                                }`}
+                              >
+                                <div className="flex items-center">
+                                  <FaVideo className="h-5 w-5 text-indigo-600 mr-3" />
+                                  <span className="font-medium text-gray-900">Appel intégré</span>
+                                </div>
+                                <p className="text-sm text-gray-600 mt-2">Solution intégrée</p>
+                              </div>
+                            </label>
+                          </div>
+                        </div>
+
+                        {!formData.useBuiltInVideo ? (
+                          <div>
+                            <label
+                              htmlFor="meetingLink"
+                              className="block text-sm font-medium text-gray-700 mb-2"
+                            >
+                              Lien de réunion *
+                            </label>
+                            <input
+                              type="url"
+                              id="meetingLink"
+                              name="meetingLink"
+                              value={formData.meetingLink}
+                              onChange={handleInputChange}
+                              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors duration-200"
+                              placeholder="https://zoom.us/j/123456789..."
+                              required={formData.category === 'online' && !formData.useBuiltInVideo}
+                            />
+                          </div>
+                        ) : (
+                          <div className="bg-gradient-to-r from-indigo-100 to-purple-100 p-6 rounded-xl border border-indigo-200">
+                            <div className="flex items-center text-indigo-700 mb-3">
+                              <FaVideo className="mr-3 h-6 w-6" />
+                              <span className="font-semibold text-lg">Appel vidéo intégré</span>
+                            </div>
+                            <p className="text-indigo-600">
+                              Cette session utilisera notre solution d'appel vidéo intégrée. Les
+                              participants pourront rejoindre directement depuis l'application sans
+                              logiciel supplémentaire.
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Section pour localisation physique */}
+                    {formData.category !== 'online' && (
+                      <div className="bg-gradient-to-r from-green-50 to-teal-50 p-6 rounded-xl border border-green-200">
+                        <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                          <MapPinIcon className="h-5 w-5 mr-2 text-green-600" />
+                          Localisation
+                        </h3>
+
+                        <div className="mb-4">
+                          <label
+                            htmlFor="location"
+                            className="block text-sm font-medium text-gray-700 mb-2"
+                          >
+                            Adresse du lieu *
+                            <span className="text-xs font-normal text-gray-500 ml-2">
+                              (Recherchez ou sélectionnez sur la carte)
+                            </span>
+                          </label>
+                          <div className="relative">
+                            <input
+                              type="text"
+                              id="location"
+                              name="location"
+                              ref={searchInputRef}
+                              value={searchAddress}
+                              onChange={handleAddressInputChange}
+                              className="w-full px-12 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors duration-200"
+                              placeholder="Entrez une adresse ou cliquez sur la carte"
+                              required={formData.category !== 'online'}
+                            />
+                            <MagnifyingGlassIcon className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+
+                            {searchAddress && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSearchAddress('');
+                                  setSelectedLocation(null);
+                                  setFormData(prev => ({
+                                    ...prev,
+                                    location: '',
+                                    locationCoordinates: { lat: null, lng: null },
+                                  }));
+                                }}
+                                className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                              >
+                                <XMarkIcon className="h-5 w-5" />
+                              </button>
+                            )}
+                          </div>
+
                           <button
                             type="button"
                             onClick={getCurrentLocation}
-                            className="inline-flex items-center text-sm text-primary-600 hover:text-primary-800"
+                            className="mt-3 inline-flex items-center text-sm text-green-600 hover:text-green-800 transition-colors duration-200"
                           >
                             <svg
                               xmlns="http://www.w3.org/2000/svg"
-                              className="h-4 w-4 mr-1"
+                              className="h-4 w-4 mr-2"
                               viewBox="0 0 20 20"
                               fill="currentColor"
                             >
@@ -1108,74 +1529,122 @@ const ProfessionalSessionsPage = () => {
                             Utiliser ma position actuelle
                           </button>
                         </div>
-                      </div>
 
-                      {/* Map for location selection */}
-                      {renderMap()}
-
-                      {selectedLocation && (
-                        <div className="text-sm text-gray-500">
-                          Coordonnées: {selectedLocation.lat.toFixed(6)},{' '}
-                          {selectedLocation.lng.toFixed(6)}
+                        {/* Carte */}
+                        <div className="rounded-xl overflow-hidden border border-gray-200">
+                          {renderMap()}
                         </div>
-                      )}
-                    </>
-                  )}
 
-                  <div>
-                    <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-1">
-                      Notes additionnelles
-                    </label>
-                    <textarea
-                      id="notes"
-                      name="notes"
-                      value={formData.notes}
-                      onChange={handleInputChange}
-                      rows="2"
-                      className="input-field w-full"
-                    ></textarea>
+                        {selectedLocation && (
+                          <div className="mt-3 text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
+                            <strong>Coordonnées:</strong> {selectedLocation.lat.toFixed(6)},{' '}
+                            {selectedLocation.lng.toFixed(6)}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Notes additionnelles */}
+                    <div className="bg-gradient-to-r from-yellow-50 to-orange-50 p-6 rounded-xl border border-yellow-200">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                        <svg
+                          className="h-5 w-5 mr-2 text-yellow-600"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                          />
+                        </svg>
+                        Notes additionnelles
+                      </h3>
+                      <textarea
+                        id="notes"
+                        name="notes"
+                        value={formData.notes}
+                        onChange={handleInputChange}
+                        rows="3"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-yellow-500 focus:border-transparent transition-colors duration-200"
+                        placeholder="Ajoutez des informations complémentaires pour vos participants..."
+                      />
+                    </div>
+                  </div>
+
+                  {/* Actions du formulaire */}
+                  <div className="bg-gray-50 px-8 py-6 border-t border-gray-200 flex justify-end space-x-4">
+                    <button
+                      type="button"
+                      onClick={handleCloseFormModal}
+                      className="px-6 py-3 border border-gray-300 text-gray-700 bg-white rounded-xl hover:bg-gray-50 transition-colors duration-200"
+                    >
+                      Annuler
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-xl transition-all duration-300 transform hover:-translate-y-1 shadow-lg hover:shadow-xl"
+                    >
+                      {isEditing ? 'Mettre à jour' : 'Créer la session'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Delete Confirmation Modal */}
+        {isDeleteModalOpen && selectedSession && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
+              {/* Header avec couleur d'alerte */}
+              <div className="bg-gradient-to-r from-red-500 to-rose-600 px-8 py-6">
+                <div className="flex items-center text-white">
+                  <ExclamationTriangleIcon className="h-8 w-8 mr-4" />
+                  <h3 className="text-xl font-semibold">Annuler la session</h3>
+                </div>
+              </div>
+
+              {/* Contenu */}
+              <div className="p-8">
+                <div className="mb-6">
+                  <h4 className="text-lg font-medium text-gray-900 mb-3">
+                    "{selectedSession.title}"
+                  </h4>
+                  <p className="text-gray-700 leading-relaxed">
+                    Êtes-vous sûr de vouloir annuler cette session ?
+                  </p>
+                  <div className="mt-4 bg-red-50 p-4 rounded-xl border border-red-200">
+                    <p className="text-sm text-red-700">
+                      <strong>⚠️ Attention :</strong> Tous les participants seront automatiquement
+                      notifiés et leurs réservations seront annulées. Cette action est irréversible.
+                    </p>
                   </div>
                 </div>
 
-                <div className="mt-8 flex justify-end space-x-3">
-                  <button type="button" onClick={handleCloseFormModal} className="btn-secondary">
-                    Annuler
+                {/* Actions */}
+                <div className="flex space-x-4">
+                  <button
+                    onClick={() => setIsDeleteModalOpen(false)}
+                    className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 bg-white rounded-xl hover:bg-gray-50 transition-colors duration-200"
+                  >
+                    Retour
                   </button>
-                  <button type="submit" className="btn-primary">
-                    {isEditing ? 'Mettre à jour' : 'Créer'}
+                  <button
+                    onClick={handleDeleteConfirm}
+                    className="flex-1 px-6 py-3 bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 text-white rounded-xl transition-all duration-300 transform hover:-translate-y-1 shadow-lg hover:shadow-xl"
+                  >
+                    Oui, annuler
                   </button>
                 </div>
-              </form>
+              </div>
             </div>
           </div>
-        </div>
-      )}
-
-      {/* Delete Confirmation Modal */}
-      {isDeleteModalOpen && selectedSession && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-            <div className="flex items-center text-red-600 mb-4">
-              <ExclamationTriangleIcon className="h-8 w-8 mr-3" />
-              <h3 className="text-lg font-semibold">Annuler la session</h3>
-            </div>
-
-            <p className="text-gray-700">
-              Êtes-vous sûr de vouloir annuler cette session ? Tous les participants seront notifiés
-              et les réservations seront annulées.
-            </p>
-
-            <div className="mt-6 flex justify-end space-x-3">
-              <button onClick={() => setIsDeleteModalOpen(false)} className="btn-secondary">
-                Retour
-              </button>
-              <button onClick={handleDeleteConfirm} className="btn-danger">
-                Oui, annuler
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 };

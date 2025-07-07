@@ -13,7 +13,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { motion } from 'framer-motion';
 import React, { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 
 import { useAuth } from '../../contexts/AuthContext';
 import { handleImageError } from '../../utils/imageUtils';
@@ -23,8 +23,9 @@ import ClientNotificationsPanel from './ClientNotificationsPanel';
 const ClientNavbar = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [profileImageUrl, setProfileImageUrl] = useState(null);
-  const { user, logout } = useAuth();
+  const { user, logout, isAdmin } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
 
   // Function to build profile image URL like ProfilePage.jsx
   useEffect(() => {
@@ -37,6 +38,18 @@ const ClientNavbar = () => {
       setProfileImageUrl(null);
     }
   }, [user?.profileImage]);
+
+  // Redirect admin users to admin dashboard
+  useEffect(() => {
+    if (user && isAdmin()) {
+      navigate('/admin/dashboard');
+    }
+  }, [user, isAdmin, navigate]);
+
+  // If user is admin, don't render the client navbar
+  if (user && isAdmin()) {
+    return null;
+  }
 
   const navigation = [
     {
@@ -90,7 +103,7 @@ const ClientNavbar = () => {
   ];
 
   return (
-    <header className="bg-white shadow-lg border-b border-gray-200 fixed top-0 w-full z-30">
+    <header className="bg-white shadow-lg border-b border-gray-100 fixed top-0 w-full z-30 backdrop-blur-sm bg-white/95">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           {/* Logo and brand name */}
@@ -106,7 +119,7 @@ const ClientNavbar = () => {
                     e.target.src = '/logo.svg';
                   }}
                 />
-                <span className="font-serif text-xl font-bold text-gradient-lotus">
+                <span className="font-serif text-xl font-bold text-gradient-lotus tracking-tight">
                   Holistic.ma
                 </span>
               </Link>
@@ -114,23 +127,23 @@ const ClientNavbar = () => {
           </div>
 
           {/* Desktop navigation */}
-          <div className="hidden lg:flex lg:items-center lg:space-x-6">
+          <div className="hidden lg:flex lg:items-center lg:space-x-8">
             <nav className="flex space-x-2">
-              {navigation.map(item => (
+              {navigation.slice(0, 4).map(item => (
                 <Link
                   key={item.name}
                   to={item.href}
-                  className={`px-4 py-2 rounded-md text-sm font-medium flex items-center transition-all duration-300 ${
+                  className={`px-4 py-2 rounded-lg text-sm font-medium flex items-center transition-all duration-200 whitespace-nowrap ${
                     item.current
-                      ? 'bg-primary-50 text-primary-700 shadow-md'
-                      : 'text-gray-700 hover:bg-gray-50 hover:text-primary-600 hover:shadow-sm'
+                      ? 'bg-primary-50 text-primary-700 shadow-soft border border-primary-100'
+                      : 'text-gray-600 hover:bg-gray-50 hover:text-primary-600'
                   }`}
                 >
                   <item.icon
-                    className={`mr-2 h-5 w-5 ${
+                    className={`mr-2 h-4 w-4 ${
                       item.current
                         ? 'text-primary-600'
-                        : 'text-gray-500 group-hover:text-primary-500'
+                        : 'text-gray-400 group-hover:text-primary-500'
                     }`}
                   />
                   {item.name}
@@ -138,33 +151,82 @@ const ClientNavbar = () => {
               ))}
             </nav>
 
+            {/* Menu déroulant pour les autres éléments */}
+            <div className="relative group">
+              <button className="px-4 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-primary-600 flex items-center transition-all duration-200">
+                <span>Plus</span>
+                <svg className="ml-1 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 9l-7 7-7-7"
+                  />
+                </svg>
+              </button>
+
+              <div className="absolute left-0 mt-2 w-48 rounded-lg shadow-lg bg-white ring-1 ring-black ring-opacity-5 hidden group-hover:block animate-fade-in z-50">
+                <div className="py-1 rounded-lg overflow-hidden">
+                  {navigation.slice(4).map(item => (
+                    <Link
+                      key={item.name}
+                      to={item.href}
+                      className={`block px-4 py-2 text-sm font-medium transition-colors duration-200 ${
+                        item.current
+                          ? 'bg-primary-50 text-primary-700'
+                          : 'text-gray-700 hover:bg-primary-50 hover:text-primary-700'
+                      }`}
+                    >
+                      <div className="flex items-center">
+                        <item.icon className="mr-2 h-4 w-4" />
+                        {item.name}
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            </div>
+
             {/* Profile and notifications */}
-            <div className="flex items-center space-x-4 ml-4">
+            <div className="flex items-center space-x-4">
               <ClientNotificationsPanel user={user} />
 
               <div className="relative inline-block text-left group">
-                <button className="flex items-center text-sm focus:outline-none space-x-2 focus-visible bg-gray-50 rounded-full pl-2 pr-4 py-1.5 hover:bg-gray-100 transition-all duration-300">
-                  <div className="relative">
+                <button className="flex items-center text-sm focus:outline-none space-x-4 p-2.5 rounded-lg hover:bg-gray-50 transition-all duration-200">
+                  <div className="relative flex-shrink-0">
                     {profileImageUrl ? (
                       <img
-                        className="h-9 w-9 rounded-full border border-gray-200 shadow-sm hover:shadow-md transition-all duration-200 object-cover"
+                        className="h-11 w-11 rounded-full border-2 border-gray-200 shadow-sm hover:shadow-md transition-all duration-200 object-cover"
                         src={profileImageUrl}
                         alt={user?.fullName}
                         onError={handleImageError}
                       />
                     ) : (
-                      <div className="h-9 w-9 rounded-full bg-gradient-lotus flex items-center justify-center border border-gray-200 shadow-sm hover:shadow-md transition-all duration-200">
-                        <UserCircleIcon className="h-6 w-6 text-white" />
+                      <div className="h-11 w-11 rounded-full bg-gradient-lotus flex items-center justify-center border-2 border-gray-200 shadow-sm hover:shadow-md transition-all duration-200">
+                        <UserCircleIcon className="h-7 w-7 text-white" />
                       </div>
                     )}
-                    <div className="absolute bottom-0 right-0 h-2.5 w-2.5 bg-green-400 rounded-full border border-white animate-pulse"></div>
+                    <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 bg-green-400 rounded-full border-2 border-white shadow-sm"></div>
                   </div>
-                  <div className="text-left hidden md:block">
-                    <span className="block text-sm font-medium text-gray-800 truncate max-w-[120px]">
+                  <div className="text-left hidden xl:block">
+                    <span className="block text-sm font-semibold text-gray-900 truncate max-w-[140px]">
                       {user?.fullName || user?.firstName}
                     </span>
                     <span className="block text-xs text-primary-600 font-medium">Client</span>
                   </div>
+                  <svg
+                    className="hidden xl:block h-4 w-4 text-gray-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 9l-7 7-7-7"
+                    />
+                  </svg>
                 </button>
 
                 {/* Dropdown menu - hover to show */}
@@ -254,22 +316,22 @@ const ClientNavbar = () => {
           initial={{ opacity: 0, height: 0 }}
           animate={{ opacity: 1, height: 'auto' }}
           exit={{ opacity: 0, height: 0 }}
-          className="lg:hidden bg-white border-t border-gray-200 shadow-inner overflow-hidden"
+          className="lg:hidden bg-white border-t border-gray-100 shadow-xl"
         >
-          <div className="pt-3 pb-4 space-y-1 px-4">
+          <div className="pt-4 pb-6 space-y-2 px-4 max-h-screen overflow-y-auto">
             {navigation.map(item => (
               <Link
                 key={item.name}
                 to={item.href}
-                className={`block px-4 py-3 rounded-lg text-base font-medium flex items-center ${
+                className={`px-4 py-3 rounded-lg text-base font-medium flex items-center ${
                   item.current
-                    ? 'bg-primary-50 text-primary-700 shadow-inner'
-                    : 'text-gray-700 hover:bg-gray-50 hover:text-primary-600'
+                    ? 'bg-primary-50 text-primary-700 shadow-soft border border-primary-100'
+                    : 'text-gray-600 hover:bg-gray-50 hover:text-primary-600'
                 } transition-all duration-200`}
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 <item.icon
-                  className={`mr-4 h-5 w-5 ${item.current ? 'text-primary-600' : 'text-gray-500'}`}
+                  className={`mr-4 h-5 w-5 ${item.current ? 'text-primary-600' : 'text-gray-400'}`}
                 />
                 {item.name}
               </Link>
@@ -277,60 +339,60 @@ const ClientNavbar = () => {
           </div>
 
           {/* Mobile profile menu */}
-          <div className="pt-4 pb-5 border-t border-gray-200 bg-gray-50">
-            <div className="flex items-center px-4 py-2">
+          <div className="pt-4 pb-6 border-t border-gray-100 bg-gray-50">
+            <div className="flex items-center px-4 py-3 bg-white rounded-lg mx-4 shadow-sm">
               <div className="flex-shrink-0">
                 {profileImageUrl ? (
                   <img
-                    className="h-11 w-11 rounded-full border-2 border-white shadow-md"
+                    className="h-11 w-11 rounded-full border-2 border-gray-200 object-cover shadow-sm"
                     src={profileImageUrl}
                     alt={user?.fullName}
                     onError={handleImageError}
                   />
                 ) : (
-                  <div className="h-11 w-11 rounded-full bg-gradient-lotus flex items-center justify-center border-2 border-white shadow-md">
+                  <div className="h-11 w-11 rounded-full bg-gradient-lotus flex items-center justify-center border-2 border-gray-200 shadow-sm">
                     <UserCircleIcon className="h-7 w-7 text-white" />
                   </div>
                 )}
               </div>
-              <div className="ml-3">
-                <div className="text-base font-medium text-gray-800">
+              <div className="ml-4 flex-1">
+                <div className="text-base font-semibold text-gray-900">
                   {user?.fullName || user?.firstName}
                 </div>
-                <div className="text-sm font-medium text-primary-600">Client</div>
+                <div className="text-sm text-primary-600 font-medium">Client</div>
               </div>
             </div>
-            <div className="mt-3 space-y-1 px-2">
+            <div className="mt-4 space-y-2 px-4">
               <Link
                 to="/profile"
-                className="flex items-center px-3 py-2.5 rounded-md text-base font-medium text-gray-700 hover:bg-white hover:text-primary-600"
                 onClick={() => setIsMobileMenuOpen(false)}
+                className="flex items-center px-3 py-2.5 rounded-lg text-base font-medium text-gray-600 hover:bg-white hover:text-primary-600 transition-all duration-200"
               >
-                <UserCircleIcon className="mr-4 h-5 w-5 text-gray-500" />
+                <UserCircleIcon className="mr-4 h-5 w-5 text-gray-400" />
                 Mon profil
               </Link>
               <Link
                 to="/bookings"
-                className="flex items-center px-3 py-2.5 rounded-md text-base font-medium text-gray-700 hover:bg-white hover:text-primary-600"
                 onClick={() => setIsMobileMenuOpen(false)}
+                className="flex items-center px-3 py-2.5 rounded-lg text-base font-medium text-gray-600 hover:bg-white hover:text-primary-600 transition-all duration-200"
               >
-                <CalendarDaysIcon className="mr-4 h-5 w-5 text-gray-500" />
+                <CalendarDaysIcon className="mr-4 h-5 w-5 text-gray-400" />
                 Mes réservations
               </Link>
               <Link
                 to="/sessions"
-                className="flex items-center px-3 py-2.5 rounded-md text-base font-medium text-gray-700 hover:bg-white hover:text-primary-600"
                 onClick={() => setIsMobileMenuOpen(false)}
+                className="flex items-center px-3 py-2.5 rounded-lg text-base font-medium text-gray-600 hover:bg-white hover:text-primary-600 transition-all duration-200"
               >
-                <AcademicCapIcon className="mr-4 h-5 w-5 text-gray-500" />
+                <AcademicCapIcon className="mr-4 h-5 w-5 text-gray-400" />
                 Mes sessions
               </Link>
               <Link
                 to="/favorites"
-                className="flex items-center px-3 py-2.5 rounded-md text-base font-medium text-gray-700 hover:bg-white hover:text-primary-600"
                 onClick={() => setIsMobileMenuOpen(false)}
+                className="flex items-center px-3 py-2.5 rounded-lg text-base font-medium text-gray-600 hover:bg-white hover:text-primary-600 transition-all duration-200"
               >
-                <HeartIcon className="mr-4 h-5 w-5 text-gray-500" />
+                <HeartIcon className="mr-4 h-5 w-5 text-gray-400" />
                 Favoris
               </Link>
               <button
@@ -338,11 +400,11 @@ const ClientNavbar = () => {
                   logout();
                   setIsMobileMenuOpen(false);
                 }}
-                className="flex items-center w-full text-left px-3 py-2.5 rounded-md text-base font-medium text-gray-700 hover:bg-white hover:text-red-600"
+                className="flex items-center w-full text-left px-3 py-2.5 rounded-lg text-base font-medium text-red-600 hover:bg-red-50 hover:text-red-700 transition-all duration-200"
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
-                  className="mr-4 h-5 w-5 text-gray-500"
+                  className="mr-4 h-5 w-5 text-red-400"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"

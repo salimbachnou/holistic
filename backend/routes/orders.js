@@ -11,6 +11,60 @@ const Product = mongoose.model('Product');
 const Notification = require('../models/Notification');
 const Message = mongoose.model('Message');
 
+// @route   GET /api/orders
+// @desc    Get orders for the authenticated user (client or professional)
+// @access  Private
+router.get('/', isAuthenticated, async (req, res) => {
+  try {
+    const { status, page = 1, limit = 10 } = req.query;
+    
+    let query = {};
+    
+    // Check if user is a professional
+    const professional = await Professional.findOne({ userId: req.user._id });
+    
+    if (professional) {
+      // If professional, get orders for their products
+      query = { 'items.professional': professional._id };
+    } else {
+      // If client, get orders for this client
+      query = { clientId: req.user._id };
+    }
+    
+    if (status) {
+      query.status = status;
+    }
+    
+    const orders = await Order.find(query)
+      .populate('clientId', 'firstName lastName email')
+      .populate('items.product', 'title name images price')
+      .populate('items.professional', 'businessName')
+      .sort({ createdAt: -1 })
+      .limit(limit * 1)
+      .skip((page - 1) * limit);
+      
+    const total = await Order.countDocuments(query);
+    
+    res.json({
+      success: true,
+      orders,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / limit)
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error fetching orders:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+});
+
 // @route   POST /api/orders/accept
 // @desc    Accepter une commande et mettre à jour le stock
 // @access  Private (Professional only)
@@ -257,17 +311,22 @@ router.post('/accept', isAuthenticated, isProfessional, async (req, res) => {
     const newOrder = new Order({
       orderNumber,
       clientId: message.senderId,
-      professionalId: professional._id,
       items: [
         {
           product: product._id,
+          professional: professional._id,
           quantity: orderInfo.quantity,
-          price: orderInfo.price || product.price,
+          price: {
+            amount: orderInfo.price || product.price,
+            currency: orderInfo.currency || 'MAD'
+          },
           size: orderInfo.size
         }
       ],
-      totalAmount: orderInfo.total || (orderInfo.price || product.price) * orderInfo.quantity,
-      currency: orderInfo.currency || 'MAD',
+      totalAmount: {
+        amount: orderInfo.total || (orderInfo.price || product.price) * orderInfo.quantity,
+        currency: orderInfo.currency || 'MAD'
+      },
       status: 'pending',
       messageId: message._id,
       paymentStatus: 'pending',
@@ -277,6 +336,22 @@ router.post('/accept', isAuthenticated, isProfessional, async (req, res) => {
     // Sauvegarder la nouvelle commande
     await newOrder.save();
     console.log("Nouvelle commande créée:", newOrder._id);
+    
+    // Peupler les données du client avant la notification
+    await newOrder.populate('clientId', 'firstName lastName email');
+    
+    // Déclencher les notifications
+    try {
+      const NotificationService = require('../services/notificationService');
+      
+      // Notification pour le professionnel
+      await NotificationService.notifyNewOrder(newOrder);
+      
+      // Notification pour le client
+      await NotificationService.notifyClientOrderPlaced(newOrder);
+    } catch (error) {
+      console.error('Erreur lors des notifications de nouvelle commande:', error);
+    }
     
     return res.json({
       success: true,
@@ -598,6 +673,21 @@ router.put('/:orderId/status', isAuthenticated, isProfessional, async (req, res)
     }
 
     await order.save();
+
+    // Envoyer les notifications de changement de statut
+    try {
+      const NotificationService = require('../services/notificationService');
+      
+      // Notification pour le client
+      await NotificationService.notifyClientOrderStatusChange(order, status);
+      
+      // Notification pour le professionnel (si nécessaire)
+      if (status === 'delivered' || status === 'cancelled') {
+        await NotificationService.notifyOrderStatusChange(order, status, professional._id);
+      }
+    } catch (error) {
+      console.error('Erreur lors des notifications de changement de statut:', error);
+    }
 
     return res.json({
       success: true,

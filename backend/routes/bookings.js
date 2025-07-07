@@ -5,7 +5,6 @@ const Booking = require('../models/Booking');
 const Professional = require('../models/Professional');
 const Session = require('../models/Session');
 const User = require('../models/User');
-const emailService = require('../services/emailService');
 const router = express.Router();
 
 // Middleware to require authentication
@@ -107,7 +106,7 @@ router.post('/', requireAuth, [
         onlineLink: session.category === 'online' ? session.meetingLink : undefined
       },
       status: bookingType === 'message' ? 'pending' : 
-             (professional.bookingMode === 'auto' ? 'confirmed' : 'pending'),
+             (sessionId ? 'pending' : (professional.bookingMode === 'auto' ? 'confirmed' : 'pending')),
       paymentStatus: 'pending',
       totalAmount: {
         amount: session.price,
@@ -140,23 +139,34 @@ router.post('/', requireAuth, [
     
     await booking.save();
 
-    // Add user to session participants
-    session.participants.push(req.user._id);
-    await session.save();
+    // Add user to session participants for direct session bookings
+    // For session bookings, add participant immediately since it's a direct booking
+    if (sessionId) {
+      // Check if user is not already a participant
+      if (!session.participants.includes(req.user._id)) {
+        session.participants.push(req.user._id);
+        await session.save();
+      }
+    } else if (booking.status === 'confirmed') {
+      // For regular bookings, only add if confirmed
+      session.participants.push(req.user._id);
+      await session.save();
+    }
 
     // Get client data for email
     const client = await User.findById(req.user._id);
 
-    // Send email notifications
+    // Email notifications disabled - using in-app notifications only
+    console.log('Email notifications disabled. Using in-app notifications only.');
+
+    // Déclencher la notification pour le professionnel
     try {
-      // Send confirmation to client
-      await emailService.sendBookingConfirmationToClient(booking, client, professional);
-      
-      // Send notification to professional
-      await emailService.sendBookingNotificationToProfessional(booking, client, professional);
-    } catch (emailError) {
-      console.error('Error sending booking emails:', emailError);
-      // Continue even if email fails
+      const NotificationService = require('../services/notificationService');
+      // Populate client data for notification
+      const populatedBooking = await Booking.findById(booking._id).populate('client', 'firstName lastName');
+      await NotificationService.notifyNewBooking(populatedBooking);
+    } catch (error) {
+      console.error('Erreur lors de la notification de nouvelle réservation:', error);
     }
 
     res.status(201).json({
@@ -299,6 +309,23 @@ router.put('/:id/cancel', requireAuth, async (req, res) => {
     
     await booking.save();
     
+    // Déclencher les notifications d'annulation
+    try {
+      const NotificationService = require('../services/notificationService');
+      // Populate client data for notification
+      const populatedBooking = await Booking.findById(booking._id).populate('client', 'firstName lastName');
+      
+      if (booking.client.toString() === req.user._id.toString()) {
+        // Si c'est le client qui annule, notifier le professionnel
+        await NotificationService.notifyBookingCancelled(populatedBooking);
+      } else {
+        // Si c'est le professionnel qui annule, notifier le client
+        await NotificationService.notifyClientBookingCancelled(populatedBooking, req.body.reason);
+      }
+    } catch (error) {
+      console.error('Erreur lors des notifications d\'annulation:', error);
+    }
+    
     // Remove user from session participants if applicable
     if (booking.service.sessionId) {
       const session = await Session.findById(booking.service.sessionId);
@@ -387,16 +414,22 @@ router.post('/:id/payment', requireAuth, async (req, res) => {
     
     await booking.save();
     
+    // Si la réservation a été confirmée, envoyer une notification
+    if (booking.status === 'confirmed') {
+      try {
+        const NotificationService = require('../services/notificationService');
+        const populatedBooking = await Booking.findById(booking._id).populate('client', 'firstName lastName');
+        await NotificationService.notifyClientBookingConfirmed(populatedBooking);
+      } catch (error) {
+        console.error('Erreur lors de la notification de confirmation:', error);
+      }
+    }
+    
     // Get client data for email
     const client = await User.findById(booking.client);
 
-    // Send payment confirmation email
-    try {
-      await emailService.sendPaymentConfirmationEmail(booking, client, professional);
-    } catch (emailError) {
-      console.error('Error sending payment confirmation email:', emailError);
-      // Continue even if email fails
-    }
+    // Payment confirmation email disabled - using in-app notifications only
+    console.log('Payment confirmation email disabled. Using in-app notifications only.');
     
     res.json({
       success: true,

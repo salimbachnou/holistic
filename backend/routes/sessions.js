@@ -5,7 +5,9 @@ const Session = require('../models/Session');
 const Professional = require('../models/Professional');
 const User = require('../models/User');
 const Booking = require('../models/Booking');
+const { VideoCallAccessLog } = require('../models');
 const router = express.Router();
+const jwt = require('jsonwebtoken');
 
 // Middleware to require authentication
 const requireAuth = passport.authenticate('jwt', { session: false });
@@ -542,8 +544,18 @@ router.put('/bookings/:bookingId', requireAuth, requireProfessional, [
     await booking.save();
 
     // Notify the client
-    // TODO: Implement notification logic here
-    console.log(`Booking ${status}, should notify client`);
+    try {
+      const NotificationService = require('../services/notificationService');
+      const populatedBooking = await Booking.findById(booking._id).populate('client', 'firstName lastName');
+      
+      if (status === 'confirmed') {
+        await NotificationService.notifyClientBookingConfirmed(populatedBooking);
+      } else if (status === 'cancelled') {
+        await NotificationService.notifyClientBookingCancelled(populatedBooking, req.body.reason);
+      }
+    } catch (error) {
+      console.error('Erreur lors de la notification client:', error);
+    }
 
     res.json({
       success: true,
@@ -627,6 +639,451 @@ router.get('/professional/:id', async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching sessions:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+});
+
+// Secure video call access route
+router.get('/:id/video-access', requireAuth, async (req, res) => {
+  const sessionId = req.params.id;
+  const userId = req.user._id;
+  const ipAddress = req.ip || req.connection.remoteAddress;
+  const userAgent = req.get('User-Agent');
+  
+  try {
+    // Find the session and populate necessary fields
+    const session = await Session.findById(sessionId)
+      .populate('professionalId', 'userId businessName')
+      .populate('participants', 'firstName lastName');
+
+    if (!session) {
+      // Log access denied
+      await VideoCallAccessLog.create({
+        sessionId: sessionId,
+        userId: userId,
+        userRole: req.user.role,
+        userName: `${req.user.firstName} ${req.user.lastName}`,
+        accessType: 'denied',
+        ipAddress,
+        userAgent,
+        securityFlags: {
+          tokenValid: true,
+          sessionActive: false,
+          userAuthorized: false,
+          timeWithinWindow: false
+        },
+        errorMessage: 'Session not found'
+      });
+
+      return res.status(404).json({
+        success: false,
+        message: 'Session not found'
+      });
+    }
+
+    // Check if the session is configured for built-in video
+    if (!session.useBuiltInVideo) {
+      // Log access denied
+      await VideoCallAccessLog.create({
+        sessionId: sessionId,
+        userId: userId,
+        userRole: req.user.role,
+        userName: `${req.user.firstName} ${req.user.lastName}`,
+        accessType: 'denied',
+        ipAddress,
+        userAgent,
+        securityFlags: {
+          tokenValid: true,
+          sessionActive: false,
+          userAuthorized: false,
+          timeWithinWindow: false
+        },
+        errorMessage: 'Session not configured for built-in video',
+        metadata: {
+          sessionTitle: session.title,
+          sessionStartTime: session.startTime
+        }
+      });
+
+      return res.status(403).json({
+        success: false,
+        message: 'This session is not configured for built-in video calls'
+      });
+    }
+
+    // Check if the session is active (within 30 minutes of start time)
+    const now = new Date();
+    const sessionStart = new Date(session.startTime);
+    const sessionEnd = new Date(sessionStart.getTime() + (session.duration * 60000));
+    const earlyJoinTime = new Date(sessionStart.getTime() - (30 * 60000)); // 30 minutes before
+
+    const timeWithinWindow = now >= earlyJoinTime && now <= sessionEnd;
+    const sessionActive = session.status === 'scheduled' || session.status === 'in_progress';
+
+    if (now < earlyJoinTime) {
+      // Log access denied
+      await VideoCallAccessLog.create({
+        sessionId: sessionId,
+        userId: userId,
+        userRole: req.user.role,
+        userName: `${req.user.firstName} ${req.user.lastName}`,
+        accessType: 'denied',
+        ipAddress,
+        userAgent,
+        securityFlags: {
+          tokenValid: true,
+          sessionActive: sessionActive,
+          userAuthorized: false,
+          timeWithinWindow: false
+        },
+        errorMessage: 'Session not yet available',
+        metadata: {
+          sessionTitle: session.title,
+          sessionStartTime: session.startTime
+        }
+      });
+
+      return res.status(403).json({
+        success: false,
+        message: 'Session is not yet available. You can join 30 minutes before the start time.'
+      });
+    }
+
+    if (now > sessionEnd) {
+      // Log access denied
+      await VideoCallAccessLog.create({
+        sessionId: sessionId,
+        userId: userId,
+        userRole: req.user.role,
+        userName: `${req.user.firstName} ${req.user.lastName}`,
+        accessType: 'denied',
+        ipAddress,
+        userAgent,
+        securityFlags: {
+          tokenValid: true,
+          sessionActive: false,
+          userAuthorized: false,
+          timeWithinWindow: false
+        },
+        errorMessage: 'Session has ended',
+        metadata: {
+          sessionTitle: session.title,
+          sessionStartTime: session.startTime
+        }
+      });
+
+      return res.status(403).json({
+        success: false,
+        message: 'This session has already ended'
+      });
+    }
+
+    // Check if the session is cancelled
+    if (session.status === 'cancelled') {
+      // Log access denied
+      await VideoCallAccessLog.create({
+        sessionId: sessionId,
+        userId: userId,
+        userRole: req.user.role,
+        userName: `${req.user.firstName} ${req.user.lastName}`,
+        accessType: 'denied',
+        ipAddress,
+        userAgent,
+        securityFlags: {
+          tokenValid: true,
+          sessionActive: false,
+          userAuthorized: false,
+          timeWithinWindow: timeWithinWindow
+        },
+        errorMessage: 'Session has been cancelled',
+        metadata: {
+          sessionTitle: session.title,
+          sessionStartTime: session.startTime
+        }
+      });
+
+      return res.status(403).json({
+        success: false,
+        message: 'This session has been cancelled'
+      });
+    }
+
+    // Verify user authorization
+    let isAuthorized = false;
+    let userRole = 'client';
+    let userName = `${req.user.firstName} ${req.user.lastName}`;
+
+    // Check if user is the professional
+    if (session.professionalId && 
+        (session.professionalId.userId?.toString() === userId.toString() || 
+         session.professionalId._id?.toString() === userId.toString())) {
+      isAuthorized = true;
+      userRole = 'professional';
+      userName = session.professionalId.businessName || 'Professional';
+    }
+
+    // Check if user is a participant
+    if (!isAuthorized) {
+      const isParticipant = session.participants.some(participant => {
+        const participantId = participant._id || participant;
+        return participantId.toString() === userId.toString();
+      });
+      
+      if (isParticipant) {
+        isAuthorized = true;
+        userRole = 'client';
+      }
+    }
+
+    // Check if user is admin
+    if (!isAuthorized && req.user.role === 'admin') {
+      isAuthorized = true;
+      userRole = 'admin';
+      userName = 'Administrator';
+    }
+
+    if (!isAuthorized) {
+      // Log access denied
+      await VideoCallAccessLog.create({
+        sessionId: sessionId,
+        userId: userId,
+        userRole: req.user.role,
+        userName: `${req.user.firstName} ${req.user.lastName}`,
+        accessType: 'denied',
+        ipAddress,
+        userAgent,
+        securityFlags: {
+          tokenValid: true,
+          sessionActive: sessionActive,
+          userAuthorized: false,
+          timeWithinWindow: timeWithinWindow
+        },
+        errorMessage: 'User not authorized for this session',
+        metadata: {
+          sessionTitle: session.title,
+          sessionStartTime: session.startTime
+        }
+      });
+
+      return res.status(403).json({
+        success: false,
+        message: 'You are not authorized to join this video call'
+      });
+    }
+
+    // Generate a temporary access token for this video call session
+    const videoAccessToken = jwt.sign(
+      {
+        sessionId: session._id,
+        userId: userId,
+        userRole: userRole,
+        userName: userName,
+        exp: Math.floor(sessionEnd.getTime() / 1000) // Token expires when session ends
+      },
+      process.env.JWT_SECRET || 'your_jwt_secret'
+    );
+
+    // Log successful access
+    await VideoCallAccessLog.create({
+      sessionId: sessionId,
+      userId: userId,
+      userRole: userRole,
+      userName: userName,
+      accessType: 'join',
+      ipAddress,
+      userAgent,
+      tokenUsed: videoAccessToken.slice(-10), // Last 10 characters
+      securityFlags: {
+        tokenValid: true,
+        sessionActive: sessionActive,
+        userAuthorized: true,
+        timeWithinWindow: timeWithinWindow
+      },
+      metadata: {
+        sessionTitle: session.title,
+        sessionStartTime: session.startTime,
+        browserInfo: userAgent
+      }
+    });
+
+    // Log the video call access
+    console.log(`✅ Video call access granted: User ${userId} (${userRole}) joined session ${sessionId}`);
+
+    // Return session data and access token
+    res.json({
+      success: true,
+      session: {
+        id: session._id,
+        title: session.title,
+        status: session.status,
+        startTime: session.startTime,
+        endTime: sessionEnd,
+        duration: session.duration,
+        professional: {
+          id: session.professionalId.userId || session.professionalId._id,
+          name: session.professionalId.businessName || 'Professional'
+        },
+        maxParticipants: session.maxParticipants,
+        currentParticipants: session.participants.length
+      },
+      user: {
+        id: userId,
+        role: userRole,
+        name: userName
+      },
+      videoAccessToken
+    });
+
+  } catch (error) {
+    console.error('Error in video call access:', error);
+    
+    // Log security violation
+    try {
+      await VideoCallAccessLog.create({
+        sessionId: sessionId,
+        userId: userId,
+        userRole: req.user?.role || 'unknown',
+        userName: req.user ? `${req.user.firstName} ${req.user.lastName}` : 'unknown',
+        accessType: 'security_violation',
+        ipAddress,
+        userAgent,
+        securityFlags: {
+          tokenValid: false,
+          sessionActive: false,
+          userAuthorized: false,
+          timeWithinWindow: false
+        },
+        errorMessage: error.message
+      });
+    } catch (logError) {
+      console.error('Failed to log security violation:', logError);
+    }
+
+    res.status(500).json({
+      success: false,
+      message: 'Server error while verifying video call access'
+    });
+  }
+});
+
+// Verify video call token route
+router.post('/video-verify-token', async (req, res) => {
+  try {
+    const { videoAccessToken } = req.body;
+    
+    if (!videoAccessToken) {
+      return res.status(400).json({
+        success: false,
+        message: 'Video access token is required'
+      });
+    }
+
+    // Verify the token
+    const decoded = jwt.verify(videoAccessToken, process.env.JWT_SECRET || 'your_jwt_secret');
+    
+    // Check if the session still exists and is valid
+    const session = await Session.findById(decoded.sessionId);
+    if (!session) {
+      return res.status(404).json({
+        success: false,
+        message: 'Session not found'
+      });
+    }
+
+    // Check if session is still active
+    const now = new Date();
+    const sessionEnd = new Date(new Date(session.startTime).getTime() + (session.duration * 60000));
+    
+    if (now > sessionEnd) {
+      return res.status(403).json({
+        success: false,
+        message: 'Session has ended'
+      });
+    }
+
+    if (session.status === 'cancelled') {
+      return res.status(403).json({
+        success: false,
+        message: 'Session has been cancelled'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Video access token is valid',
+      sessionId: decoded.sessionId,
+      userId: decoded.userId,
+      userRole: decoded.userRole,
+      userName: decoded.userName
+    });
+
+  } catch (error) {
+    console.error('Error verifying video token:', error);
+    res.status(401).json({
+      success: false,
+      message: 'Invalid or expired video access token'
+    });
+  }
+});
+
+// Get video call access logs (admin only)
+router.get('/video-access-logs', requireAuth, async (req, res) => {
+  try {
+    // Check if user is admin
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. Admin role required.'
+      });
+    }
+
+    const { 
+      page = 1, 
+      limit = 50, 
+      sessionId, 
+      userId, 
+      accessType,
+      startDate,
+      endDate 
+    } = req.query;
+
+    const query = {};
+    
+    if (sessionId) query.sessionId = sessionId;
+    if (userId) query.userId = userId;
+    if (accessType) query.accessType = accessType;
+    
+    if (startDate || endDate) {
+      query.createdAt = {};
+      if (startDate) query.createdAt.$gte = new Date(startDate);
+      if (endDate) query.createdAt.$lte = new Date(endDate);
+    }
+
+    const logs = await VideoCallAccessLog.find(query)
+      .populate('sessionId', 'title startTime duration')
+      .populate('userId', 'firstName lastName email')
+      .sort({ createdAt: -1 })
+      .limit(parseInt(limit))
+      .skip((parseInt(page) - 1) * parseInt(limit));
+
+    const total = await VideoCallAccessLog.countDocuments(query);
+
+    res.json({
+      success: true,
+      logs,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / parseInt(limit))
+      }
+    });
+
+  } catch (error) {
+    console.error('Error fetching video access logs:', error);
     res.status(500).json({
       success: false,
       message: 'Server error'

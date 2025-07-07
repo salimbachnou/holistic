@@ -151,10 +151,16 @@ const ClientSessionsPage = () => {
     setBookingInProgress(true);
     try {
       const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      const token = localStorage.getItem('token');
+      
+      // Utiliser l'API de booking pour créer une réservation
       await axios.post(`${API_URL}/api/bookings`, {
         professionalId: session.professionalId._id || session.professionalId,
         sessionId: session._id,
         bookingType: 'direct',
+        notes: 'Réservation directe depuis les sessions disponibles'
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
       });
 
       toast.success('Session réservée avec succès !');

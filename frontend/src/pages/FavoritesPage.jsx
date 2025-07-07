@@ -1,4 +1,3 @@
-import axios from 'axios';
 import React, { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { FaStar, FaMapMarkerAlt, FaHeart } from 'react-icons/fa';
@@ -6,6 +5,7 @@ import { Link } from 'react-router-dom';
 
 import LoadingSpinner from '../components/Common/LoadingSpinner';
 import { useAuth } from '../contexts/AuthContext';
+import { userAPI } from '../utils/api';
 
 const FavoritesPage = () => {
   const { user } = useAuth();
@@ -22,7 +22,7 @@ const FavoritesPage = () => {
   const fetchFavorites = async () => {
     setLoading(true);
     try {
-      const response = await axios.get('/api/favorites');
+      const response = await userAPI.getFavorites();
       setFavorites(response.data.favorites || []);
       setError(null);
     } catch (err) {
@@ -36,7 +36,7 @@ const FavoritesPage = () => {
 
   const removeFavorite = async professionalId => {
     try {
-      await axios.delete(`/api/favorites/${professionalId}`);
+      await userAPI.removeFavorite(professionalId);
       toast.success('Professionnel retiré des favoris');
       // Update favorites list
       setFavorites(favorites.filter(fav => fav.professional._id !== professionalId));
@@ -161,7 +161,7 @@ const FavoritesPage = () => {
               Explorez notre liste de professionnels et ajoutez-les à vos favoris pour les retrouver
               facilement
             </p>
-            <Link to="/for-you" className="btn-primary inline-block">
+            <Link to="/products" className="btn-primary inline-block">
               Découvrir des professionnels
             </Link>
           </div>

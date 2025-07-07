@@ -222,6 +222,14 @@ io.on('connection', (socket) => {
     }
   });
   
+  // Join admin-specific room for notifications
+  socket.on('join-admin-room', (userId) => {
+    if (userId) {
+      console.log(`Admin ${userId} joined admin notification room`);
+      socket.join(`admin:${userId}`);
+    }
+  });
+  
   socket.on('disconnect', () => {
     console.log('User disconnected:', socket.id);
   });
@@ -229,6 +237,9 @@ io.on('connection', (socket) => {
 
 // Make io instance available to routes
 app.set('io', io);
+
+// Make io instance available globally for services
+global.io = io;
 
 // Error handling middleware
 app.use((err, req, res, next) => {

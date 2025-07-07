@@ -4,13 +4,45 @@ const contactSchema = new mongoose.Schema({
   type: {
     type: String,
     required: true,
-    enum: ['professional', 'information']
+    enum: ['professional', 'information', 'general_contact']
   },
   // Common fields
   email: {
     type: String,
     required: true,
     lowercase: true
+  },
+  firstName: {
+    type: String,
+    required: function() { 
+      return this.type === 'information' || this.type === 'general_contact';
+    }
+  },
+  lastName: {
+    type: String,
+    required: function() {
+      return this.type === 'information' || this.type === 'general_contact';
+    }
+  },
+  phone: {
+    type: String,
+    required: function() {
+      return this.type === 'professional';
+    }
+  },
+  message: {
+    type: String,
+    required: function() {
+      return this.type === 'information' || this.type === 'general_contact';
+    },
+    maxlength: 1000
+  },
+  subject: {
+    type: String,
+    required: function() {
+      return this.type === 'general_contact';
+    },
+    maxlength: 200
   },
   
   // Read and processing status
@@ -28,21 +60,6 @@ const contactSchema = new mongoose.Schema({
     default: 'pending'
   },
   
-  // For information requests
-  firstName: {
-    type: String,
-    required: function() { return this.type === 'information'; }
-  },
-  lastName: {
-    type: String,
-    required: function() { return this.type === 'information'; }
-  },
-  message: {
-    type: String,
-    required: function() { return this.type === 'information'; },
-    maxlength: 1000
-  },
-  
   // For professional account requests
   businessName: {
     type: String,
@@ -50,10 +67,6 @@ const contactSchema = new mongoose.Schema({
   },
   businessCreationDate: {
     type: Date,
-    required: function() { return this.type === 'professional'; }
-  },
-  phone: {
-    type: String,
     required: function() { return this.type === 'professional'; }
   },
   activityType: {
@@ -104,9 +117,9 @@ contactSchema.index({ email: 1 });
 contactSchema.index({ createdAt: -1 });
 contactSchema.index({ isRead: 1 });
 
-// Virtual for full name (information requests)
+// Virtual for full name
 contactSchema.virtual('fullName').get(function() {
-  if (this.type === 'information') {
+  if (this.type === 'information' || this.type === 'general_contact') {
     return `${this.firstName} ${this.lastName}`;
   }
   return this.businessName;

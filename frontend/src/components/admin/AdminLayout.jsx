@@ -22,10 +22,14 @@ import { Link, Outlet, useLocation } from 'react-router-dom';
 
 import { useAuth } from '../../contexts/AuthContext';
 
+import AdminNotificationsPanel from './AdminNotificationsPanel';
+
 const AdminLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
   const { user, logout } = useAuth();
+
+  console.log('AdminLayout: user object:', user);
 
   const handleLogout = () => {
     logout();
@@ -81,6 +85,12 @@ const AdminLayout = () => {
       href: '/admin/events',
       icon: Squares2X2Icon,
       current: location.pathname.startsWith('/admin/events'),
+    },
+    {
+      name: 'Notifications',
+      href: '/admin/notifications',
+      icon: BellIcon,
+      current: location.pathname.startsWith('/admin/notifications'),
     },
     {
       name: 'Analytics',
@@ -339,10 +349,7 @@ const AdminLayout = () => {
             </div>
 
             <div className="flex items-center space-x-4">
-              <button className="relative p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-all duration-200">
-                <BellIcon className="h-6 w-6" />
-                <span className="absolute top-1 right-1 h-2.5 w-2.5 bg-red-400 rounded-full ring-2 ring-white"></span>
-              </button>
+              <AdminNotificationsPanel user={user} />
 
               <div className="h-6 w-px bg-gray-200"></div>
 

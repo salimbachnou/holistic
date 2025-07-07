@@ -484,8 +484,12 @@ const ProfessionalMessagesPage = () => {
       return false;
     }
 
-    // Vérifier que le message contient les éléments essentiels d'une commande
-    const requiredPatterns = [/\* Produit: \*/, /\* Taille: \*/, /\* Quantité: \*/];
+    // Vérifier que le message contient les éléments essentiels d'une commande avec les bons emojis
+    const requiredPatterns = [
+      /📦\s*\*\s*Produit:\s*\*/u,
+      /📏\s*\*\s*Taille:\s*\*/u,
+      /🔢\s*\*\s*Quantité:\s*\*/u,
+    ];
 
     return requiredPatterns.every(pattern => pattern.test(messageText));
   };
@@ -502,25 +506,30 @@ const ProfessionalMessagesPage = () => {
       // Ajouter un log pour voir le texte complet du message
       console.log('Texte du message à analyser:', messageText);
 
-      // Extraire le nom du produit
-      const productMatch = messageText.match(/\* Produit: \* ([^\n]+)/);
+      // Améliorer les regex pour être plus spécifiques et éviter de capturer du texte supplémentaire
+      // Extraire le nom du produit - s'arrêter avant le prochain élément ou saut de ligne
+      const productMatch = messageText.match(
+        /📦\s*\*\s*Produit:\s*\*\s*([^\n💰📏]+?)(?=\s*(?:💰|📏|\n)|$)/u
+      );
       const product = productMatch ? productMatch[1].trim() : null;
 
-      // Extraire le prix
-      const priceMatch = messageText.match(/\* Prix: \* ([0-9.,]+) ([A-Z]+)/);
+      // Extraire le prix - rechercher spécifiquement le format prix avec devise
+      const priceMatch = messageText.match(/💰\s*\*\s*Prix:\s*\*\s*([0-9.,]+)\s*([A-Z]{3})/u);
       const price = priceMatch ? parseFloat(priceMatch[1].replace(',', '.')) : 0;
       const currency = priceMatch ? priceMatch[2] : 'MAD';
 
-      // Extraire la taille
-      const sizeMatch = messageText.match(/\* Taille: \* ([^\n]+)/);
+      // Extraire la taille - s'arrêter aux emojis ou nouvelles lignes
+      const sizeMatch = messageText.match(
+        /📏\s*\*\s*Taille:\s*\*\s*([^\n🔢💵]+?)(?=\s*(?:🔢|💵|\n)|$)/u
+      );
       const size = sizeMatch ? sizeMatch[1].trim() : null;
 
-      // Extraire la quantité
-      const quantityMatch = messageText.match(/\* Quantité: \* ([0-9]+)/);
+      // Extraire la quantité - rechercher spécifiquement les chiffres
+      const quantityMatch = messageText.match(/🔢\s*\*\s*Quantité:\s*\*\s*([0-9]+)/u);
       const quantity = quantityMatch ? parseInt(quantityMatch[1]) : 0;
 
-      // Extraire le total
-      const totalMatch = messageText.match(/\* Total: \* ([0-9.,]+) ([A-Z]+)/);
+      // Extraire le total - rechercher spécifiquement le format total avec devise
+      const totalMatch = messageText.match(/💵\s*\*\s*Total:\s*\*\s*([0-9.,]+)\s*([A-Z]{3})/u);
       const total = totalMatch ? parseFloat(totalMatch[1].replace(',', '.')) : 0;
 
       // Créer l'objet d'informations de commande
@@ -546,6 +555,9 @@ const ProfessionalMessagesPage = () => {
 
       // Afficher les informations extraites pour le débogage
       console.log('Informations de commande extraites:', orderInfo);
+
+      // Debug spécifique pour la recherche de produit
+      console.log('Nom du produit pour la recherche de stock:', orderInfo.product);
 
       return orderInfo;
     } catch (error) {

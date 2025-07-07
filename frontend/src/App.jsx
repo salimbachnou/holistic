@@ -4,16 +4,20 @@ import { BrowserRouter as Router, Navigate, Route, Routes } from 'react-router-d
 
 import AdminLayout from './components/admin/AdminLayout';
 import ApiTest from './components/ApiTest';
+import AuthChecker from './components/Common/AuthChecker';
 import LoadingSpinner from './components/Common/LoadingSpinner';
 import Layout from './components/Layout/Layout';
 import ProfessionalLayout from './components/professional/ProfessionalLayout';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import AboutPage from './pages/AboutPage';
 import AdminAnalyticsPage from './pages/admin/AdminAnalyticsPage';
+import AdminBookingsPage from './pages/admin/AdminBookingsPage';
 import AdminClientsPage from './pages/admin/AdminClientsPage';
 import AdminContactsPage from './pages/admin/AdminContactsPage';
 import AdminDashboardPage from './pages/admin/AdminDashboardPage';
 import AdminEventsPage from './pages/admin/AdminEventsPage';
+import AdminNotificationsPage from './pages/admin/AdminNotificationsPage';
+import AdminOrdersPage from './pages/admin/AdminOrdersPage';
 import AdminProductsPage from './pages/admin/AdminProductsPage';
 import AdminProfessionalsPage from './pages/admin/AdminProfessionalsPage';
 import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
@@ -44,6 +48,7 @@ import ProfessionalClientsPage from './pages/professional/ProfessionalClientsPag
 import ProfessionalDashboardPage from './pages/professional/ProfessionalDashboardPage';
 import ProfessionalEventsPage from './pages/professional/ProfessionalEventsPage';
 import ProfessionalMessagesPage from './pages/professional/ProfessionalMessagesPage';
+import ProfessionalNotificationsPage from './pages/professional/ProfessionalNotificationsPage';
 import ProfessionalProductsPage from './pages/professional/ProfessionalProductsPage';
 import ProfessionalSessionsPage from './pages/professional/ProfessionalSessionsPage';
 import ProfessionalSettingsPage from './pages/professional/ProfessionalSettingsPage';
@@ -239,9 +244,11 @@ const AppContent = () => {
             path="/dashboard"
             element={
               <ProtectedRoute>
-                <Layout>
-                  <DashboardPage />
-                </Layout>
+                <AuthChecker>
+                  <Layout>
+                    <DashboardPage />
+                  </Layout>
+                </AuthChecker>
               </ProtectedRoute>
             }
           />
@@ -249,9 +256,11 @@ const AppContent = () => {
             path="/profile"
             element={
               <ProtectedRoute>
-                <Layout>
-                  <ClientProfilePage />
-                </Layout>
+                <AuthChecker>
+                  <Layout>
+                    <ClientProfilePage />
+                  </Layout>
+                </AuthChecker>
               </ProtectedRoute>
             }
           />
@@ -259,9 +268,11 @@ const AppContent = () => {
             path="/bookings"
             element={
               <ProtectedRoute>
-                <Layout>
-                  <BookingsPage />
-                </Layout>
+                <AuthChecker>
+                  <Layout>
+                    <BookingsPage />
+                  </Layout>
+                </AuthChecker>
               </ProtectedRoute>
             }
           />
@@ -269,9 +280,11 @@ const AppContent = () => {
             path="/sessions"
             element={
               <ProtectedRoute>
-                <Layout>
-                  <ClientSessionsPage />
-                </Layout>
+                <AuthChecker>
+                  <Layout>
+                    <ClientSessionsPage />
+                  </Layout>
+                </AuthChecker>
               </ProtectedRoute>
             }
           />
@@ -279,7 +292,9 @@ const AppContent = () => {
             path="/video-call/:sessionId"
             element={
               <ProtectedRoute>
-                <VideoCallPage />
+                <AuthChecker>
+                  <VideoCallPage />
+                </AuthChecker>
               </ProtectedRoute>
             }
           />
@@ -287,9 +302,11 @@ const AppContent = () => {
             path="/favorites"
             element={
               <ProtectedRoute>
-                <Layout>
-                  <FavoritesPage />
-                </Layout>
+                <AuthChecker>
+                  <Layout>
+                    <FavoritesPage />
+                  </Layout>
+                </AuthChecker>
               </ProtectedRoute>
             }
           />
@@ -297,9 +314,11 @@ const AppContent = () => {
             path="/notifications"
             element={
               <ProtectedRoute>
-                <Layout>
-                  <NotificationsPage />
-                </Layout>
+                <AuthChecker>
+                  <Layout>
+                    <NotificationsPage />
+                  </Layout>
+                </AuthChecker>
               </ProtectedRoute>
             }
           />
@@ -307,9 +326,11 @@ const AppContent = () => {
             path="/products"
             element={
               <ProtectedRoute>
-                <Layout>
-                  <ProductsPage />
-                </Layout>
+                <AuthChecker>
+                  <Layout>
+                    <ProductsPage />
+                  </Layout>
+                </AuthChecker>
               </ProtectedRoute>
             }
           />
@@ -317,9 +338,11 @@ const AppContent = () => {
             path="/messages"
             element={
               <ProtectedRoute>
-                <Layout>
-                  <ConversationsPage />
-                </Layout>
+                <AuthChecker>
+                  <Layout>
+                    <ConversationsPage />
+                  </Layout>
+                </AuthChecker>
               </ProtectedRoute>
             }
           />
@@ -327,9 +350,11 @@ const AppContent = () => {
             path="/messages/:professionalId"
             element={
               <ProtectedRoute>
-                <Layout>
-                  <MessagesPage />
-                </Layout>
+                <AuthChecker>
+                  <Layout>
+                    <MessagesPage />
+                  </Layout>
+                </AuthChecker>
               </ProtectedRoute>
             }
           />
@@ -352,6 +377,7 @@ const AppContent = () => {
             <Route path="settings" element={<ProfessionalSettingsPage />} />
             <Route path="clients" element={<ProfessionalClientsPage />} />
             <Route path="analytics" element={<ProfessionalAnalyticsPage />} />
+            <Route path="notifications" element={<ProfessionalNotificationsPage />} />
           </Route>
 
           {/* Admin Routes */}
@@ -363,32 +389,17 @@ const AppContent = () => {
               </AdminProtectedRoute>
             }
           >
-            {/* Admin nested routes */}
+            <Route index element={<Navigate to="/admin/dashboard" replace />} />
             <Route path="dashboard" element={<AdminDashboardPage />} />
             <Route path="professionals" element={<AdminProfessionalsPage />} />
             <Route path="clients" element={<AdminClientsPage />} />
             <Route path="contacts" element={<AdminContactsPage />} />
             <Route path="products" element={<AdminProductsPage />} />
+            <Route path="orders" element={<AdminOrdersPage />} />
+            <Route path="bookings" element={<AdminBookingsPage />} />
             <Route path="events" element={<AdminEventsPage />} />
-            <Route
-              path="orders"
-              element={
-                <div className="p-6">
-                  <h1 className="text-2xl font-bold">Gestion des Commandes</h1>
-                  <p className="text-gray-600 mt-2">Page en construction...</p>
-                </div>
-              }
-            />
-            <Route
-              path="bookings"
-              element={
-                <div className="p-6">
-                  <h1 className="text-2xl font-bold">Gestion des Réservations</h1>
-                  <p className="text-gray-600 mt-2">Page en construction...</p>
-                </div>
-              }
-            />
             <Route path="analytics" element={<AdminAnalyticsPage />} />
+            <Route path="notifications" element={<AdminNotificationsPage />} />
             <Route
               path="settings"
               element={
@@ -398,7 +409,6 @@ const AppContent = () => {
                 </div>
               }
             />
-            <Route index element={<Navigate to="dashboard" replace />} />
           </Route>
 
           <Route

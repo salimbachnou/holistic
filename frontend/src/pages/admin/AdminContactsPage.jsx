@@ -572,10 +572,15 @@ const AdminContactsPage = () => {
                   </div>
 
                   {/* Message */}
-                  {selectedContact.message && (
+                  {(selectedContact.message || selectedContact.activityType) && (
                     <div className="bg-blue-50 rounded-lg p-4">
                       <h4 className="font-semibold text-gray-900 mb-3">Message</h4>
-                      <p className="text-gray-700 whitespace-pre-wrap">{selectedContact.message}</p>
+                      <p className="text-gray-700 whitespace-pre-wrap">
+                        {selectedContact.message ||
+                          (selectedContact.type === 'professional'
+                            ? `Demande professionnelle: ${selectedContact.activityType || 'Non spécifié'}`
+                            : 'Pas de message')}
+                      </p>
                     </div>
                   )}
 

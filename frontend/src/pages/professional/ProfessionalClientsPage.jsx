@@ -240,7 +240,8 @@ const ProfessionalClientsPage = () => {
                     <ChartBarIcon className="w-5 h-5 mr-2" />
                     <span>
                       {selectedClient.totalSessions} sessions,{' '}
-                      {selectedClient.totalSpent.toLocaleString()} MAD
+                      {selectedClient.totalSpent ? selectedClient.totalSpent.toLocaleString() : '0'}{' '}
+                      MAD
                     </span>
                   </div>
                 </div>
@@ -325,7 +326,7 @@ const ProfessionalClientsPage = () => {
                             {session.service}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {session.payment.toLocaleString()} MAD
+                            {session.payment ? session.payment.toLocaleString() : '0'} MAD
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <span
@@ -410,7 +411,7 @@ const ProfessionalClientsPage = () => {
                             </ul>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {order.total.toLocaleString()} MAD
+                            {order.total ? order.total.toLocaleString() : '0'} MAD
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <span
@@ -583,7 +584,9 @@ const ProfessionalClientsPage = () => {
                   </div>
                   <div className="col-span-2 hidden md:flex md:items-center">
                     <div className="text-sm text-gray-900">
-                      {new Date(client.lastVisit).toLocaleDateString('fr-FR')}
+                      {client.lastVisit
+                        ? new Date(client.lastVisit).toLocaleDateString('fr-FR')
+                        : 'Jamais'}
                     </div>
                   </div>
                   <div className="col-span-3 sm:col-span-2 flex items-center">
@@ -591,7 +594,7 @@ const ProfessionalClientsPage = () => {
                   </div>
                   <div className="col-span-2 hidden lg:flex lg:items-center">
                     <div className="text-sm text-gray-900">
-                      {client.totalSpent.toLocaleString()} MAD
+                      {client.totalSpent ? client.totalSpent.toLocaleString() : '0'} MAD
                     </div>
                   </div>
                   <div className="col-span-5 sm:col-span-2 md:hidden flex items-center justify-end">
@@ -759,7 +762,7 @@ const ProfessionalClientsPage = () => {
               <div className="ml-5">
                 <h3 className="text-lg font-medium text-gray-900">Revenu Moyen</h3>
                 <p className="mt-1 text-2xl font-semibold text-gray-900">
-                  {stats.averageRevenue.toLocaleString()} MAD
+                  {stats.averageRevenue ? stats.averageRevenue.toLocaleString() : '0'} MAD
                 </p>
               </div>
             </div>

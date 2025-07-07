@@ -272,4 +272,47 @@ router.get('/plans', (req, res) => {
   });
 });
 
+// General contact form (for authenticated users)
+router.post('/', [
+  body('subject').notEmpty().withMessage('Subject is required'),
+  body('message').isLength({ min: 10, max: 1000 }).withMessage('Message must be between 10 and 1000 characters')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation errors',
+        errors: errors.array()
+      });
+    }
+
+    const { subject, message } = req.body;
+
+    // Create new contact request
+    const contactRequest = new Contact({
+      type: 'general',
+      subject,
+      message,
+      ipAddress: req.ip,
+      userAgent: req.get('User-Agent')
+    });
+
+    await contactRequest.save();
+
+    res.status(201).json({
+      success: true,
+      message: 'Message sent successfully',
+      requestId: contactRequest._id
+    });
+
+  } catch (error) {
+    console.error('Error creating contact request:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+});
+
 module.exports = router; 

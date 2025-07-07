@@ -8,7 +8,7 @@ import {
   CalendarDaysIcon,
 } from '@heroicons/react/24/outline';
 import React, { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 
 import { useAuth } from '../../contexts/AuthContext';
 import { handleImageError } from '../../utils/imageUtils';
@@ -20,6 +20,7 @@ const Header = () => {
   const [profileImageUrl, setProfileImageUrl] = useState(null);
   const { isAuthenticated, user, _loginWithGoogle, logout } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
 
   // Function to build profile image URL like ProfilePage.jsx
   useEffect(() => {
@@ -33,9 +34,18 @@ const Header = () => {
     }
   }, [user?.profileImage]);
 
+  // Redirect admin users to admin dashboard
+  useEffect(() => {
+    if (isAuthenticated && user?.role === 'admin' && !location.pathname.startsWith('/admin')) {
+      navigate('/admin/dashboard');
+    }
+  }, [isAuthenticated, user, location.pathname, navigate]);
+
   // Render specific navbar based on user role
   if (isAuthenticated) {
-    if (user?.role === 'professional') {
+    if (user?.role === 'admin') {
+      return null; // Admin users should be redirected to admin dashboard
+    } else if (user?.role === 'professional') {
       return <ProfessionalNavbar />;
     } else {
       return <ClientNavbar />;

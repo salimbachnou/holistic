@@ -1,4 +1,3 @@
-import axios from 'axios';
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
 import {
@@ -14,6 +13,7 @@ import { Link } from 'react-router-dom';
 
 import LoadingSpinner from '../components/Common/LoadingSpinner';
 import { useAuth } from '../contexts/AuthContext';
+import { apiService } from '../services/axiosConfig';
 
 const ClientProfilePage = () => {
   const { user } = useAuth();
@@ -81,8 +81,8 @@ const ClientProfilePage = () => {
   const fetchBookings = async () => {
     try {
       setBookingsLoading(true);
-      const response = await axios.get('/api/bookings/my-bookings');
-      setBookings(response.data.bookings);
+      const response = await apiService.get('/bookings/my-bookings');
+      setBookings(response.data?.bookings || []);
     } catch (error) {
       console.error('Error fetching bookings:', error);
       toast.error('Erreur lors du chargement des réservations');
@@ -93,8 +93,8 @@ const ClientProfilePage = () => {
 
   const fetchOrders = async () => {
     try {
-      const response = await axios.get('/api/orders');
-      setOrders(response.data.orders || []);
+      const response = await apiService.get('/orders');
+      setOrders(response.data?.orders || []);
     } catch (err) {
       console.error('Error fetching orders:', err);
       toast.error('Impossible de charger vos commandes');
@@ -105,8 +105,14 @@ const ClientProfilePage = () => {
 
   const fetchConversations = async () => {
     try {
-      const response = await axios.get('/api/messages/conversations');
-      setConversations(response.data.conversations || []);
+      const response = await apiService.get('/messages/conversations');
+      // Ensure we have the correct data structure
+      const conversations = response.data?.conversations || [];
+      // Filter out any conversations with missing data
+      const validConversations = conversations.filter(
+        conv => conv && conv.otherPerson && conv.otherPerson._id
+      );
+      setConversations(validConversations);
     } catch (err) {
       console.error('Error fetching conversations:', err);
       toast.error('Impossible de charger vos conversations');
@@ -117,8 +123,12 @@ const ClientProfilePage = () => {
 
   const fetchFavorites = async () => {
     try {
-      const response = await axios.get('/api/favorites');
-      setFavorites(response.data.favorites || []);
+      const response = await apiService.get('/users/favorites');
+      // Ensure we have the correct data structure
+      const favorites = response.data?.favorites || [];
+      // Filter out any favorites with missing data
+      const validFavorites = favorites.filter(fav => fav && fav._id);
+      setFavorites(validFavorites);
     } catch (err) {
       console.error('Error fetching favorites:', err);
       toast.error('Impossible de charger vos favoris');
@@ -177,12 +187,8 @@ const ClientProfilePage = () => {
         formData.append('profileImage', profileForm.profileImage);
       }
 
-      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
-      const token = localStorage.getItem('token');
-
-      const response = await axios.put(`${API_URL}/api/users/profile`, formData, {
+      const response = await apiService.put(`/users/profile`, formData, {
         headers: {
-          Authorization: `Bearer ${token}`,
           'Content-Type': 'multipart/form-data',
         },
       });
@@ -203,7 +209,7 @@ const ClientProfilePage = () => {
     setSubmittingContact(true);
 
     try {
-      const response = await axios.post('/api/contact', contactForm);
+      const response = await apiService.post('/contact', contactForm);
 
       if (response.data.success) {
         toast.success('Votre message a été envoyé avec succès');
@@ -218,7 +224,7 @@ const ClientProfilePage = () => {
 
   const cancelBooking = async bookingId => {
     try {
-      await axios.post(`/api/bookings/${bookingId}/cancel`);
+      await apiService.put(`/bookings/${bookingId}/cancel`);
       toast.success('Réservation annulée avec succès');
       fetchBookings();
     } catch (err) {
@@ -228,7 +234,7 @@ const ClientProfilePage = () => {
 
   const removeFavorite = async professionalId => {
     try {
-      await axios.delete(`/api/favorites/${professionalId}`);
+      await apiService.delete(`/users/favorites/${professionalId}`);
       toast.success('Professionnel retiré des favoris');
       fetchFavorites();
     } catch (err) {
@@ -585,13 +591,18 @@ const ClientProfilePage = () => {
       ) : conversations.length > 0 ? (
         <div className="space-y-2">
           {conversations.map(conversation => {
-            const otherUser =
-              conversation.sender._id === user._id ? conversation.receiver : conversation.sender;
+            // Handle the new conversation structure from the API
+            const otherUser = conversation.otherPerson;
+
+            // Safety check to prevent errors if data is missing
+            if (!otherUser || !otherUser._id) {
+              return null;
+            }
 
             return (
               <Link
                 to={`/messages/${otherUser._id}`}
-                key={conversation._id}
+                key={conversation.conversationId}
                 className="flex items-center border border-gray-200 rounded-lg p-3 hover:bg-gray-50"
               >
                 <div className="w-12 h-12 rounded-full bg-gray-200 overflow-hidden mr-3">
@@ -617,11 +628,13 @@ const ClientProfilePage = () => {
                       {otherUser.firstName} {otherUser.lastName}
                     </h4>
                     <span className="text-xs text-gray-500">
-                      {new Date(conversation.lastMessage.timestamp).toLocaleDateString()}
+                      {new Date(conversation.lastMessage.createdAt).toLocaleDateString()}
                     </span>
                   </div>
 
-                  <p className="text-sm text-gray-600 truncate">{conversation.lastMessage.text}</p>
+                  <p className="text-sm text-gray-600 truncate">
+                    {conversation.lastMessage.content}
+                  </p>
                 </div>
 
                 {conversation.unreadCount > 0 && (
@@ -651,58 +664,59 @@ const ClientProfilePage = () => {
         </div>
       ) : favorites.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {favorites.map(favorite => (
-            <div
-              key={favorite.professional._id}
-              className="border border-gray-200 rounded-lg overflow-hidden"
-            >
-              <div className="relative h-32">
-                {favorite.professional.coverImages &&
-                favorite.professional.coverImages.length > 0 ? (
-                  <img
-                    src={favorite.professional.coverImages[0]}
-                    alt={favorite.professional.businessName}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-gray-100">
-                    <span className="text-gray-400">Pas d'image</span>
-                  </div>
-                )}
+          {favorites.map(favorite => {
+            // Safety check to prevent errors if data is missing
+            if (!favorite || !favorite._id) {
+              return null;
+            }
 
-                <button
-                  onClick={() => removeFavorite(favorite.professional._id)}
-                  className="absolute top-2 right-2 bg-white rounded-full p-1.5 shadow-md hover:bg-red-50 transition-colors"
-                >
-                  <FaHeart className="text-red-500 w-4 h-4" />
-                </button>
-              </div>
+            return (
+              <div key={favorite._id} className="border border-gray-200 rounded-lg overflow-hidden">
+                <div className="relative h-32">
+                  {favorite.coverImages && favorite.coverImages.length > 0 ? (
+                    <img
+                      src={favorite.coverImages[0]}
+                      alt={favorite.businessName}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-gray-100">
+                      <span className="text-gray-400">Pas d'image</span>
+                    </div>
+                  )}
 
-              <div className="p-3">
-                <h3 className="font-medium">{favorite.professional.businessName}</h3>
-                <p className="text-sm text-gray-500 mb-2 capitalize">
-                  {favorite.professional.businessType}
-                </p>
-
-                <div className="flex justify-between items-center mt-2">
-                  <div className="flex items-center text-yellow-400 text-sm">
-                    {'★'.repeat(Math.floor(favorite.professional.rating?.average || 0))}
-                    {'☆'.repeat(5 - Math.floor(favorite.professional.rating?.average || 0))}
-                    <span className="ml-1 text-gray-500">
-                      ({favorite.professional.rating?.totalReviews || 0})
-                    </span>
-                  </div>
-
-                  <Link
-                    to={`/professionals/${favorite.professional._id}`}
-                    className="text-primary-600 text-sm font-medium hover:underline"
+                  <button
+                    onClick={() => removeFavorite(favorite._id)}
+                    className="absolute top-2 right-2 bg-white rounded-full p-1.5 shadow-md hover:bg-red-50 transition-colors"
                   >
-                    Voir
-                  </Link>
+                    <FaHeart className="text-red-500 w-4 h-4" />
+                  </button>
+                </div>
+
+                <div className="p-3">
+                  <h3 className="font-medium">{favorite.businessName}</h3>
+                  <p className="text-sm text-gray-500 mb-2 capitalize">{favorite.businessType}</p>
+
+                  <div className="flex justify-between items-center mt-2">
+                    <div className="flex items-center text-yellow-400 text-sm">
+                      {'★'.repeat(Math.floor(favorite.rating?.average || 0))}
+                      {'☆'.repeat(5 - Math.floor(favorite.rating?.average || 0))}
+                      <span className="ml-1 text-gray-500">
+                        ({favorite.rating?.totalReviews || 0})
+                      </span>
+                    </div>
+
+                    <Link
+                      to={`/professionals/${favorite._id}`}
+                      className="text-primary-600 text-sm font-medium hover:underline"
+                    >
+                      Voir
+                    </Link>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       ) : (
         <div className="text-center py-8">

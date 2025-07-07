@@ -358,7 +358,7 @@ router.get('/stats', requireAuth, async (req, res) => {
       role: user.role,
       isVerified: user.isVerified,
       totalSessions: 0, // Placeholder for future implementation
-      favoriteServices: [], // Placeholder for future implementation
+      favoriteServices: user.favorites || [], // Get user's favorites
       upcomingBookings: 0 // Placeholder for future implementation
     };
 
@@ -369,6 +369,171 @@ router.get('/stats', requireAuth, async (req, res) => {
 
   } catch (error) {
     console.error('Error fetching user stats:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+});
+
+// Get user's favorites
+router.get('/favorites', requireAuth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id).populate('favorites');
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      favorites: user.favorites || []
+    });
+
+  } catch (error) {
+    console.error('Error fetching favorites:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+});
+
+// Add a professional to favorites
+router.post('/favorites', requireAuth, [
+  body('professionalId').notEmpty().withMessage('Professional ID is required')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation errors',
+        errors: errors.array()
+      });
+    }
+
+    const { professionalId } = req.body;
+
+    // Check if professional exists
+    const Professional = require('../models/Professional');
+    const professional = await Professional.findById(professionalId);
+    if (!professional) {
+      return res.status(404).json({
+        success: false,
+        message: 'Professional not found'
+      });
+    }
+
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Initialize favorites array if it doesn't exist
+    if (!user.favorites) {
+      user.favorites = [];
+    }
+
+    // Check if already in favorites
+    if (user.favorites.includes(professionalId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Professional already in favorites'
+      });
+    }
+
+    // Add to favorites
+    user.favorites.push(professionalId);
+    await user.save();
+
+    res.json({
+      success: true,
+      message: 'Professional added to favorites',
+      favorites: user.favorites
+    });
+
+  } catch (error) {
+    console.error('Error adding to favorites:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+});
+
+// Remove a professional from favorites
+router.delete('/favorites/:professionalId', requireAuth, async (req, res) => {
+  try {
+    const { professionalId } = req.params;
+
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Initialize favorites array if it doesn't exist
+    if (!user.favorites) {
+      user.favorites = [];
+    }
+
+    // Check if in favorites
+    if (!user.favorites.includes(professionalId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Professional not in favorites'
+      });
+    }
+
+    // Remove from favorites
+    user.favorites = user.favorites.filter(id => id.toString() !== professionalId);
+    await user.save();
+
+    res.json({
+      success: true,
+      message: 'Professional removed from favorites',
+      favorites: user.favorites
+    });
+
+  } catch (error) {
+    console.error('Error removing from favorites:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+});
+
+// Check if a professional is in favorites
+router.get('/favorites/check/:professionalId', requireAuth, async (req, res) => {
+  try {
+    const { professionalId } = req.params;
+
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    const isFavorite = user.favorites && user.favorites.includes(professionalId);
+
+    res.json({
+      success: true,
+      isFavorite
+    });
+
+  } catch (error) {
+    console.error('Error checking favorite status:', error);
     res.status(500).json({
       success: false,
       message: 'Server error'

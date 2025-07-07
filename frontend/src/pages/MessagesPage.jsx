@@ -120,7 +120,7 @@ const MessagesPage = () => {
               const systemMessage = {
                 _id: `system-${Date.now()}`,
                 senderId: tempId,
-                receiverId: user?._id || 'current-user',
+                receiverId: user?._id || user?.id || 'current-user',
                 content:
                   "Ce professionnel n'est plus disponible sur la plateforme. Vous pouvez toujours envoyer des messages, mais ils seront traités par notre service client.",
                 createdAt: new Date().toISOString(),
@@ -236,7 +236,7 @@ const MessagesPage = () => {
         // Créer un message fictif
         const mockMessage = {
           _id: `temp-msg-${Date.now()}`,
-          senderId: user?._id || 'current-user',
+          senderId: user?._id || user?.id || 'current-user',
           receiverId: professional?._id,
           content: newMessage,
           createdAt: new Date().toISOString(),
@@ -252,7 +252,7 @@ const MessagesPage = () => {
           const autoReply = {
             _id: `temp-reply-${Date.now()}`,
             senderId: professional?._id,
-            receiverId: user?._id || 'current-user',
+            receiverId: user?._id || user?.id || 'current-user',
             content: 'Merci pour votre message. Un conseiller vous contactera prochainement.',
             createdAt: new Date().toISOString(),
           };
@@ -288,7 +288,7 @@ const MessagesPage = () => {
           // Créer un format de message cohérent avec le reste de l'application
           const newMsg = {
             _id: response.data._id || `temp-msg-${Date.now()}`,
-            senderId: user?._id,
+            senderId: user?._id || user?.id,
             receiverId: receiverId,
             content: newMessage, // Pour la cohérence dans l'interface
             text: newMessage, // Pour la cohérence avec le backend
@@ -313,7 +313,7 @@ const MessagesPage = () => {
           // Créer un message fictif pour montrer à l'utilisateur que son message a été envoyé
           const mockMessage = {
             _id: `temp-msg-${Date.now()}`,
-            senderId: user?._id || 'current-user',
+            senderId: user?._id || user?.id || 'current-user',
             receiverId: professional?._id || professionalId,
             content: newMessage,
             createdAt: new Date().toISOString(),
@@ -533,7 +533,9 @@ const MessagesPage = () => {
                   const isOrderMessage =
                     message.content && message.content.includes('NOUVELLE COMMANDE');
                   // Si c'est un message de commande et que l'utilisateur est connecté, forcer l'affichage comme envoyé par l'utilisateur
-                  const isFromCurrentUser = isOrderMessage ? true : message.senderId === user?._id;
+                  const isFromCurrentUser = isOrderMessage
+                    ? true
+                    : message.senderId === (user?._id || user?.id);
                   const isSystemMessage = message.isSystemMessage;
 
                   return (

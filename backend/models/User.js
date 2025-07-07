@@ -87,6 +87,11 @@ const userSchema = new mongoose.Schema({
     type: String,
     enum: ['Professional', 'Product']
   },
+  // Favorites (US spelling for compatibility)
+  favorites: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Professional'
+  }],
   // Booking and order references
   bookings: [{
     type: mongoose.Schema.Types.ObjectId,

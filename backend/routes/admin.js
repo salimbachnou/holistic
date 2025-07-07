@@ -12,6 +12,7 @@ const Product = require('../models/Product');
 const Order = require('../models/Order');
 const Booking = require('../models/Booking');
 const Event = require('../models/Event');
+const Notification = require('../models/Notification');
 
 // Middleware to check if user is admin
 const requireAdmin = async (req, res, next) => {
@@ -100,7 +101,7 @@ router.get('/dashboard/stats', requireAdmin, async (req, res) => {
         { $group: { _id: null, total: { $sum: '$totalAmount.amount' } } }
       ]),
       Order.find()
-        .populate('customer', 'firstName lastName email')
+        .populate('clientId', 'firstName lastName email')
         .sort({ createdAt: -1 })
         .limit(5)
     ]);
@@ -1112,24 +1113,82 @@ router.get('/bookings', requireAdmin, async (req, res) => {
 
     const skip = (page - 1) * limit;
     
-    const [bookings, totalBookings] = await Promise.all([
+    const [bookings, totalBookings, pendingCount, confirmedCount, completedCount, cancelledCount] = await Promise.all([
       Booking.find(query)
         .populate('client', 'firstName lastName email phone')
-        .populate('professional', 'businessName userId')
+        .populate('professional', 'businessName userId businessType')
         .sort({ [sortBy]: sortOrder === 'desc' ? -1 : 1 })
         .skip(skip)
         .limit(parseInt(limit)),
-      Booking.countDocuments(query)
+      Booking.countDocuments(query),
+      Booking.countDocuments({ ...query, status: 'pending' }),
+      Booking.countDocuments({ ...query, status: 'confirmed' }),
+      Booking.countDocuments({ ...query, status: 'completed' }),
+      Booking.countDocuments({ ...query, status: 'cancelled' })
     ]);
+
+    const stats = {
+      total: totalBookings,
+      pending: pendingCount,
+      confirmed: confirmedCount,
+      completed: completedCount,
+      cancelled: cancelledCount
+    };
 
     res.json({
       bookings,
       totalPages: Math.ceil(totalBookings / limit),
       currentPage: parseInt(page),
-      totalBookings
+      totalBookings,
+      stats
     });
   } catch (error) {
     console.error('Get bookings error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get booking details
+router.get('/bookings/:id', requireAdmin, async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id)
+      .populate('client', 'firstName lastName email phone')
+      .populate('professional', 'businessName userId businessType');
+    
+    if (!booking) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
+
+    res.json({ booking });
+  } catch (error) {
+    console.error('Get booking details error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Update booking status
+router.put('/bookings/:id/status', requireAdmin, async (req, res) => {
+  try {
+    const { status, adminNotes } = req.body;
+    
+    if (!['pending', 'confirmed', 'in_progress', 'completed', 'cancelled', 'no_show'].includes(status)) {
+      return res.status(400).json({ message: 'Invalid status value' });
+    }
+    
+    const booking = await Booking.findById(req.params.id);
+    
+    if (!booking) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
+    
+    booking.status = status;
+    if (adminNotes) booking.adminNotes = adminNotes;
+    
+    await booking.save();
+    
+    res.json({ message: 'Booking status updated', booking });
+  } catch (error) {
+    console.error('Update booking status error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
@@ -1309,4 +1368,339 @@ router.get('/unverified-clients', requireAdmin, async (req, res) => {
   }
 });
 
-module.exports = router; 
+// ===================== NOTIFICATIONS =====================
+
+// Get admin notifications
+router.get('/notifications', requireAdmin, async (req, res) => {
+  try {
+    // Extraire l'ID utilisateur du token JWT
+    const token = req.header('Authorization')?.replace('Bearer ', '');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret');
+    const userId = decoded.userId || decoded.sub || decoded.id;
+    
+    console.log('Admin notifications API: User ID from token:', userId);
+    
+    // Récupérer les notifications existantes
+    const notifications = await Notification.find({ userId })
+      .sort({ createdAt: -1 })
+      .limit(50);
+    
+    console.log('Admin notifications API: Found notifications:', notifications.length);
+    
+    // Si aucune notification n'existe, générer des notifications basées sur les données réelles
+    if (notifications.length === 0) {
+      // Récupérer les dernières commandes
+      const recentOrders = await Order.find()
+        .populate('clientId', 'firstName lastName')
+        .sort({ createdAt: -1 })
+        .limit(5);
+      
+      // Récupérer les derniers professionnels inscrits
+      const recentProfessionals = await Professional.find()
+        .populate('userId', 'firstName lastName')
+        .sort({ createdAt: -1 })
+        .limit(3);
+      
+      // Récupérer les derniers contacts
+      const recentContacts = await Contact.find()
+        .sort({ createdAt: -1 })
+        .limit(3);
+      
+      // Récupérer les dernières réservations annulées
+      const cancelledBookings = await Booking.find({ status: 'cancelled' })
+        .populate('client', 'firstName lastName')
+        .populate('professional', 'businessName')
+        .sort({ 'cancellation.cancelledAt': -1 })
+        .limit(3);
+      
+      console.log('Admin notifications API: Generating notifications from data');
+      console.log('Admin notifications API: Recent orders:', recentOrders.length);
+      console.log('Admin notifications API: Recent professionals:', recentProfessionals.length);
+      console.log('Admin notifications API: Recent contacts:', recentContacts.length);
+      console.log('Admin notifications API: Cancelled bookings:', cancelledBookings.length);
+      
+      // Créer des notifications pour les commandes récentes
+      for (const order of recentOrders) {
+        const clientName = order.clientId ? `${order.clientId.firstName} ${order.clientId.lastName}` : 'Un client';
+        await createAdminNotification(
+          'Nouvelle commande',
+          `${clientName} a passé une nouvelle commande #${order.orderNumber}.`,
+          'new_order',
+          '/admin/orders',
+          { orderId: order._id }
+        );
+      }
+      
+      // Créer des notifications pour les professionnels récents
+      for (const professional of recentProfessionals) {
+        const professionalName = professional.userId ? `${professional.userId.firstName} ${professional.userId.lastName}` : 'Un nouveau professionnel';
+        await createAdminNotification(
+          'Nouveau professionnel',
+          `${professionalName} s'est inscrit et attend validation.`,
+          'new_professional',
+          '/admin/professionals',
+          { professionalId: professional._id }
+        );
+      }
+      
+      // Créer des notifications pour les contacts récents
+      for (const contact of recentContacts) {
+        await createAdminNotification(
+          'Nouveau message de contact',
+          `Un nouveau message de contact a été reçu de ${contact.name}.`,
+          'new_contact',
+          '/admin/contacts',
+          { contactId: contact._id }
+        );
+      }
+      
+      // Créer des notifications pour les réservations annulées
+      for (const booking of cancelledBookings) {
+        const clientName = booking.client ? `${booking.client.firstName} ${booking.client.lastName}` : 'Un client';
+        const professionalName = booking.professional ? booking.professional.businessName : 'un professionnel';
+        await createAdminNotification(
+          'Session annulée',
+          `Une session entre ${clientName} et ${professionalName} a été annulée.`,
+          'session_cancelled',
+          '/admin/bookings',
+          { bookingId: booking._id }
+        );
+      }
+      
+      // Récupérer les nouvelles notifications créées
+      const newNotifications = await Notification.find({ userId })
+        .sort({ createdAt: -1 })
+        .limit(50);
+      
+      console.log('Admin notifications API: Generated notifications:', newNotifications.length);
+      
+      return res.json({
+        success: true,
+        notifications: newNotifications
+      });
+    }
+    
+    res.json({
+      success: true,
+      notifications
+    });
+  } catch (error) {
+    console.error('Error fetching admin notifications:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+});
+
+// Mark admin notification as read
+router.post('/notifications/:id/mark-read', requireAdmin, async (req, res) => {
+  try {
+    // Extraire l'ID utilisateur du token JWT
+    const token = req.header('Authorization')?.replace('Bearer ', '');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret');
+    const userId = decoded.userId || decoded.sub || decoded.id;
+    
+    console.log('Admin mark-read API: User ID from token:', userId);
+    
+    const notification = await Notification.findOne({
+      _id: req.params.id,
+      userId
+    });
+
+    if (!notification) {
+      return res.status(404).json({
+        success: false,
+        message: 'Notification not found'
+      });
+    }
+
+    notification.read = true;
+    await notification.save();
+
+    res.json({
+      success: true,
+      message: 'Notification marked as read'
+    });
+  } catch (error) {
+    console.error('Error marking admin notification as read:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+});
+
+// Mark all admin notifications as read
+router.post('/notifications/mark-all-read', requireAdmin, async (req, res) => {
+  try {
+    // Extraire l'ID utilisateur du token JWT
+    const token = req.header('Authorization')?.replace('Bearer ', '');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret');
+    const userId = decoded.userId || decoded.sub || decoded.id;
+    
+    console.log('Admin mark-all-read API: User ID from token:', userId);
+    
+    await Notification.updateMany(
+      { userId, read: false },
+      { $set: { read: true } }
+    );
+
+    res.json({
+      success: true,
+      message: 'All notifications marked as read'
+    });
+  } catch (error) {
+    console.error('Error marking all admin notifications as read:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+});
+
+// Create admin notification (utility function for the server)
+const createAdminNotification = async (title, message, type, link = null, data = {}) => {
+  try {
+    // Find admin users
+    const adminUsers = await User.find({ role: 'admin' });
+    
+    // Create a notification for each admin
+    const notifications = [];
+    for (const admin of adminUsers) {
+      const notification = new Notification({
+        userId: admin._id,
+        title,
+        message,
+        type,
+        link,
+        data,
+        read: false
+      });
+      
+      await notification.save();
+      notifications.push(notification);
+    }
+    
+    return notifications;
+  } catch (error) {
+    console.error('Error creating admin notification:', error);
+    return null;
+  }
+};
+
+// Utility functions for specific notification types
+
+// Notify admins about new orders
+const notifyNewOrder = async (order) => {
+  try {
+    const client = await User.findById(order.clientId);
+    const clientName = client ? `${client.firstName} ${client.lastName}` : 'Un client';
+    
+    return await createAdminNotification(
+      'Nouvelle commande',
+      `${clientName} a passé une nouvelle commande #${order.orderNumber}.`,
+      'new_order',
+      '/admin/orders',
+      { orderId: order._id }
+    );
+  } catch (error) {
+    console.error('Error creating new order notification:', error);
+  }
+};
+
+// Notify admins about cancelled orders
+const notifyOrderCancelled = async (order) => {
+  try {
+    return await createAdminNotification(
+      'Commande annulée',
+      `La commande #${order.orderNumber} a été annulée.`,
+      'order_cancelled',
+      '/admin/orders',
+      { orderId: order._id }
+    );
+  } catch (error) {
+    console.error('Error creating order cancelled notification:', error);
+  }
+};
+
+// Notify admins about cancelled sessions
+const notifySessionCancelled = async (booking) => {
+  try {
+    const client = await User.findById(booking.clientId);
+    const professional = await Professional.findById(booking.professionalId);
+    
+    const clientName = client ? `${client.firstName} ${client.lastName}` : 'Un client';
+    const professionalName = professional ? professional.businessName : 'un professionnel';
+    
+    return await createAdminNotification(
+      'Session annulée',
+      `Une session entre ${clientName} et ${professionalName} a été annulée.`,
+      'session_cancelled',
+      '/admin/bookings',
+      { bookingId: booking._id }
+    );
+  } catch (error) {
+    console.error('Error creating session cancelled notification:', error);
+  }
+};
+
+// Notify admins about new events
+const notifyNewEvent = async (event) => {
+  try {
+    const professional = await Professional.findById(event.professionalId);
+    const professionalName = professional ? professional.businessName : 'Un professionnel';
+    
+    return await createAdminNotification(
+      'Nouvel événement créé',
+      `${professionalName} a créé un nouvel événement "${event.title}".`,
+      'new_event',
+      '/admin/events',
+      { eventId: event._id }
+    );
+  } catch (error) {
+    console.error('Error creating new event notification:', error);
+  }
+};
+
+// Notify admins about new contact messages
+const notifyNewContact = async (contact) => {
+  try {
+    return await createAdminNotification(
+      'Nouveau message de contact',
+      `Un nouveau message de contact a été reçu de ${contact.name}.`,
+      'new_contact',
+      '/admin/contacts',
+      { contactId: contact._id }
+    );
+  } catch (error) {
+    console.error('Error creating new contact notification:', error);
+  }
+};
+
+// Notify admins about new professional registrations
+const notifyNewProfessional = async (professional) => {
+  try {
+    const user = await User.findById(professional.userId);
+    const professionalName = user ? `${user.firstName} ${user.lastName}` : 'Un nouveau professionnel';
+    
+    return await createAdminNotification(
+      'Nouveau professionnel',
+      `${professionalName} s'est inscrit et attend validation.`,
+      'new_professional',
+      '/admin/professionals',
+      { professionalId: professional._id }
+    );
+  } catch (error) {
+    console.error('Error creating new professional notification:', error);
+  }
+};
+
+module.exports = router;
+module.exports.createAdminNotification = createAdminNotification;
+module.exports.notifyNewOrder = notifyNewOrder;
+module.exports.notifyOrderCancelled = notifyOrderCancelled;
+module.exports.notifySessionCancelled = notifySessionCancelled;
+module.exports.notifyNewEvent = notifyNewEvent;
+module.exports.notifyNewContact = notifyNewContact;
+module.exports.notifyNewProfessional = notifyNewProfessional; 

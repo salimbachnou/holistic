@@ -94,6 +94,18 @@ router.post('/', isAuthenticated, isProfessional, async (req, res) => {
 
     await newEvent.save();
     
+    // Déclencher la notification pour le professionnel (confirmation de création)
+    try {
+      const NotificationService = require('../services/notificationService');
+      const Professional = require('../models/Professional');
+      const professional = await Professional.findOne({ userId: req.user._id });
+      if (professional) {
+        await NotificationService.notifyNewEvent(newEvent, professional._id);
+      }
+    } catch (error) {
+      console.error('Erreur lors de la notification de nouvel événement:', error);
+    }
+    
     res.status(201).json({ message: 'Événement créé avec succès', event: newEvent });
   } catch (error) {
     console.error('Error creating event:', error);
