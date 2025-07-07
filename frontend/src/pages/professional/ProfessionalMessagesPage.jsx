@@ -504,7 +504,7 @@ const ProfessionalMessagesPage = () => {
       }
 
       // Ajouter un log pour voir le texte complet du message
-      console.log('Texte du message à analyser:', messageText);
+      // console.log('Texte du message à analyser:', messageText);
 
       // Améliorer les regex pour être plus spécifiques et éviter de capturer du texte supplémentaire
       // Extraire le nom du produit - s'arrêter avant le prochain élément ou saut de ligne
@@ -554,10 +554,10 @@ const ProfessionalMessagesPage = () => {
       }
 
       // Afficher les informations extraites pour le débogage
-      console.log('Informations de commande extraites:', orderInfo);
+      // console.log('Informations de commande extraites:', orderInfo);
 
       // Debug spécifique pour la recherche de produit
-      console.log('Nom du produit pour la recherche de stock:', orderInfo.product);
+      // console.log('Nom du produit pour la recherche de stock:', orderInfo.product);
 
       return orderInfo;
     } catch (error) {
@@ -572,7 +572,7 @@ const ProfessionalMessagesPage = () => {
 
     try {
       setProcessingOrder(true);
-      console.log('Traitement de la commande pour le message:', message._id);
+      // console.log('Traitement de la commande pour le message:', message._id);
 
       // Vérifier si le message contient une commande valide
       if (!isValidOrderMessage(message.text)) {
@@ -596,7 +596,7 @@ const ProfessionalMessagesPage = () => {
         const productName = encodeURIComponent(orderInfo.product);
         const size = encodeURIComponent(orderInfo.size);
 
-        console.log(`Vérification du stock pour: ${productName}, taille: ${size}`);
+        // console.log(`Vérification du stock pour: ${productName}, taille: ${size}`);
 
         const stockResponse = await axios.get(
           `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/products/check-stock?productName=${productName}&size=${size}`,
@@ -605,7 +605,7 @@ const ProfessionalMessagesPage = () => {
           }
         );
 
-        console.log('Vérification du stock disponible:', stockResponse.data);
+        // console.log('Vérification du stock disponible:', stockResponse.data);
 
         // Si plusieurs produits correspondent, demander à l'utilisateur de confirmer le produit
         if (stockResponse.data.multipleProducts && stockResponse.data.products) {
@@ -654,7 +654,7 @@ const ProfessionalMessagesPage = () => {
             '⚠️ Impossible de vérifier le stock pour ce produit. Voulez-vous quand même accepter la commande (non recommandé)?'
           )
         ) {
-          console.log('Acceptation de la commande sans vérification de stock');
+          // console.log('Acceptation de la commande sans vérification de stock');
         } else {
           return;
         }
@@ -669,7 +669,7 @@ const ProfessionalMessagesPage = () => {
         orderInfo: orderInfo,
         clientId: clientId,
       };
-      console.log("Données envoyées à l'API:", requestData);
+      // console.log("Données envoyées à l'API:", requestData);
 
       // Appeler l'API pour accepter la commande et mettre à jour le stock
       const response = await axios.post(
@@ -680,7 +680,7 @@ const ProfessionalMessagesPage = () => {
         }
       );
 
-      console.log("Réponse de l'API:", response.data);
+      // console.log("Réponse de l'API:", response.data);
 
       if (response.data.success) {
         // Envoyer un message de confirmation au client
@@ -745,7 +745,7 @@ const ProfessionalMessagesPage = () => {
 
     try {
       setProcessingOrder(true);
-      console.log('Traitement du refus de commande pour le message:', message._id);
+      // console.log('Traitement du refus de commande pour le message:', message._id);
 
       // Vérifier si le message contient une commande valide
       if (!isValidOrderMessage(message.text)) {
@@ -771,7 +771,7 @@ const ProfessionalMessagesPage = () => {
         messageId: message._id,
         clientId: clientId,
       };
-      console.log("Données envoyées à l'API pour refus:", requestData);
+      // console.log("Données envoyées à l'API pour refus:", requestData);
 
       // Appeler l'API pour refuser la commande
       const response = await axios.post(
@@ -782,7 +782,7 @@ const ProfessionalMessagesPage = () => {
         }
       );
 
-      console.log("Réponse de l'API (refus):", response.data);
+      // console.log("Réponse de l'API (refus):", response.data);
 
       if (response.data.success) {
         // Envoyer un message de refus au client
@@ -840,10 +840,14 @@ const ProfessionalMessagesPage = () => {
   // Si l'authentification est en cours, afficher un indicateur de chargement
   if (authLoading) {
     return (
-      <div className="flex items-center justify-center h-screen">
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Chargement de votre profil...</p>
+          <div className="relative">
+            <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-200 border-t-blue-600 mx-auto"></div>
+            <div className="absolute inset-0 rounded-full bg-blue-50 opacity-20"></div>
+          </div>
+          <h2 className="mt-6 text-xl font-bold text-gray-900">Connexion en cours</h2>
+          <p className="mt-2 text-gray-600">Chargement de votre profil professionnel...</p>
         </div>
       </div>
     );
@@ -853,30 +857,41 @@ const ProfessionalMessagesPage = () => {
   const userId = user?._id || user?.id;
   if (!isAuthenticated || !user || !userId) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-center max-w-md p-6 bg-white rounded-xl shadow-md">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-12 w-12 text-red-500 mx-auto"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-            />
-          </svg>
-          <h2 className="mt-4 text-xl font-bold text-gray-900">Authentification requise</h2>
-          <p className="mt-2 text-gray-600">
-            Vous devez être connecté pour accéder à vos messages.
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 flex items-center justify-center">
+        <div className="text-center max-w-md p-8 bg-white rounded-3xl shadow-2xl border border-gray-200">
+          <div className="w-20 h-20 bg-gradient-to-br from-red-100 to-orange-100 rounded-3xl flex items-center justify-center mx-auto mb-6">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-10 w-10 text-red-600"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+              />
+            </svg>
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">Accès Restreint</h2>
+          <p className="text-gray-600 mb-6 leading-relaxed">
+            Vous devez être connecté en tant que professionnel pour accéder à cette interface de
+            messagerie.
           </p>
           <a
             href="/login"
-            className="mt-4 inline-block px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+            className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold rounded-2xl hover:from-blue-700 hover:to-indigo-700 transform hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl"
           >
+            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"
+              />
+            </svg>
             Se connecter
           </a>
         </div>
@@ -885,52 +900,90 @@ const ProfessionalMessagesPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header Section */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h1 className="text-3xl font-bold text-slate-900 mb-2">Messages Professionnels</h1>
-              <p className="text-slate-600">Gérez vos conversations avec vos clients</p>
-            </div>
-            <div className="hidden sm:flex items-center space-x-2 text-sm text-slate-500">
-              <div className="flex items-center">
-                <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
-                <span>
-                  {conversations.length} conversation{conversations.length !== 1 ? 's' : ''}
-                </span>
+    <div className="h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 overflow-hidden">
+      <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8 py-1 sm:py-2 h-full flex flex-col">
+        {/* Header Section avec design professionnel - ultra compact */}
+        <div className="mb-1 sm:mb-2 flex-shrink-0">
+          <div className="bg-white rounded-lg sm:rounded-xl shadow-sm border border-gray-200 p-2 sm:p-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2 sm:space-x-4">
+                <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-2 sm:p-3 rounded-lg sm:rounded-xl shadow-lg">
+                  <svg
+                    className="w-4 h-4 sm:w-6 sm:h-6 text-white"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                    />
+                  </svg>
+                </div>
+                <div>
+                  <h1 className="text-base sm:text-xl font-bold text-gray-900 mb-0">
+                    Centre de Messages
+                  </h1>
+                  <p className="text-xs text-gray-600 hidden lg:block">
+                    Interface professionnelle de communication client
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center space-x-1 sm:space-x-2">
+                <div className="text-center">
+                  <div className="text-xs sm:text-lg font-bold text-blue-600">
+                    {conversations.length}
+                  </div>
+                  <div className="text-xs text-gray-500 font-medium hidden lg:block">Conv.</div>
+                </div>
+                <div className="flex items-center space-x-1 bg-green-50 px-1.5 sm:px-2 py-0.5 rounded-full">
+                  <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 bg-green-500 rounded-full animate-pulse"></div>
+                  <span className="text-green-700 font-medium text-xs">En ligne</span>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="bg-white/90 backdrop-blur-sm shadow-xl rounded-2xl border border-white/20 overflow-hidden">
-          <div className="grid grid-cols-1 md:grid-cols-3 h-[calc(85vh-8rem)]">
-            {/* Conversations List */}
-            <div className="border-r border-slate-200 overflow-y-auto bg-gradient-to-b from-slate-50/50 to-white/50">
-              <div className="p-6 border-b border-slate-200 bg-white/80">
-                <h2 className="font-semibold text-slate-900 text-lg">Conversations</h2>
-                <p className="text-sm text-slate-600 mt-1">
-                  {conversations.length} client{conversations.length !== 1 ? 's' : ''} en contact
+        <div className="bg-white shadow-xl rounded-2xl border border-gray-200 overflow-hidden flex-1">
+          <div className="grid grid-cols-1 lg:grid-cols-12 h-full">
+            {/* Conversations List - Hidden on mobile when conversation is selected */}
+            <div
+              className={`lg:col-span-4 border-r border-gray-200 overflow-y-auto bg-gradient-to-b from-gray-50/80 to-white ${
+                selectedConversation ? 'hidden lg:block' : 'block'
+              }`}
+            >
+              <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-sm border-b border-gray-200 p-2 sm:p-3">
+                <div className="flex items-center justify-between mb-1">
+                  <h2 className="font-bold text-gray-900 text-sm sm:text-base">Conversations</h2>
+                  <div className="bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded-full text-xs font-semibold">
+                    {conversations.length}
+                  </div>
+                </div>
+                <p className="text-xs text-gray-600 hidden lg:block">
+                  {conversations.length} client{conversations.length !== 1 ? 's' : ''}
                 </p>
               </div>
-              <div className="divide-y divide-slate-100">
+              <div className="p-1 sm:p-2 space-y-1 overflow-y-auto">
                 {loading && conversations.length === 0 ? (
-                  <div className="p-8 text-center">
-                    <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                    <p className="text-slate-500">Chargement des conversations...</p>
+                  <div className="p-12 text-center">
+                    <div className="relative">
+                      <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-200 border-t-blue-600 mx-auto mb-6"></div>
+                      <div className="absolute inset-0 rounded-full bg-blue-50 opacity-20"></div>
+                    </div>
+                    <p className="text-gray-500 font-medium">Chargement des conversations...</p>
                   </div>
                 ) : conversations.length === 0 ? (
-                  <div className="p-8 text-center">
-                    <div className="w-16 h-16 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                      <UserCircleIcon className="h-8 w-8 text-blue-600" />
+                  <div className="p-12 text-center">
+                    <div className="w-20 h-20 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-lg">
+                      <UserCircleIcon className="h-10 w-10 text-blue-600" />
                     </div>
-                    <h3 className="text-lg font-semibold text-slate-900 mb-2">
-                      Aucune conversation
-                    </h3>
-                    <p className="text-slate-600">
-                      Les conversations avec vos clients apparaîtront ici.
+                    <h3 className="text-xl font-bold text-gray-900 mb-3">Aucune conversation</h3>
+                    <p className="text-gray-600 max-w-sm mx-auto leading-relaxed">
+                      Les conversations avec vos clients apparaîtront ici. Restez connecté pour
+                      recevoir de nouveaux messages.
                     </p>
                   </div>
                 ) : (
@@ -944,15 +997,15 @@ const ProfessionalMessagesPage = () => {
                         <button
                           key={conversation.conversationId}
                           onClick={() => setSelectedConversation(partner)}
-                          className={`w-full p-6 text-left hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-200 group ${
+                          className={`w-full p-3 m-1 text-left rounded-xl transition-all duration-300 group hover:shadow-md transform hover:-translate-y-0.5 ${
                             selectedConversation?._id === partner._id
-                              ? 'bg-gradient-to-r from-blue-50 to-indigo-50 border-r-4 border-blue-500'
-                              : ''
+                              ? 'bg-gradient-to-r from-blue-50 to-indigo-50 shadow-md border-2 border-blue-200'
+                              : 'bg-white hover:bg-gradient-to-r hover:from-gray-50 hover:to-blue-50 border border-gray-100 hover:border-blue-200'
                           }`}
                         >
-                          <div className="flex items-start space-x-4">
+                          <div className="flex items-start space-x-3">
                             <div className="relative flex-shrink-0">
-                              <div className="w-12 h-12 rounded-2xl overflow-hidden ring-2 ring-white shadow-lg group-hover:ring-blue-200 transition-all duration-200">
+                              <div className="w-10 h-10 rounded-xl overflow-hidden ring-2 ring-white shadow-md group-hover:ring-blue-200 transition-all duration-300">
                                 {partner.profileImage ? (
                                   <img
                                     src={partner.profileImage}
@@ -960,62 +1013,70 @@ const ProfessionalMessagesPage = () => {
                                     className="w-full h-full object-cover"
                                   />
                                 ) : (
-                                  <div className="w-full h-full bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center">
-                                    <UserCircleIcon className="h-6 w-6 text-blue-600" />
+                                  <div className="w-full h-full bg-gradient-to-br from-blue-100 via-indigo-100 to-purple-100 flex items-center justify-center">
+                                    <UserCircleIcon className="h-5 w-5 text-blue-600" />
                                   </div>
                                 )}
                               </div>
                               {conversation.unreadCount > 0 && (
-                                <div className="absolute -top-1 -right-1 w-5 h-5 bg-gradient-to-r from-red-500 to-pink-500 text-white text-xs font-bold rounded-full flex items-center justify-center shadow-lg animate-pulse">
+                                <div className="absolute -top-1 -right-1 w-4 h-4 bg-gradient-to-r from-red-500 to-pink-500 text-white text-xs font-bold rounded-full flex items-center justify-center shadow-lg animate-bounce">
                                   {conversation.unreadCount > 9 ? '9+' : conversation.unreadCount}
                                 </div>
                               )}
-                              <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></div>
+                              <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 border-2 border-white rounded-full shadow-sm"></div>
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center justify-between mb-1">
                                 <h3
-                                  className={`font-semibold truncate ${
-                                    conversation.unreadCount > 0
-                                      ? 'text-slate-900'
-                                      : 'text-slate-700'
-                                  } group-hover:text-blue-700 transition-colors duration-200`}
+                                  className={`font-semibold text-sm truncate ${
+                                    conversation.unreadCount > 0 ? 'text-gray-900' : 'text-gray-700'
+                                  } group-hover:text-blue-700 transition-colors duration-300`}
                                 >
                                   {partner.firstName && partner.lastName
                                     ? `${partner.firstName} ${partner.lastName}`
                                     : partner.fullName || partner.name || 'Client'}
                                 </h3>
-                                <span className="text-xs text-slate-500 font-medium ml-2 flex-shrink-0">
+                                <span className="text-xs text-gray-500 font-medium">
                                   {formatTimestamp(conversation.lastMessage.createdAt)}
                                 </span>
                               </div>
                               <p
-                                className={`text-sm truncate ${
+                                className={`text-xs truncate leading-relaxed ${
                                   conversation.unreadCount > 0
-                                    ? 'font-medium text-slate-800'
-                                    : 'text-slate-600'
-                                } group-hover:text-slate-700 transition-colors duration-200`}
+                                    ? 'font-medium text-gray-800'
+                                    : 'text-gray-600'
+                                } group-hover:text-gray-700 transition-colors duration-300`}
                               >
                                 {conversation.lastMessage.content &&
-                                  conversation.lastMessage.content.substring(0, 50) +
-                                    (conversation.lastMessage.content.length > 50 ? '...' : '')}
+                                  conversation.lastMessage.content.substring(
+                                    0,
+                                    window.innerWidth < 640 ? 25 : 40
+                                  ) +
+                                    (conversation.lastMessage.content.length >
+                                    (window.innerWidth < 640 ? 25 : 40)
+                                      ? '...'
+                                      : '')}
                               </p>
                             </div>
-                            {/* Arrow indicator */}
-                            <div className="ml-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                              <svg
-                                className="w-4 h-4 text-blue-600"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M9 5l7 7-7 7"
-                                />
-                              </svg>
+                            {/* Indicateur de flèche moderne */}
+                            <div className="flex items-center justify-center">
+                              <div className="opacity-0 group-hover:opacity-100 transition-all duration-300 transform group-hover:translate-x-1">
+                                <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center shadow-lg">
+                                  <svg
+                                    className="w-4 h-4 text-white"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M9 5l7 7-7 7"
+                                    />
+                                  </svg>
+                                </div>
+                              </div>
                             </div>
                           </div>
                         </button>
@@ -1028,7 +1089,7 @@ const ProfessionalMessagesPage = () => {
                       !conversation.sender ||
                       !conversation.receiver
                     ) {
-                      console.error('Conversation with invalid format:', conversation);
+                      // console.error('Conversation with invalid format:', conversation);
                       return null;
                     }
 
@@ -1041,15 +1102,15 @@ const ProfessionalMessagesPage = () => {
                       <button
                         key={conversation._id}
                         onClick={() => setSelectedConversation(partner)}
-                        className={`w-full p-6 text-left hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-200 group ${
+                        className={`w-full p-4 m-2 text-left rounded-2xl transition-all duration-300 group hover:shadow-lg transform hover:-translate-y-1 ${
                           selectedConversation?._id === partner._id
-                            ? 'bg-gradient-to-r from-blue-50 to-indigo-50 border-r-4 border-blue-500'
-                            : ''
+                            ? 'bg-gradient-to-r from-blue-50 to-indigo-50 shadow-lg border-2 border-blue-200 scale-[1.02]'
+                            : 'bg-white hover:bg-gradient-to-r hover:from-gray-50 hover:to-blue-50 border border-gray-100 hover:border-blue-200'
                         }`}
                       >
                         <div className="flex items-start space-x-4">
                           <div className="relative flex-shrink-0">
-                            <div className="w-12 h-12 rounded-2xl overflow-hidden ring-2 ring-white shadow-lg group-hover:ring-blue-200 transition-all duration-200">
+                            <div className="w-14 h-14 rounded-2xl overflow-hidden ring-3 ring-white shadow-lg group-hover:ring-blue-200 transition-all duration-300 transform group-hover:scale-105">
                               {partner.profileImage ? (
                                 <img
                                   src={partner.profileImage}
@@ -1057,24 +1118,24 @@ const ProfessionalMessagesPage = () => {
                                   className="w-full h-full object-cover"
                                 />
                               ) : (
-                                <div className="w-full h-full bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center">
-                                  <UserCircleIcon className="h-6 w-6 text-blue-600" />
+                                <div className="w-full h-full bg-gradient-to-br from-blue-100 via-indigo-100 to-purple-100 flex items-center justify-center">
+                                  <UserCircleIcon className="h-8 w-8 text-blue-600" />
                                 </div>
                               )}
                             </div>
                             {conversation.unreadCount > 0 && (
-                              <div className="absolute -top-1 -right-1 w-5 h-5 bg-gradient-to-r from-red-500 to-pink-500 text-white text-xs font-bold rounded-full flex items-center justify-center shadow-lg animate-pulse">
+                              <div className="absolute -top-2 -right-2 w-6 h-6 bg-gradient-to-r from-red-500 to-pink-500 text-white text-xs font-bold rounded-full flex items-center justify-center shadow-lg animate-bounce">
                                 {conversation.unreadCount > 9 ? '9+' : conversation.unreadCount}
                               </div>
                             )}
-                            <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></div>
+                            <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 border-3 border-white rounded-full shadow-sm"></div>
                           </div>
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between mb-1">
+                            <div className="flex items-center justify-between mb-2">
                               <h3
-                                className={`font-semibold truncate ${
-                                  conversation.unreadCount > 0 ? 'text-slate-900' : 'text-slate-700'
-                                } group-hover:text-blue-700 transition-colors duration-200`}
+                                className={`font-bold text-lg truncate ${
+                                  conversation.unreadCount > 0 ? 'text-gray-900' : 'text-gray-700'
+                                } group-hover:text-blue-700 transition-colors duration-300`}
                               >
                                 {partner.fullName ||
                                   partner.name ||
@@ -1082,21 +1143,26 @@ const ProfessionalMessagesPage = () => {
                                     ? `${partner.firstName} ${partner.lastName}`
                                     : 'Client')}
                               </h3>
-                              <span className="text-xs text-slate-500 font-medium ml-2 flex-shrink-0">
-                                {formatTimestamp(conversation.lastMessage.timestamp)}
-                              </span>
+                              <div className="flex flex-col items-end space-y-1">
+                                <span className="text-xs text-gray-500 font-medium bg-gray-100 px-2 py-1 rounded-full">
+                                  {formatTimestamp(conversation.lastMessage.timestamp)}
+                                </span>
+                                {selectedConversation?._id === partner._id && (
+                                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                                )}
+                              </div>
                             </div>
                             <p
-                              className={`text-sm truncate ${
+                              className={`text-sm truncate leading-relaxed ${
                                 conversation.unreadCount > 0
-                                  ? 'font-medium text-slate-800'
-                                  : 'text-slate-600'
-                              } group-hover:text-slate-700 transition-colors duration-200`}
+                                  ? 'font-semibold text-gray-800'
+                                  : 'text-gray-600'
+                              } group-hover:text-gray-700 transition-colors duration-300`}
                             >
                               {conversation.lastMessage.senderId === userId ? 'Vous: ' : ''}
                               {conversation.lastMessage.text &&
-                                conversation.lastMessage.text.substring(0, 50) +
-                                  (conversation.lastMessage.text.length > 50 ? '...' : '')}
+                                conversation.lastMessage.text.substring(0, 60) +
+                                  (conversation.lastMessage.text.length > 60 ? '...' : '')}
                             </p>
                           </div>
                           {/* Arrow indicator */}
@@ -1123,21 +1189,25 @@ const ProfessionalMessagesPage = () => {
               </div>
             </div>
 
-            {/* Messages Area */}
-            <div className="col-span-2 flex flex-col h-full bg-white">
+            {/* Messages Area - Show only when conversation is selected on mobile */}
+            <div
+              className={`lg:col-span-8 flex flex-col h-full bg-gradient-to-br from-white to-gray-50 ${
+                selectedConversation ? 'block' : 'hidden lg:flex'
+              }`}
+            >
               {selectedConversation ? (
                 <>
-                  {/* Conversation Header */}
-                  <div className="p-6 border-b border-slate-200 bg-gradient-to-r from-white to-slate-50">
-                    <div className="flex items-center space-x-4">
+                  {/* Conversation Header avec design moderne - plus compact et responsive */}
+                  <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-sm border-b border-gray-200 p-2 sm:p-4 shadow-sm">
+                    <div className="flex items-center space-x-2 sm:space-x-4">
                       <button
                         onClick={() => setSelectedConversation(null)}
-                        className="md:hidden p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all duration-200"
+                        className="lg:hidden p-2 rounded-xl text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all duration-200"
                       >
-                        <ArrowLeftIcon className="h-5 w-5" />
+                        <ArrowLeftIcon className="h-4 w-4 sm:h-5 sm:w-5" />
                       </button>
                       <div className="relative">
-                        <div className="w-12 h-12 rounded-2xl overflow-hidden ring-2 ring-white shadow-lg">
+                        <div className="w-8 h-8 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl overflow-hidden ring-2 ring-white shadow-lg">
                           {selectedConversation.profileImage ? (
                             <img
                               src={selectedConversation.profileImage}
@@ -1149,36 +1219,42 @@ const ProfessionalMessagesPage = () => {
                               className="w-full h-full object-cover"
                             />
                           ) : (
-                            <div className="w-full h-full bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center">
-                              <UserCircleIcon className="h-6 w-6 text-blue-600" />
+                            <div className="w-full h-full bg-gradient-to-br from-blue-100 via-indigo-100 to-purple-100 flex items-center justify-center">
+                              <UserCircleIcon className="h-4 w-4 sm:h-6 sm:w-6 text-blue-600" />
                             </div>
                           )}
                         </div>
-                        <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></div>
+                        <div className="absolute -bottom-0.5 -right-0.5 w-2 h-2 sm:w-3 sm:h-3 bg-green-500 border-2 border-white rounded-full shadow-lg"></div>
                       </div>
                       <div className="flex-1">
-                        <h3 className="font-semibold text-slate-900 text-lg">
+                        <h3 className="font-bold text-gray-900 text-sm sm:text-lg mb-0 sm:mb-0.5">
                           {selectedConversation.fullName ||
                             selectedConversation.name ||
                             (selectedConversation.firstName && selectedConversation.lastName
                               ? `${selectedConversation.firstName} ${selectedConversation.lastName}`
                               : 'Client')}
                         </h3>
-                        <p className="text-sm text-slate-600">
-                          {selectedConversation.email ||
-                            (selectedConversation.role === 'client' ? 'Client' : 'Professionnel')}
-                        </p>
+                        <div className="flex items-center space-x-1 sm:space-x-2">
+                          <p className="text-gray-600 text-xs sm:text-sm hidden sm:block">
+                            {selectedConversation.email ||
+                              (selectedConversation.role === 'client' ? 'Client' : 'Professionnel')}
+                          </p>
+                          <div className="flex items-center space-x-1 bg-green-100 px-1.5 sm:px-2 py-0.5 rounded-full">
+                            <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 bg-green-500 rounded-full animate-pulse"></div>
+                            <span className="text-green-700 text-xs font-semibold">Actif</span>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
 
-                  {/* Messages List */}
+                  {/* Messages List avec design moderne - plus compact et responsive */}
                   <div
-                    className="flex-1 p-4 overflow-y-auto bg-gray-50 relative scroll-smooth"
+                    className="flex-1 p-2 sm:p-4 overflow-y-auto bg-gradient-to-b from-gray-50/50 to-white relative scroll-smooth"
                     ref={messagesContainerRef}
-                    style={{ scrollBehavior: 'smooth', maxHeight: 'calc(80vh - 14rem)' }}
+                    style={{ scrollBehavior: 'smooth', maxHeight: 'calc(100vh - 16rem)' }}
                   >
-                    {/* Bouton de défilement vers le bas */}
+                    {/* Bouton de défilement moderne - responsive */}
                     {showScrollButton && (
                       <button
                         onClick={() => {
@@ -1193,12 +1269,12 @@ const ProfessionalMessagesPage = () => {
                               messagesContainerRef.current.scrollHeight;
                           }
                         }}
-                        className="absolute bottom-4 right-4 bg-primary-600 text-white rounded-full p-2 shadow-md hover:bg-primary-700 focus:outline-none transition-opacity duration-300"
+                        className="fixed bottom-24 sm:bottom-32 right-4 sm:right-8 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-full p-2 sm:p-4 shadow-2xl hover:shadow-3xl transform hover:scale-110 transition-all duration-300 z-30 border-2 sm:border-4 border-white"
                         title="Défiler vers le bas"
                       >
                         <svg
                           xmlns="http://www.w3.org/2000/svg"
-                          className="h-5 w-5"
+                          className="h-4 w-4 sm:h-6 sm:w-6"
                           viewBox="0 0 20 20"
                           fill="currentColor"
                         >
@@ -1212,15 +1288,43 @@ const ProfessionalMessagesPage = () => {
                     )}
 
                     {loading ? (
-                      <div className="text-center text-gray-500 py-4">
-                        Chargement des messages...
+                      <div className="flex flex-col items-center justify-center h-full py-12">
+                        <div className="relative">
+                          <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-200 border-t-blue-600"></div>
+                          <div className="absolute inset-0 rounded-full bg-blue-50 opacity-20"></div>
+                        </div>
+                        <p className="text-gray-600 font-medium mt-6 text-lg">
+                          Chargement des messages...
+                        </p>
+                        <p className="text-gray-500 text-sm mt-2">Veuillez patienter</p>
                       </div>
                     ) : messages.length === 0 ? (
-                      <div className="text-center text-gray-500 py-4">
-                        Aucun message. Commencez la conversation!
+                      <div className="flex flex-col items-center justify-center h-full py-12">
+                        <div className="w-24 h-24 bg-gradient-to-br from-blue-100 via-indigo-100 to-purple-100 rounded-3xl flex items-center justify-center shadow-xl mb-8">
+                          <svg
+                            className="w-12 h-12 text-blue-600"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={1.5}
+                              d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                            />
+                          </svg>
+                        </div>
+                        <h3 className="text-lg sm:text-2xl font-bold text-gray-900 mb-2 sm:mb-3">
+                          Commencez la conversation
+                        </h3>
+                        <p className="text-gray-600 text-center max-w-sm leading-relaxed text-sm sm:text-base">
+                          Envoyez votre premier message pour démarrer une conversation
+                          professionnelle avec ce client.
+                        </p>
                       </div>
                     ) : (
-                      <div className="space-y-3">
+                      <div className="space-y-3 sm:space-y-6 pb-4 sm:pb-6">
                         {messages.map(message => {
                           // Normaliser les IDs pour comparaison
                           const userId = user?._id || user?.id;
@@ -1235,30 +1339,24 @@ const ProfessionalMessagesPage = () => {
                               key={message._id}
                               className={`flex ${
                                 isFromProfessional ? 'justify-end' : 'justify-start'
-                              }`}
+                              } group`}
                             >
                               <div
-                                className={`max-w-xs md:max-w-md rounded-lg px-4 py-2 ${
+                                className={`max-w-xs sm:max-w-sm md:max-w-lg lg:max-w-xl rounded-2xl sm:rounded-3xl px-3 py-2 sm:px-6 sm:py-4 shadow-lg transition-all duration-300 hover:shadow-xl transform hover:-translate-y-1 ${
                                   isFromProfessional
-                                    ? 'bg-blue-500 text-white'
-                                    : 'bg-white border border-gray-200 text-gray-800'
+                                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white ml-auto'
+                                    : 'bg-white border-2 border-gray-100 text-gray-800 mr-auto hover:border-blue-200'
                                 }`}
                               >
-                                {/* Indicateur de l'expéditeur pour le débogage */}
-                                <div className="text-xs mb-1 opacity-50">
-                                  {isFromProfessional ? '👨‍⚕️ Vous' : '👤 Client'}{' '}
-                                  (normalizedSenderId: {normalizedSenderId.substring(0, 6)}...,
-                                  normalizedUserId: {normalizedUserId.substring(0, 6)}...)
-                                </div>
-
+                                {/* Contenu du message amélioré */}
                                 {message.messageType === 'image' &&
                                   message.attachments &&
                                   message.attachments.length > 0 && (
-                                    <div className="mb-2">
+                                    <div className="mb-4">
                                       <img
                                         src={message.attachments[0].url}
                                         alt={message.attachments[0].filename || 'Image attachée'}
-                                        className="rounded-lg max-w-full h-auto max-h-60 object-contain"
+                                        className="rounded-2xl max-w-full h-auto max-h-80 object-contain shadow-lg"
                                       />
                                     </div>
                                   )}
@@ -1266,19 +1364,44 @@ const ProfessionalMessagesPage = () => {
                                 {message.messageType === 'file' &&
                                   message.attachments &&
                                   message.attachments.length > 0 && (
-                                    <div className="mb-2 flex items-center">
+                                    <div className="mb-4">
                                       <a
                                         href={message.attachments[0].url}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className={`flex items-center p-2 rounded ${
-                                          isFromProfessional ? 'bg-blue-600' : 'bg-gray-100'
+                                        className={`flex items-center p-4 rounded-2xl transition-all duration-200 hover:shadow-md ${
+                                          isFromProfessional
+                                            ? 'bg-blue-700 hover:bg-blue-800'
+                                            : 'bg-gray-50 hover:bg-gray-100'
                                         }`}
                                       >
-                                        <ArrowUpTrayIcon className="h-4 w-4 mr-2" />
-                                        <span className="text-sm truncate max-w-[150px]">
-                                          {message.attachments[0].filename || 'Document attaché'}
-                                        </span>
+                                        <div
+                                          className={`p-2 rounded-xl mr-3 ${
+                                            isFromProfessional ? 'bg-blue-800' : 'bg-blue-100'
+                                          }`}
+                                        >
+                                          <ArrowUpTrayIcon
+                                            className={`h-5 w-5 ${
+                                              isFromProfessional ? 'text-white' : 'text-blue-600'
+                                            }`}
+                                          />
+                                        </div>
+                                        <div className="flex-1">
+                                          <p
+                                            className={`font-semibold text-sm ${
+                                              isFromProfessional ? 'text-white' : 'text-gray-800'
+                                            }`}
+                                          >
+                                            {message.attachments[0].filename || 'Document attaché'}
+                                          </p>
+                                          <p
+                                            className={`text-xs ${
+                                              isFromProfessional ? 'text-blue-200' : 'text-gray-500'
+                                            }`}
+                                          >
+                                            Cliquez pour ouvrir
+                                          </p>
+                                        </div>
                                       </a>
                                     </div>
                                   )}
@@ -1286,40 +1409,94 @@ const ProfessionalMessagesPage = () => {
                                 {message.text &&
                                   message.text !==
                                     `A envoyé un fichier: ${message.attachments?.[0]?.filename}` && (
-                                    <p>{message.text}</p>
+                                    <div className="leading-relaxed">
+                                      <p className="text-base">{message.text}</p>
+                                    </div>
                                   )}
 
-                                {/* Boutons Accepter/Refuser pour les commandes */}
+                                {/* Boutons modernes pour les commandes */}
                                 {message.text &&
                                   message.text.includes('NOUVELLE COMMANDE') &&
                                   !isFromProfessional &&
                                   !message.orderProcessed && (
-                                    <div className="mt-3 flex space-x-2">
+                                    <div className="mt-4 flex space-x-3">
                                       <button
                                         onClick={() => handleAcceptOrder(message)}
-                                        className="px-3 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600"
+                                        className="flex items-center px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white text-sm font-semibold rounded-2xl hover:from-green-600 hover:to-emerald-700 transform hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl"
                                       >
+                                        <svg
+                                          className="w-4 h-4 mr-2"
+                                          fill="none"
+                                          stroke="currentColor"
+                                          viewBox="0 0 24 24"
+                                        >
+                                          <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M5 13l4 4L19 7"
+                                          />
+                                        </svg>
                                         Accepter
                                       </button>
                                       <button
                                         onClick={() => handleRejectOrder(message)}
-                                        className="px-3 py-1 bg-red-500 text-white text-xs rounded hover:bg-red-600"
+                                        className="flex items-center px-4 py-2 bg-gradient-to-r from-red-500 to-pink-600 text-white text-sm font-semibold rounded-2xl hover:from-red-600 hover:to-pink-700 transform hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl"
                                       >
+                                        <svg
+                                          className="w-4 h-4 mr-2"
+                                          fill="none"
+                                          stroke="currentColor"
+                                          viewBox="0 0 24 24"
+                                        >
+                                          <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M6 18L18 6M6 6l12 12"
+                                          />
+                                        </svg>
                                         Refuser
                                       </button>
                                     </div>
                                   )}
 
-                                <p
-                                  className={`text-xs mt-1 ${
-                                    isFromProfessional ? 'text-blue-100' : 'text-gray-500'
+                                {/* Footer du message avec timestamp amélioré */}
+                                <div
+                                  className={`flex items-center justify-between mt-4 pt-3 border-t ${
+                                    isFromProfessional ? 'border-blue-400/30' : 'border-gray-200'
                                   }`}
                                 >
-                                  {formatTimestamp(message.timestamp)}
+                                  <p
+                                    className={`text-xs font-medium ${
+                                      isFromProfessional ? 'text-blue-100' : 'text-gray-500'
+                                    }`}
+                                  >
+                                    {formatTimestamp(message.timestamp)}
+                                  </p>
                                   {message.isRead && isFromProfessional && (
-                                    <span className="ml-1">✓</span>
+                                    <div className="flex items-center space-x-1">
+                                      <div className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
+                                        <svg
+                                          className="w-2.5 h-2.5 text-white"
+                                          fill="none"
+                                          stroke="currentColor"
+                                          viewBox="0 0 24 24"
+                                        >
+                                          <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={3}
+                                            d="M5 13l4 4L19 7"
+                                          />
+                                        </svg>
+                                      </div>
+                                      <span className="text-xs text-green-600 font-semibold">
+                                        Lu
+                                      </span>
+                                    </div>
                                   )}
-                                </p>
+                                </div>
                               </div>
                             </div>
                           );
@@ -1329,9 +1506,9 @@ const ProfessionalMessagesPage = () => {
                     )}
                   </div>
 
-                  {/* Message Input */}
-                  <div className="p-4 border-t border-gray-200">
-                    <form onSubmit={sendMessage} className="flex space-x-2">
+                  {/* Barre de saisie moderne - plus compacte et responsive */}
+                  <div className="bg-white border-t border-gray-200 p-2 sm:p-4 sticky bottom-0">
+                    <form onSubmit={sendMessage} className="flex items-end space-x-2 sm:space-x-3">
                       <input
                         type="file"
                         ref={fileInputRef}
@@ -1341,40 +1518,52 @@ const ProfessionalMessagesPage = () => {
                       <button
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
-                        className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full"
+                        className="p-2 sm:p-2.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg sm:rounded-xl transition-all duration-200"
                         disabled={sendingMessage || uploadingAttachment}
+                        title="Joindre un fichier"
                       >
-                        <ArrowUpTrayIcon className="h-5 w-5" />
+                        <ArrowUpTrayIcon className="h-4 w-4 sm:h-5 sm:w-5" />
                       </button>
+
                       <div className="flex-1 relative">
                         {attachment && (
-                          <div className="absolute -top-10 left-0 right-0 bg-blue-50 p-2 rounded-md flex items-center justify-between">
-                            <span className="text-sm truncate">{attachment.name}</span>
+                          <div className="absolute -top-14 left-0 right-0 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 p-3 rounded-xl flex items-center justify-between shadow-lg">
+                            <div className="flex items-center space-x-2">
+                              <div className="w-6 h-6 bg-blue-100 rounded-lg flex items-center justify-center">
+                                <ArrowUpTrayIcon className="h-3 w-3 text-blue-600" />
+                              </div>
+                              <span className="text-sm font-medium text-gray-800 truncate">
+                                {attachment.name}
+                              </span>
+                            </div>
                             <button
                               type="button"
                               onClick={() => {
                                 setAttachment(null);
                                 if (fileInputRef.current) fileInputRef.current.value = '';
                               }}
-                              className="text-red-500 hover:text-red-700"
+                              className="w-5 h-5 text-red-500 hover:text-red-700 hover:bg-red-100 rounded-full flex items-center justify-center transition-colors duration-200"
                             >
-                              &times;
+                              ×
                             </button>
                           </div>
                         )}
-                        <input
-                          type="text"
-                          value={messageText}
-                          onChange={e => setMessageText(e.target.value)}
-                          placeholder={
-                            attachment
-                              ? 'Ajouter un message (optionnel)...'
-                              : 'Tapez votre message...'
-                          }
-                          className="w-full rounded-full border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 px-4 py-2"
-                          disabled={sendingMessage || uploadingAttachment}
-                        />
+                        <div className="relative">
+                          <input
+                            type="text"
+                            value={messageText}
+                            onChange={e => setMessageText(e.target.value)}
+                            placeholder={
+                              attachment
+                                ? 'Ajouter un message (optionnel)...'
+                                : 'Tapez votre message...'
+                            }
+                            className="w-full rounded-xl border-2 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 px-4 py-3 text-sm transition-all duration-200 placeholder-gray-400"
+                            disabled={sendingMessage || uploadingAttachment}
+                          />
+                        </div>
                       </div>
+
                       <button
                         type="submit"
                         disabled={
@@ -1382,7 +1571,8 @@ const ProfessionalMessagesPage = () => {
                           sendingMessage ||
                           uploadingAttachment
                         }
-                        className="p-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="p-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl"
+                        title="Envoyer le message"
                       >
                         {uploadingAttachment ? (
                           <svg
@@ -1413,8 +1603,42 @@ const ProfessionalMessagesPage = () => {
                   </div>
                 </>
               ) : (
-                <div className="flex items-center justify-center h-full text-gray-500">
-                  Sélectionnez une conversation pour afficher les messages.
+                <div className="hidden lg:flex flex-col items-center justify-center h-full bg-gradient-to-b from-gray-50 to-white">
+                  <div className="text-center max-w-md px-4">
+                    <div className="w-20 h-20 sm:w-32 sm:h-32 bg-gradient-to-br from-blue-100 via-indigo-100 to-purple-100 rounded-full flex items-center justify-center mx-auto mb-6 sm:mb-8 shadow-2xl">
+                      <svg
+                        className="w-10 h-10 sm:w-16 sm:h-16 text-blue-600"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={1.5}
+                          d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                        />
+                      </svg>
+                    </div>
+                    <h3 className="text-xl sm:text-3xl font-bold text-gray-900 mb-3 sm:mb-4">
+                      Centre de Communication
+                    </h3>
+                    <p className="text-gray-600 text-sm sm:text-lg leading-relaxed mb-4 sm:mb-6">
+                      Sélectionnez une conversation dans la liste de gauche pour commencer à
+                      communiquer avec vos clients de manière professionnelle.
+                    </p>
+                    <div className="flex items-center justify-center space-x-2 sm:space-x-4 text-xs sm:text-sm text-gray-500">
+                      <div className="flex items-center space-x-1 sm:space-x-2">
+                        <div className="w-2 h-2 sm:w-3 sm:h-3 bg-green-500 rounded-full animate-pulse"></div>
+                        <span>Interface en temps réel</span>
+                      </div>
+                      <div className="w-1 h-1 bg-gray-300 rounded-full"></div>
+                      <div className="flex items-center space-x-1 sm:space-x-2">
+                        <div className="w-2 h-2 sm:w-3 sm:h-3 bg-blue-500 rounded-full"></div>
+                        <span>Messages sécurisés</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
