@@ -63,11 +63,7 @@ const sessionSchema = new mongoose.Schema({
       return this.category === 'online';
     }
   },
-  // Champ pour indiquer si la session utilise l'appel vidéo intégré
-  useBuiltInVideo: {
-    type: Boolean,
-    default: false
-  },
+  // Built-in video functionality removed - using external links only
   // Zoom specific fields
   zoomMeetingId: {
     type: String,

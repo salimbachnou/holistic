@@ -1,24 +1,24 @@
 const express = require('express');
 const router = express.Router();
-const Professional = require('../models/Professional');
 const User = require('../models/User');
-const Booking = require('../models/Booking');
+const Professional = require('../models/Professional');
+const Session = require('../models/Session');
 
-// Route pour obtenir les statistiques générales pour la page About
-router.get('/about', async (req, res) => {
+// GET /api/stats/global
+router.get('/global', async (req, res) => {
   try {
-    // Récupérer le nombre de professionnels
-    const professionalsCount = await Professional.countDocuments({ isActive: true });
+    // Compter les professionnels
+    const professionalsCount = await Professional.countDocuments();
     
-    // Récupérer le nombre de clients (utilisateurs qui ne sont pas des professionnels)
+    // Compter les clients (users qui ne sont pas des professionnels)
     const clientsCount = await User.countDocuments({ role: 'client' });
     
-    // Récupérer le nombre de sessions (bookings complétées)
-    const sessionsCount = await Booking.countDocuments({ status: 'completed' });
+    // Compter les sessions
+    const sessionsCount = await Session.countDocuments();
     
-    // Pour le taux de satisfaction, on pourrait le calculer à partir des avis
-    // Pour l'instant, on met une valeur fixe
-    const satisfactionRate = 95;
+    // Calculer le taux de satisfaction (pour l'exemple, on met 98%)
+    // TODO: Implémenter le vrai calcul basé sur les reviews
+    const satisfactionRate = 98;
 
     res.json({
       professionals: professionalsCount,
@@ -27,8 +27,8 @@ router.get('/about', async (req, res) => {
       satisfaction: satisfactionRate
     });
   } catch (error) {
-    console.error('Error fetching stats:', error);
-    res.status(500).json({ message: 'Erreur lors de la récupération des statistiques' });
+    console.error('Error fetching global stats:', error);
+    res.status(500).json({ message: 'Error fetching statistics' });
   }
 });
 

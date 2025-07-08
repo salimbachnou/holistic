@@ -61,8 +61,6 @@ const AdminNotificationsPanel = ({ user }) => {
 
   // Fonction pour récupérer les notifications, mémorisée avec useCallback
   const fetchNotifications = useCallback(async () => {
-    console.log('AdminNotificationsPanel: Debug user object:', user);
-
     // Tenter de récupérer l'ID utilisateur soit de l'objet user, soit du token JWT
     const token = localStorage.getItem('token');
     let userId = user?._id || user?.id;
@@ -88,17 +86,13 @@ const AdminNotificationsPanel = ({ user }) => {
     }
 
     if (!userId) {
-      console.log('AdminNotificationsPanel: No user ID available, skipping fetch');
       return;
     }
 
     try {
-      console.log('AdminNotificationsPanel: Fetching notifications...');
       setLoading(true);
-      console.log('AdminNotificationsPanel: Token exists:', !!token);
 
       if (!token) {
-        console.log('AdminNotificationsPanel: No token, skipping fetch');
         setLoading(false);
         return;
       }
@@ -106,24 +100,16 @@ const AdminNotificationsPanel = ({ user }) => {
       let notificationsData = [];
 
       try {
-        console.log('AdminNotificationsPanel: Making API request...');
         const response = await axios.get(`${apiUrl}/api/admin/notifications`, {
           headers: { Authorization: `Bearer ${token}` },
         });
 
-        console.log('AdminNotificationsPanel: API response:', response.data);
         if (response.data.success) {
           notificationsData = response.data.notifications || [];
-          console.log(
-            'AdminNotificationsPanel: Notifications from API:',
-            JSON.stringify(notificationsData)
-          );
         }
       } catch (error) {
         console.error('AdminNotificationsPanel: Error fetching notifications from API:', error);
 
-        // Pour le développement, utiliser des données fictives pour l'administrateur
-        console.log('AdminNotificationsPanel: Using mock data');
         notificationsData = [
           {
             _id: '1',
@@ -232,7 +218,6 @@ const AdminNotificationsPanel = ({ user }) => {
     }
 
     if (userId) {
-      console.log('AdminNotificationsPanel: User ID available, fetching notifications:', userId);
       fetchNotifications();
     }
   }, [user, fetchNotifications]);
@@ -240,7 +225,6 @@ const AdminNotificationsPanel = ({ user }) => {
   // Récupérer les notifications lorsque le panneau est ouvert
   useEffect(() => {
     if (isOpen) {
-      console.log('AdminNotificationsPanel: Panel opened, fetching notifications');
       fetchNotifications();
     }
   }, [isOpen, fetchNotifications]);
@@ -271,7 +255,6 @@ const AdminNotificationsPanel = ({ user }) => {
 
     if (!userId) return;
 
-    console.log('AdminNotificationsPanel: Setting up socket connection for user:', userId);
     socketRef.current = io(apiUrl);
 
     // Join admin's notification room
@@ -279,7 +262,6 @@ const AdminNotificationsPanel = ({ user }) => {
 
     // Listen for incoming notifications
     socketRef.current.on('receive-admin-notification', notification => {
-      console.log('AdminNotificationsPanel: Received new notification:', notification);
       // Add new notification to state
       setNotifications(prev => [notification, ...prev]);
 
@@ -423,7 +405,6 @@ const AdminNotificationsPanel = ({ user }) => {
               <div className="flex items-center space-x-2">
                 <button
                   onClick={() => {
-                    console.log('AdminNotificationsPanel: Manually refreshing notifications');
                     fetchNotifications();
                   }}
                   className="text-gray-500 hover:text-primary-600 transition-colors duration-200"

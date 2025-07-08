@@ -14,21 +14,38 @@ import {
 } from '@heroicons/react/24/outline';
 import { GoogleMap, Marker, useJsApiLoader } from '@react-google-maps/api';
 import axios from 'axios';
-import { addMinutes, format } from 'date-fns';
+import { addMinutes, format, parseISO } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import moment from 'moment';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Calendar, momentLocalizer } from 'react-big-calendar';
-import toast from 'react-hot-toast';
-import { FaVideo } from 'react-icons/fa';
+import { toast } from 'react-hot-toast';
+import {
+  FaCalendarAlt,
+  FaClock,
+  FaEdit,
+  FaEuroSign,
+  FaEye,
+  FaLink,
+  FaMapMarkerAlt,
+  FaPlus,
+  FaTrash,
+  FaUser,
+  FaUsers,
+  FaVideo,
+} from 'react-icons/fa';
 
-import VideoCallComponent from '../../components/VideoCall/VideoCallComponent';
+import BookingModal from '../../components/Common/BookingModal';
+import LoadingSpinner from '../../components/Common/LoadingSpinner';
+import MapPicker from '../../components/Common/MapPicker';
+import Modal from '../../components/Common/Modal';
 import { GOOGLE_MAPS_API_KEY } from '../../config/maps';
 import { useAuth } from '../../contexts/AuthContext';
 import 'moment/locale/fr';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import './ProfessionalSessionsPage.css';
 
+// Configure moment for French locale
 moment.locale('fr');
 const localizer = momentLocalizer(moment);
 
@@ -58,7 +75,7 @@ const ProfessionalSessionsPage = () => {
   const [mapCenter, setMapCenter] = useState(defaultCenter);
   const [selectedLocation, setSelectedLocation] = useState(null);
   const [searchAddress, setSearchAddress] = useState('');
-  const [showVideoCall, setShowVideoCall] = useState(false);
+  // Video call functionality removed - using external links only
   const searchInputRef = useRef(null);
   const [formData, setFormData] = useState({
     title: '',
@@ -74,7 +91,7 @@ const ProfessionalSessionsPage = () => {
       lng: null,
     },
     meetingLink: '',
-    useBuiltInVideo: false,
+    // useBuiltInVideo removed - external links only
     notes: '',
   });
   const [isEditing, setIsEditing] = useState(false);
@@ -195,7 +212,6 @@ const ProfessionalSessionsPage = () => {
     try {
       const booking = await fetchSpecificBooking(bookingId);
       if (booking) {
-        console.log('Booking loaded:', booking);
         // If the booking has a session, try to select that session
         if (booking.service.sessionId) {
           const session = sessions.find(s => s._id === booking.service.sessionId);
@@ -215,23 +231,13 @@ const ProfessionalSessionsPage = () => {
     return () => {
       delete window.loadSpecificBooking;
     };
-  }, [sessions]);
+  }, [sessions, loadSpecificBooking]);
 
   const handleSessionSelect = session => {
-    console.log('=== Session Selection Debug ===');
-    console.log('Selected session:', session);
-    console.log('Session professionalId:', session.professionalId);
-    console.log('Current user ID:', user?.id);
-    console.log('Current user:', user);
-
     setSelectedSession(session);
     setIsModalOpen(true);
     fetchSessionBookings(session._id);
-
-    // If session has useBuiltInVideo, set up for potential video call
-    if (session.category === 'online' && session.useBuiltInVideo) {
-      setShowVideoCall(false); // Don't show it immediately, only when user clicks to join
-    }
+    // Video call functionality removed - using external links only
   };
 
   const handleCloseModal = () => {
@@ -247,23 +253,56 @@ const ProfessionalSessionsPage = () => {
       const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
       const token = localStorage.getItem('token');
 
-      // Préparer les données avec une valeur par défaut pour meetingLink si useBuiltInVideo est true
+      // Prepare session data - only external meeting links supported
       const sessionData = { ...formData };
-      if (sessionData.category === 'online' && sessionData.useBuiltInVideo) {
-        sessionData.meetingLink = 'builtin://video-call';
+
+      // Clean up data based on category
+      if (sessionData.category === 'online') {
+        // For online sessions, remove location fields if they're empty/null
+        if (!sessionData.location || sessionData.location.trim() === '') {
+          delete sessionData.location;
+        }
+        if (
+          !sessionData.locationCoordinates ||
+          sessionData.locationCoordinates.lat === null ||
+          sessionData.locationCoordinates.lng === null
+        ) {
+          delete sessionData.locationCoordinates;
+        }
+      } else {
+        // For physical sessions, ensure meetingLink is not required
+        if (!sessionData.meetingLink || sessionData.meetingLink.trim() === '') {
+          delete sessionData.meetingLink;
+        }
+        // Clean up locationCoordinates if they're null
+        if (
+          sessionData.locationCoordinates &&
+          (sessionData.locationCoordinates.lat === null ||
+            sessionData.locationCoordinates.lng === null)
+        ) {
+          delete sessionData.locationCoordinates;
+        }
       }
+
+      console.log('=== FRONTEND SESSION CREATION DEBUG ===');
+      console.log('Form data:', JSON.stringify(formData, null, 2));
+      console.log('Session data to send:', JSON.stringify(sessionData, null, 2));
+      console.log('Is editing:', isEditing);
 
       if (isEditing) {
         // Update session
+        console.log('Updating session with ID:', sessionData._id);
         await axios.put(`${API_URL}/api/sessions/${sessionData._id}`, sessionData, {
           headers: { Authorization: `Bearer ${token}` },
         });
         toast.success('Session mise à jour avec succès');
       } else {
         // Create new session
-        await axios.post(`${API_URL}/api/sessions`, sessionData, {
+        console.log('Creating new session...');
+        const response = await axios.post(`${API_URL}/api/sessions`, sessionData, {
           headers: { Authorization: `Bearer ${token}` },
         });
+        console.log('Session creation response:', response.data);
         toast.success('Session créée avec succès');
       }
 
@@ -271,7 +310,9 @@ const ProfessionalSessionsPage = () => {
       resetForm();
       fetchSessions();
     } catch (error) {
+      console.error('=== FRONTEND SESSION CREATION ERROR ===');
       console.error('Error saving session:', error);
+      console.error('Error response:', error.response?.data);
       toast.error(error.response?.data?.message || 'Erreur lors de la sauvegarde de la session');
     }
   };
@@ -290,7 +331,7 @@ const ProfessionalSessionsPage = () => {
       location: session.location || '',
       locationCoordinates,
       meetingLink: session.meetingLink || '',
-      useBuiltInVideo: session.useBuiltInVideo || false,
+      // useBuiltInVideo removed - external links only
       notes: session.notes || '',
     });
 
@@ -340,7 +381,7 @@ const ProfessionalSessionsPage = () => {
         lng: null,
       },
       meetingLink: '',
-      useBuiltInVideo: false,
+      // useBuiltInVideo removed - external links only
       notes: '',
     });
     setSelectedLocation(null);
@@ -564,91 +605,28 @@ const ProfessionalSessionsPage = () => {
     }
   };
 
-  const [videoAccessToken, setVideoAccessToken] = useState(null);
-  const [videoAccessError, setVideoAccessError] = useState(null);
-
-  const handleJoinVideoCall = async () => {
-    try {
-      // Debug logging
-      console.log('=== ProfessionalSessionsPage Debug ===');
-      console.log('user:', user);
-      console.log('user?.id:', user?.id);
-      console.log('user?._id:', user?._id);
-      console.log('user?.role:', user?.role);
-      console.log('selectedSession.professionalId:', selectedSession.professionalId);
-
-      // Get video access token
-      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
-      const token = localStorage.getItem('token');
-
-      toast.loading("Vérification de l'accès vidéo...", { id: 'video-access' });
-
-      const response = await axios.get(
-        `${API_URL}/api/sessions/${selectedSession._id}/video-access`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-
-      if (response.data.success) {
-        setVideoAccessToken(response.data.videoAccessToken);
-        setVideoAccessError(null);
-        setShowVideoCall(true);
-        setIsModalOpen(false);
-        toast.success('Accès vidéo autorisé', { id: 'video-access' });
-      } else {
-        throw new Error(response.data.message || 'Accès vidéo refusé');
-      }
-    } catch (error) {
-      console.error('Video access error:', error);
-      const errorMessage = error.response?.data?.message || "Erreur lors de l'accès vidéo";
-      setVideoAccessError(errorMessage);
-      toast.error(errorMessage, { id: 'video-access' });
-    }
-  };
-
-  const handleEndVideoCall = () => {
-    setShowVideoCall(false);
-    setIsModalOpen(true);
-    setVideoAccessToken(null);
-    setVideoAccessError(null);
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
-      {/* Header moderne avec gradient */}
-      <div className="bg-white shadow-lg border-b border-gray-200">
-        <div className="container mx-auto px-6 py-8">
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+      {/* Header moderne et responsive */}
+      <div className="bg-white shadow-lg border-b border-gray-200 sticky top-0 z-40">
+        <div className="container mx-auto px-3 sm:px-6 py-4 sm:py-8">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
+            <div className="flex-1">
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
                 Gestion des Sessions
               </h1>
-              <p className="text-gray-600 mt-2">Organisez et gérez vos sessions avec vos clients</p>
+              <p className="text-gray-600 mt-1 sm:mt-2 text-sm sm:text-base">
+                Organisez et gérez vos sessions avec vos clients
+              </p>
             </div>
-            <div className="flex space-x-3">
+            <div className="flex flex-wrap gap-2 sm:gap-3 w-full sm:w-auto">
               <button
                 onClick={() => loadSpecificBooking('6868a28a160cd27b20e2b91f')}
-                className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white px-4 py-3 rounded-xl flex items-center shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
+                className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white px-3 sm:px-4 py-2 sm:py-3 rounded-lg sm:rounded-xl flex items-center shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 text-sm sm:text-base flex-1 sm:flex-none justify-center"
                 title="Charger la réservation de Samih Bachnou"
               >
-                <svg className="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                  />
-                </svg>
-                Charger Réservation
-              </button>
-              <button
-                onClick={fetchSessions}
-                className="bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700 text-white px-4 py-3 rounded-xl flex items-center shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
-                disabled={loading}
-              >
                 <svg
-                  className={`h-5 w-5 mr-2 ${loading ? 'animate-spin' : ''}`}
+                  className="h-4 w-4 sm:h-5 sm:w-5 mr-1 sm:mr-2"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -660,54 +638,83 @@ const ProfessionalSessionsPage = () => {
                     d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
                   />
                 </svg>
-                {loading ? 'Actualisation...' : 'Actualiser'}
+                <span className="hidden sm:inline">Charger Réservation</span>
+                <span className="sm:hidden">Charger</span>
+              </button>
+              <button
+                onClick={fetchSessions}
+                className="bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700 text-white px-3 sm:px-4 py-2 sm:py-3 rounded-lg sm:rounded-xl flex items-center shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 text-sm sm:text-base flex-1 sm:flex-none justify-center"
+                disabled={loading}
+              >
+                <svg
+                  className={`h-4 w-4 sm:h-5 sm:w-5 mr-1 sm:mr-2 ${loading ? 'animate-spin' : ''}`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                  />
+                </svg>
+                <span className="hidden sm:inline">
+                  {loading ? 'Actualisation...' : 'Actualiser'}
+                </span>
+                <span className="sm:hidden">{loading ? '...' : 'Sync'}</span>
               </button>
               <button
                 onClick={handleNewSession}
-                className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white px-6 py-3 rounded-xl flex items-center shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
+                className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg sm:rounded-xl flex items-center shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 text-sm sm:text-base flex-1 sm:flex-none justify-center"
               >
-                <PlusIcon className="h-5 w-5 mr-2" />
-                Nouvelle Session
+                <PlusIcon className="h-4 w-4 sm:h-5 sm:w-5 mr-1 sm:mr-2" />
+                <span className="hidden sm:inline">Nouvelle Session</span>
+                <span className="sm:hidden">Nouveau</span>
               </button>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Contenu principal */}
-      <div className="container mx-auto px-6 py-8">
+      {/* Contenu principal responsive */}
+      <div className="container mx-auto px-3 sm:px-6 py-4 sm:py-8">
         {loading ? (
-          <div className="flex flex-col items-center justify-center py-20">
+          <div className="flex flex-col items-center justify-center py-12 sm:py-20">
             <div className="relative">
-              <div className="w-16 h-16 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
-              <div className="absolute inset-0 w-16 h-16 border-4 border-purple-200 border-b-purple-600 rounded-full animate-ping"></div>
+              <div className="w-12 h-12 sm:w-16 sm:h-16 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
+              <div className="absolute inset-0 w-12 h-12 sm:w-16 sm:h-16 border-4 border-purple-200 border-b-purple-600 rounded-full animate-ping"></div>
             </div>
-            <p className="text-gray-600 mt-4 text-lg">Chargement de vos sessions...</p>
+            <p className="text-gray-600 mt-4 text-base sm:text-lg">Chargement de vos sessions...</p>
           </div>
         ) : (
-          <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
-            {/* Header du calendrier */}
-            <div className="bg-gradient-to-r from-indigo-500 to-purple-600 px-6 py-4">
-              <h2 className="text-xl font-semibold text-white flex items-center">
-                <ClockIcon className="h-6 w-6 mr-2" />
-                Calendrier des Sessions
+          <div className="bg-white rounded-xl sm:rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+            {/* Header du calendrier responsive */}
+            <div className="bg-gradient-to-r from-indigo-500 to-purple-600 px-4 sm:px-6 py-3 sm:py-4">
+              <h2 className="text-lg sm:text-xl font-semibold text-white flex items-center">
+                <ClockIcon className="h-5 w-5 sm:h-6 sm:w-6 mr-2" />
+                <span className="hidden sm:inline">Calendrier des Sessions</span>
+                <span className="sm:hidden">Sessions</span>
               </h2>
             </div>
 
-            {/* Calendrier avec style amélioré */}
-            <div className="p-6">
-              <div className="calendar-container">
+            {/* Calendrier avec style amélioré et responsive */}
+            <div className="p-3 sm:p-6">
+              <div className="calendar-container overflow-hidden">
                 <Calendar
                   localizer={localizer}
                   events={calendarEvents}
                   startAccessor="start"
                   endAccessor="end"
-                  style={{ height: 650 }}
+                  style={{
+                    height: window.innerWidth < 640 ? 400 : window.innerWidth < 768 ? 500 : 650,
+                    fontSize: window.innerWidth < 640 ? '12px' : '14px',
+                  }}
                   onSelectEvent={event => handleSessionSelect(event.resource)}
                   eventPropGetter={event => {
                     const status = event.resource.status;
                     let backgroundColor = '#4F46E5';
-                    const borderRadius = '8px';
+                    const borderRadius = '6px';
                     const border = 'none';
 
                     if (status === 'cancelled') {
@@ -888,58 +895,34 @@ const ProfessionalSessionsPage = () => {
                       Réunion en ligne
                     </h3>
                     <div className="bg-gradient-to-br from-indigo-50 to-purple-50 p-6 rounded-xl border border-indigo-100">
-                      {selectedSession.useBuiltInVideo ? (
-                        <div>
-                          <p className="text-gray-700 mb-4">
-                            <strong>Type:</strong> Appel vidéo intégré
-                          </p>
-                          <button
-                            onClick={handleJoinVideoCall}
-                            className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white px-6 py-3 rounded-xl flex items-center shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
+                      <div>
+                        <p className="text-gray-700 mb-3">
+                          <strong>Lien de réunion:</strong>
+                        </p>
+                        <a
+                          href={selectedSession.meetingLink}
+                          className="inline-flex items-center bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-xl transition-colors duration-300"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          Rejoindre la réunion
+                          <svg
+                            className="ml-2 h-4 w-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
                           >
-                            <FaVideo className="mr-2" />
-                            Rejoindre l'appel vidéo
-                          </button>
-                        </div>
-                      ) : (
-                        <div>
-                          <p className="text-gray-700 mb-3">
-                            <strong>Lien de réunion:</strong>
-                          </p>
-                          <a
-                            href={selectedSession.meetingLink}
-                            className="inline-flex items-center bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-xl transition-colors duration-300"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            Rejoindre la réunion
-                            <svg
-                              className="ml-2 h-4 w-4"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-                              />
-                            </svg>
-                          </a>
-                        </div>
-                      )}
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                            />
+                          </svg>
+                        </a>
+                      </div>
 
-                      {/* Video Access Error Display */}
-                      {videoAccessError && (
-                        <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-xl">
-                          <div className="flex items-center">
-                            <ExclamationTriangleIcon className="h-5 w-5 text-red-600 mr-2" />
-                            <span className="text-red-800 font-medium">Erreur d'accès vidéo</span>
-                          </div>
-                          <p className="text-red-700 mt-2 text-sm">{videoAccessError}</p>
-                        </div>
-                      )}
+                      {/* Video access errors removed - using external links only */}
                     </div>
                   </div>
                 )}
@@ -1106,31 +1089,7 @@ const ProfessionalSessionsPage = () => {
           </div>
         )}
 
-        {/* Video Call Modal */}
-        {showVideoCall && selectedSession && videoAccessToken && (
-          <div className="fixed inset-0 z-50">
-            <VideoCallComponent
-              sessionId={selectedSession._id}
-              professionalId={
-                selectedSession.professionalId.userId ||
-                selectedSession.professionalId._id ||
-                selectedSession.professionalId
-              }
-              clientId="demo-client-id"
-              currentUserId={user?.id || user?._id}
-              currentUserRole={user?.role}
-              currentUserName={user?.fullName || `${user?.firstName} ${user?.lastName}`}
-              videoAccessToken={videoAccessToken}
-              onEndCall={handleEndVideoCall}
-              onSecurityError={error => {
-                console.error('Video security error:', error);
-                setVideoAccessError(error);
-                toast.error(`Erreur de sécurité: ${error}`);
-                handleEndVideoCall();
-              }}
-            />
-          </div>
-        )}
+        {/* Video Call functionality removed - using external links only */}
 
         {/* Session Form Modal */}
         {isFormModalOpen && (
@@ -1348,113 +1307,27 @@ const ProfessionalSessionsPage = () => {
                           Configuration en ligne
                         </h3>
 
-                        <div className="mb-6">
-                          <label className="block text-sm font-medium text-gray-700 mb-3">
-                            Type de réunion en ligne *
+                        <div>
+                          <label
+                            htmlFor="meetingLink"
+                            className="block text-sm font-medium text-gray-700 mb-2"
+                          >
+                            Lien de réunion externe *
                           </label>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <label className="relative cursor-pointer">
-                              <input
-                                type="radio"
-                                name="useBuiltInVideo"
-                                checked={!formData.useBuiltInVideo}
-                                onChange={() =>
-                                  setFormData(prev => ({ ...prev, useBuiltInVideo: false }))
-                                }
-                                className="sr-only"
-                              />
-                              <div
-                                className={`p-4 rounded-xl border-2 transition-all duration-200 ${
-                                  !formData.useBuiltInVideo
-                                    ? 'border-indigo-500 bg-indigo-50 ring-2 ring-indigo-200'
-                                    : 'border-gray-300 bg-white hover:bg-gray-50'
-                                }`}
-                              >
-                                <div className="flex items-center">
-                                  <svg
-                                    className="h-5 w-5 text-indigo-600 mr-3"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                  >
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      strokeWidth={2}
-                                      d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
-                                    />
-                                  </svg>
-                                  <span className="font-medium text-gray-900">Lien externe</span>
-                                </div>
-                                <p className="text-sm text-gray-600 mt-2">
-                                  Zoom, Teams, Meet, etc.
-                                </p>
-                              </div>
-                            </label>
-
-                            <label className="relative cursor-pointer">
-                              <input
-                                type="radio"
-                                name="useBuiltInVideo"
-                                checked={formData.useBuiltInVideo}
-                                onChange={() =>
-                                  setFormData(prev => ({
-                                    ...prev,
-                                    useBuiltInVideo: true,
-                                    meetingLink: '',
-                                  }))
-                                }
-                                className="sr-only"
-                              />
-                              <div
-                                className={`p-4 rounded-xl border-2 transition-all duration-200 ${
-                                  formData.useBuiltInVideo
-                                    ? 'border-indigo-500 bg-indigo-50 ring-2 ring-indigo-200'
-                                    : 'border-gray-300 bg-white hover:bg-gray-50'
-                                }`}
-                              >
-                                <div className="flex items-center">
-                                  <FaVideo className="h-5 w-5 text-indigo-600 mr-3" />
-                                  <span className="font-medium text-gray-900">Appel intégré</span>
-                                </div>
-                                <p className="text-sm text-gray-600 mt-2">Solution intégrée</p>
-                              </div>
-                            </label>
-                          </div>
+                          <input
+                            type="url"
+                            id="meetingLink"
+                            name="meetingLink"
+                            value={formData.meetingLink}
+                            onChange={handleInputChange}
+                            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors duration-200"
+                            placeholder="https://zoom.us/j/123456789... (Zoom, Teams, Meet, etc.)"
+                            required={formData.category === 'online'}
+                          />
+                          <p className="text-sm text-gray-500 mt-2">
+                            Fournissez un lien de réunion externe (Zoom, Teams, Google Meet, etc.)
+                          </p>
                         </div>
-
-                        {!formData.useBuiltInVideo ? (
-                          <div>
-                            <label
-                              htmlFor="meetingLink"
-                              className="block text-sm font-medium text-gray-700 mb-2"
-                            >
-                              Lien de réunion *
-                            </label>
-                            <input
-                              type="url"
-                              id="meetingLink"
-                              name="meetingLink"
-                              value={formData.meetingLink}
-                              onChange={handleInputChange}
-                              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors duration-200"
-                              placeholder="https://zoom.us/j/123456789..."
-                              required={formData.category === 'online' && !formData.useBuiltInVideo}
-                            />
-                          </div>
-                        ) : (
-                          <div className="bg-gradient-to-r from-indigo-100 to-purple-100 p-6 rounded-xl border border-indigo-200">
-                            <div className="flex items-center text-indigo-700 mb-3">
-                              <FaVideo className="mr-3 h-6 w-6" />
-                              <span className="font-semibold text-lg">Appel vidéo intégré</span>
-                            </div>
-                            <p className="text-indigo-600">
-                              Cette session utilisera notre solution d'appel vidéo intégrée. Les
-                              participants pourront rejoindre directement depuis l'application sans
-                              logiciel supplémentaire.
-                            </p>
-                          </div>
-                        )}
                       </div>
                     )}
 

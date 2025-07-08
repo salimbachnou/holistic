@@ -33,7 +33,6 @@ import ClientProfilePage from './pages/ClientProfilePage';
 import ClientSessionsPage from './pages/ClientSessionsPage';
 import ContactPage from './pages/ContactPage';
 import ConversationsPage from './pages/ConversationsPage';
-import DashboardPage from './pages/DashboardPage';
 import EventDetailPage from './pages/EventDetailPage';
 import EventsPage from './pages/EventsPage';
 import FavoritesPage from './pages/FavoritesPage';
@@ -58,7 +57,7 @@ import ProfessionalDetailsPage from './pages/ProfessionalDetailsPage';
 import ProfessionalProfilePage from './pages/ProfessionalProfilePage';
 import ProfessionalsPage from './pages/ProfessionalsPage';
 import ProfilePage from './pages/ProfilePage';
-import VideoCallPage from './pages/VideoCallPage';
+// VideoCallPage removed - using external links only
 
 // Protected Route Component
 const ProtectedRoute = ({ children, requireRole }) => {
@@ -136,7 +135,7 @@ const PublicRoute = ({ children }) => {
   }
 
   if (isAuthenticated) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to="/profile" replace />;
   }
 
   return children;
@@ -241,18 +240,6 @@ const AppContent = () => {
 
           {/* Protected Routes */}
           <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute>
-                <AuthChecker>
-                  <Layout>
-                    <DashboardPage />
-                  </Layout>
-                </AuthChecker>
-              </ProtectedRoute>
-            }
-          />
-          <Route
             path="/profile"
             element={
               <ProtectedRoute>
@@ -288,16 +275,7 @@ const AppContent = () => {
               </ProtectedRoute>
             }
           />
-          <Route
-            path="/video-call/:sessionId"
-            element={
-              <ProtectedRoute>
-                <AuthChecker>
-                  <VideoCallPage />
-                </AuthChecker>
-              </ProtectedRoute>
-            }
-          />
+          {/* Video call route removed - using external links only */}
           <Route
             path="/favorites"
             element={

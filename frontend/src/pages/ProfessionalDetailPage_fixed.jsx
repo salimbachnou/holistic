@@ -18,7 +18,6 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 
 import EnhancedBookingModal from '../components/Common/EnhancedBookingModal';
 import LoadingSpinner from '../components/Common/LoadingSpinner';
-import PlanningSection from '../components/Common/PlanningSection';
 import { useAuth } from '../contexts/AuthContext';
 import apiService from '../services/api';
 import { handleImageError, getDefaultFallbackImage } from '../utils/imageUtils';
@@ -280,7 +279,7 @@ const ProfessionalDetailPage = () => {
                   onError={handleImageError}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent"></div>
-
+                
                 {/* Premium Floating Info Card */}
                 <div className="absolute bottom-8 left-8 right-8 bg-white/95 backdrop-blur-lg rounded-2xl p-8 shadow-2xl border border-white/20">
                   <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
@@ -316,8 +315,7 @@ const ProfessionalDetailPage = () => {
                         )}
                       </div>
                       <p className="text-gray-600 text-lg leading-relaxed max-w-2xl">
-                        {professional.description?.slice(0, 150) ||
-                          'Découvrez nos services de qualité pour votre bien-être.'}
+                        {professional.description?.slice(0, 150) || 'Découvrez nos services de qualité pour votre bien-être.'}
                         {professional.description?.length > 150 && '...'}
                       </p>
                     </div>
@@ -399,16 +397,183 @@ const ProfessionalDetailPage = () => {
               </div>
             </div>
 
-            {/* Planning Section */}
-            <div id="planning-section">
-              <PlanningSection
-                currentWeekStart={currentWeekStart}
-                weekDays={weekDays}
-                handlePreviousWeek={handlePreviousWeek}
-                handleNextWeek={handleNextWeek}
-                getDaysSessions={getDaysSessions}
-                handleBookSession={handleBookSession}
-              />
+            {/* Planning/Calendar */}
+            <div id="planning-section" className="bg-white rounded-2xl shadow-lg overflow-hidden transform hover:shadow-xl transition-all duration-300">
+              <div className="bg-gradient-to-r from-primary-600 via-primary-700 to-purple-600 p-8">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  <div>
+                    <h2 className="text-2xl font-bold text-white mb-2">Planning des Sessions</h2>
+                    <p className="text-white/90">
+                      {format(currentWeekStart, 'd MMMM', { locale: fr })} -{' '}
+                      {format(addDays(currentWeekStart, 6), 'd MMMM yyyy', { locale: fr })}
+                    </p>
+                  </div>
+                  <div className="flex space-x-3">
+                    <button
+                      onClick={handlePreviousWeek}
+                      className="px-6 py-3 bg-white/20 hover:bg-white/30 rounded-xl text-white font-semibold transition-all duration-200 flex items-center backdrop-blur-sm"
+                    >
+                      <svg className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                      </svg>
+                      Précédent
+                    </button>
+                    <button
+                      onClick={handleNextWeek}
+                      className="px-6 py-3 bg-white/20 hover:bg-white/30 rounded-xl text-white font-semibold transition-all duration-200 flex items-center backdrop-blur-sm"
+                    >
+                      Suivant
+                      <svg className="h-5 w-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-7 gap-px bg-gray-200">
+                {weekDays.map((day, index) => (
+                  <div key={index} className="bg-white">
+                    <div
+                      className={`p-4 text-center border-b-2 ${
+                        format(day, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd')
+                          ? 'bg-gradient-to-br from-primary-50 to-primary-100 border-primary-500'
+                          : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+                      } transition-colors duration-200`}
+                    >
+                      <p className="font-bold text-gray-900 text-sm uppercase tracking-wide">
+                        {format(day, 'EEEE', { locale: fr })}
+                      </p>
+                      <p
+                        className={`text-2xl font-bold mt-1 ${
+                          format(day, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd')
+                            ? 'text-primary-600'
+                            : 'text-gray-700'
+                        }`}
+                      >
+                        {format(day, 'd', { locale: fr })}
+                      </p>
+                      <p className="text-xs text-gray-500 uppercase tracking-wide">
+                        {format(day, 'MMM', { locale: fr })}
+                      </p>
+                    </div>
+                    <div className="p-4 min-h-[200px] max-h-[400px] overflow-y-auto space-y-3">
+                      {getDaysSessions(day).length > 0 ? (
+                        getDaysSessions(day).map(session => {
+                          const sessionDate = parseISO(session.startTime);
+                          const isPast = sessionDate < new Date();
+
+                          return (
+                            <button
+                              key={session._id}
+                              onClick={() => handleBookSession(session)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  e.preventDefault();
+                                  handleBookSession(session);
+                                }
+                              }}
+                              className={`w-full text-left p-4 rounded-xl transition-all duration-300 transform hover:scale-105 ${
+                                isPast
+                                  ? 'bg-gray-100 border-2 border-gray-300 cursor-not-allowed opacity-60'
+                                  : 'bg-gradient-to-br from-primary-50 to-primary-100 border-2 border-primary-200 hover:from-primary-100 hover:to-primary-200 hover:border-primary-300 hover:shadow-lg cursor-pointer'
+                              }`}
+                              disabled={isPast}
+                            >
+                              <div className="flex justify-between items-start mb-3">
+                                <h3
+                                  className={`font-bold text-lg ${
+                                    isPast ? 'text-gray-600' : 'text-primary-800'
+                                  }`}
+                                >
+                                  {session.title}
+                                </h3>
+                                {isPast && (
+                                  <span className="text-xs px-2 py-1 bg-gray-300 text-gray-700 rounded-full font-medium">
+                                    Passée
+                                  </span>
+                                )}
+                              </div>
+
+                              <div className="flex items-center mb-3 text-sm">
+                                <FaClock
+                                  className={`mr-2 ${isPast ? 'text-gray-500' : 'text-primary-600'}`}
+                                />
+                                <span className="font-semibold text-gray-700">
+                                  {format(parseISO(session.startTime), 'HH:mm')}
+                                </span>
+                                <span className="mx-2 text-gray-400">•</span>
+                                <span className="text-gray-600">{session.duration} min</span>
+                              </div>
+
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center text-sm">
+                                  <FaEuroSign
+                                    className={`mr-1 ${isPast ? 'text-gray-500' : 'text-green-600'}`}
+                                  />
+                                  <span className="font-bold text-green-700">
+                                    {session.price} MAD
+                                  </span>
+                                </div>
+                                <div className="flex items-center text-sm">
+                                  <FaUserFriends
+                                    className={`mr-1 ${isPast ? 'text-gray-500' : 'text-primary-600'}`}
+                                  />
+                                  <span className="font-medium text-gray-700">
+                                    {session.participants?.length || 0}/{session.maxParticipants}
+                                  </span>
+                                </div>
+                              </div>
+
+                              {!isPast && (
+                                <div className="mt-3 pt-3 border-t border-primary-200 text-center">
+                                  <span className="text-sm text-primary-700 font-bold inline-flex items-center group">
+                                    <FaClock className="mr-2 group-hover:animate-spin" />
+                                    Réserver cette session
+                                    <svg
+                                      className="h-4 w-4 ml-2 transform group-hover:translate-x-1 transition-transform"
+                                      fill="none"
+                                      viewBox="0 0 24 24"
+                                      stroke="currentColor"
+                                    >
+                                      <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M14 5l7 7m0 0l-7 7m7-7H3"
+                                      />
+                                    </svg>
+                                  </span>
+                                </div>
+                              )}
+                            </button>
+                          );
+                        })
+                      ) : (
+                        <div className="flex flex-col items-center justify-center h-full py-12 text-center">
+                          <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                            <svg
+                              className="h-8 w-8 text-gray-400"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={1.5}
+                                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                              />
+                            </svg>
+                          </div>
+                          <p className="text-gray-500 font-medium">Aucune session</p>
+                          <p className="text-gray-400 text-sm mt-1">programmée ce jour</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
 

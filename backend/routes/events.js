@@ -5,6 +5,195 @@ const { isAuthenticated, isProfessional, isAdmin } = require('../middleware/auth
 const Event = require('../models/Event');
 const User = require('../models/User');
 
+// Ajouter un avis sur un événement
+router.post('/:id/reviews', isAuthenticated, async (req, res) => {
+  try {
+    const event = await Event.findById(req.params.id);
+    
+    if (!event) {
+      return res.status(404).json({ message: 'Événement non trouvé' });
+    }
+
+    // Vérifier si l'utilisateur a participé à l'événement
+    const hasParticipated = event.participants.some(
+      p => p.user.toString() === req.user._id.toString() && p.status === 'confirmed'
+    );
+
+    if (!hasParticipated) {
+      return res.status(403).json({ message: 'Vous devez avoir participé à l\'événement pour laisser un avis' });
+    }
+
+    // Vérifier si l'utilisateur a déjà laissé un avis
+    const hasReviewed = event.reviews.some(
+      review => review.user.toString() === req.user._id.toString()
+    );
+
+    if (hasReviewed) {
+      return res.status(400).json({ message: 'Vous avez déjà laissé un avis pour cet événement' });
+    }
+
+    const { rating, comment } = req.body;
+
+    if (!rating || rating < 1 || rating > 5) {
+      return res.status(400).json({ message: 'La note doit être comprise entre 1 et 5' });
+    }
+
+    // Ajouter l'avis
+    event.reviews.push({
+      user: req.user._id,
+      rating,
+      comment
+    });
+
+    // Mettre à jour les statistiques
+    event.updateReviewStats();
+    await event.save();
+
+    res.json({ message: 'Avis ajouté avec succès', event });
+  } catch (error) {
+    console.error('Error adding review:', error);
+    res.status(500).json({ message: 'Erreur lors de l\'ajout de l\'avis' });
+  }
+});
+
+// Modifier son avis
+router.put('/:eventId/reviews/:reviewId', isAuthenticated, async (req, res) => {
+  try {
+    const event = await Event.findById(req.params.eventId);
+    
+    if (!event) {
+      return res.status(404).json({ message: 'Événement non trouvé' });
+    }
+
+    const review = event.reviews.id(req.params.reviewId);
+    
+    if (!review) {
+      return res.status(404).json({ message: 'Avis non trouvé' });
+    }
+
+    if (review.user.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'Non autorisé à modifier cet avis' });
+    }
+
+    const { rating, comment } = req.body;
+
+    if (rating) {
+      if (rating < 1 || rating > 5) {
+        return res.status(400).json({ message: 'La note doit être comprise entre 1 et 5' });
+      }
+      review.rating = rating;
+    }
+
+    if (comment !== undefined) {
+      review.comment = comment;
+    }
+
+    // Mettre à jour les statistiques
+    event.updateReviewStats();
+    await event.save();
+
+    res.json({ message: 'Avis modifié avec succès', event });
+  } catch (error) {
+    console.error('Error updating review:', error);
+    res.status(500).json({ message: 'Erreur lors de la modification de l\'avis' });
+  }
+});
+
+// Supprimer son avis
+router.delete('/:eventId/reviews/:reviewId', isAuthenticated, async (req, res) => {
+  try {
+    const event = await Event.findById(req.params.eventId);
+    
+    if (!event) {
+      return res.status(404).json({ message: 'Événement non trouvé' });
+    }
+
+    const review = event.reviews.id(req.params.reviewId);
+    
+    if (!review) {
+      return res.status(404).json({ message: 'Avis non trouvé' });
+    }
+
+    if (review.user.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'Non autorisé à supprimer cet avis' });
+    }
+
+    review.remove();
+    
+    // Mettre à jour les statistiques
+    event.updateReviewStats();
+    await event.save();
+
+    res.json({ message: 'Avis supprimé avec succès' });
+  } catch (error) {
+    console.error('Error deleting review:', error);
+    res.status(500).json({ message: 'Erreur lors de la suppression de l\'avis' });
+  }
+});
+
+// Mettre à jour le calcul des statistiques pour inclure la satisfaction
+router.get('/stats', async (req, res) => {
+  try {
+    // Nombre total d'événements approuvés
+    const totalEvents = await Event.countDocuments({ status: 'approved' });
+
+    // Nombre total de participants (statut confirmé)
+    const events = await Event.find({ status: 'approved' });
+    let totalParticipants = 0;
+    let totalRating = 0;
+    let totalReviews = 0;
+
+    events.forEach(event => {
+      // Compter les participants confirmés
+      totalParticipants += event.participants.filter(p => p.status === 'confirmed').length;
+      
+      // Calculer la moyenne des notes
+      if (event.stats.totalReviews > 0) {
+        totalRating += event.stats.averageRating * event.stats.totalReviews;
+        totalReviews += event.stats.totalReviews;
+      }
+    });
+
+    // Calculer la satisfaction moyenne globale
+    const satisfaction = totalReviews > 0 
+      ? Number((totalRating / totalReviews).toFixed(1))
+      : 0;
+
+    // Calcul de la croissance
+    const today = new Date();
+    const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+    
+    const currentMonthEvents = await Event.countDocuments({
+      status: 'approved',
+      createdAt: { $gte: new Date(today.getFullYear(), today.getMonth(), 1) }
+    });
+
+    const lastMonthEvents = await Event.countDocuments({
+      status: 'approved',
+      createdAt: { 
+        $gte: lastMonth,
+        $lt: new Date(today.getFullYear(), today.getMonth(), 1)
+      }
+    });
+
+    const growth = lastMonthEvents === 0 ? 100 : 
+      Math.round(((currentMonthEvents - lastMonthEvents) / lastMonthEvents) * 100);
+
+    res.json({
+      stats: {
+        totalEvents,
+        totalParticipants,
+        satisfaction,
+        totalReviews,
+        growth: `${growth > 0 ? '+' : ''}${growth}%`
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching event stats:', error);
+    res.status(500).json({ message: 'Erreur lors de la récupération des statistiques' });
+  }
+});
+
 // Récupérer tous les événements publics (approuvés)
 router.get('/', async (req, res) => {
   try {

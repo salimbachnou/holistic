@@ -1,3 +1,16 @@
+import {
+  Star,
+  MapPin,
+  Phone,
+  Mail,
+  Clock,
+  DollarSign,
+  User,
+  Calendar,
+  MessageCircle,
+  Award,
+  CheckCircle,
+} from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 
@@ -71,7 +84,7 @@ const ProfessionalDetailsPage = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
         <LoadingSpinner />
       </div>
     );
@@ -79,21 +92,27 @@ const ProfessionalDetailsPage = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-700 mb-4">Une erreur est survenue</h2>
-          <p className="text-gray-600 mb-6">{error}</p>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-red-50 to-pink-100">
+        <div className="text-center max-w-md mx-auto p-8 bg-white rounded-2xl shadow-xl">
+          <div className="w-16 h-16 mx-auto mb-4 bg-red-100 rounded-full flex items-center justify-center">
+            <User className="w-8 h-8 text-red-600" />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-800 mb-4">Une erreur est survenue</h2>
+          <p className="text-gray-600 mb-6 leading-relaxed">{error}</p>
           {apiStatus && !apiStatus.isConnected ? (
-            <div className="mb-4">
-              <p className="text-yellow-600 mb-2">Statut du serveur: Non connecté</p>
-              <p className="text-sm text-gray-500">
-                Assurez-vous que le serveur backend est en cours d&apos;exécution sur le port 5000
+            <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <div className="flex items-center mb-2">
+                <div className="w-2 h-2 bg-yellow-500 rounded-full mr-2"></div>
+                <p className="text-yellow-800 font-medium">Statut du serveur: Non connecté</p>
+              </div>
+              <p className="text-sm text-yellow-700">
+                Assurez-vous que le serveur backend est en cours d'exécution sur le port 5000
               </p>
             </div>
           ) : null}
           <button
             onClick={() => window.location.reload()}
-            className="px-4 py-2 bg-primary-600 text-white rounded hover:bg-primary-700"
+            className="px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 transform hover:scale-105 shadow-lg"
           >
             Réessayer
           </button>
@@ -104,11 +123,14 @@ const ProfessionalDetailsPage = () => {
 
   if (!professional) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-700 mb-4">Professionnel non trouvé</h2>
-          <p className="text-gray-600">
-            Le professionnel que vous recherchez n&apos;existe pas ou a été supprimé.
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-blue-50">
+        <div className="text-center max-w-md mx-auto p-8 bg-white rounded-2xl shadow-xl">
+          <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
+            <User className="w-8 h-8 text-gray-600" />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-800 mb-4">Professionnel non trouvé</h2>
+          <p className="text-gray-600 leading-relaxed">
+            Le professionnel que vous recherchez n'existe pas ou a été supprimé.
           </p>
         </div>
       </div>
@@ -116,87 +138,189 @@ const ProfessionalDetailsPage = () => {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="bg-white shadow-md rounded-lg overflow-hidden">
-        <div className="md:flex">
-          <div className="md:flex-shrink-0">
-            <img
-              className="h-48 w-full object-cover md:w-48"
-              src={
-                professional.userId?.profileImage ||
-                professional.coverImages?.[0] ||
-                'https://via.placeholder.com/300x300?text=Photo+de+profil'
-              }
-              alt={professional.businessName}
-            />
-          </div>
-          <div className="p-8">
-            <div className="uppercase tracking-wide text-sm text-primary-500 font-semibold">
-              {professional.businessType}
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
+      {/* Hero Section */}
+      <div className="relative bg-gradient-to-r from-blue-600 to-indigo-800 text-white">
+        <div className="absolute inset-0 bg-black opacity-20"></div>
+        <div className="relative container mx-auto px-4 py-16">
+          <div className="flex flex-col lg:flex-row items-center gap-8">
+            <div className="relative">
+              <div className="w-32 h-32 lg:w-40 lg:h-40 rounded-full overflow-hidden border-4 border-white shadow-2xl">
+                <img
+                  className="w-full h-full object-cover"
+                  src={
+                    professional.userId?.profileImage ||
+                    professional.coverImages?.[0] ||
+                    'https://images.pexels.com/photos/3785077/pexels-photo-3785077.jpeg?auto=compress&cs=tinysrgb&w=400'
+                  }
+                  alt={professional.businessName}
+                />
+              </div>
+              <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-green-500 rounded-full border-2 border-white flex items-center justify-center">
+                <CheckCircle className="w-4 h-4 text-white" />
+              </div>
             </div>
-            <h1 className="mt-1 text-3xl font-bold text-gray-900">{professional.businessName}</h1>
-            <p className="mt-2 text-gray-600">{professional.description}</p>
 
+            <div className="text-center lg:text-left flex-1">
+              <div className="inline-flex items-center px-3 py-1 rounded-full bg-white bg-opacity-20 backdrop-blur-sm text-sm font-medium mb-4">
+                <Award className="w-4 h-4 mr-2" />
+                {professional.businessType}
+              </div>
+              <h1 className="text-4xl lg:text-5xl font-bold mb-4">{professional.businessName}</h1>
+              <p className="text-lg lg:text-xl opacity-90 mb-6 leading-relaxed max-w-2xl">
+                {professional.description}
+              </p>
+
+              <div className="flex flex-wrap gap-4 justify-center lg:justify-start">
+                <div className="flex items-center bg-white bg-opacity-20 backdrop-blur-sm px-4 py-2 rounded-full">
+                  <Star className="w-4 h-4 mr-2 text-yellow-400" />
+                  <span className="font-medium">4.9 (127 avis)</span>
+                </div>
+                <div className="flex items-center bg-white bg-opacity-20 backdrop-blur-sm px-4 py-2 rounded-full">
+                  <MapPin className="w-4 h-4 mr-2" />
+                  <span>Disponible en ligne</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="container mx-auto px-4 py-12">
+        <div className="grid lg:grid-cols-3 gap-8">
+          {/* Main Content */}
+          <div className="lg:col-span-2 space-y-8">
+            {/* Specializations */}
             {professional.activities && professional.activities.length > 0 && (
-              <div className="mt-4">
-                <h2 className="text-lg font-semibold text-gray-800">Spécialisations</h2>
-                <div className="mt-2 flex flex-wrap gap-2">
+              <div className="bg-white rounded-2xl shadow-lg p-8 border border-white">
+                <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+                  <Award className="w-6 h-6 mr-3 text-blue-600" />
+                  Spécialisations
+                </h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {professional.activities.map((activity, index) => (
-                    <span
+                    <div
                       key={index}
-                      className="inline-block bg-gray-100 rounded-full px-3 py-1 text-sm font-semibold text-gray-700"
+                      className="flex items-center p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100 hover:from-blue-100 hover:to-indigo-100 transition-all duration-300"
                     >
-                      {activity}
-                    </span>
+                      <div className="w-2 h-2 bg-blue-500 rounded-full mr-3"></div>
+                      <span className="font-medium text-gray-800">{activity}</span>
+                    </div>
                   ))}
                 </div>
               </div>
             )}
 
-            <div className="mt-6">
-              <h2 className="text-lg font-semibold text-gray-800">Contact</h2>
-              <p className="mt-2 text-gray-600">
-                Email: {professional.contactInfo?.email || professional.userId?.email}
+            {/* Services */}
+            {professional.services && professional.services.length > 0 && (
+              <div className="bg-white rounded-2xl shadow-lg p-8 border border-white">
+                <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+                  <DollarSign className="w-6 h-6 mr-3 text-green-600" />
+                  Services proposés
+                </h2>
+                <div className="grid gap-6">
+                  {professional.services.map((service, index) => (
+                    <div
+                      key={index}
+                      className="group p-6 border-2 border-gray-100 rounded-xl hover:border-blue-200 hover:shadow-md transition-all duration-300 bg-gradient-to-r from-white to-blue-50"
+                    >
+                      <div className="flex justify-between items-start mb-4">
+                        <h3 className="text-xl font-semibold text-gray-800 group-hover:text-blue-600 transition-colors">
+                          {service.name}
+                        </h3>
+                        <div className="text-right">
+                          <div className="text-2xl font-bold text-green-600">
+                            {service.price?.amount || service.price}{' '}
+                            {service.price?.currency || 'MAD'}
+                          </div>
+                          <div className="flex items-center text-sm text-gray-500 mt-1">
+                            <Clock className="w-4 h-4 mr-1" />
+                            {service.duration} min
+                          </div>
+                        </div>
+                      </div>
+                      <p className="text-gray-600 leading-relaxed mb-4">{service.description}</p>
+                      <button className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 transform hover:scale-105 font-medium">
+                        Réserver ce service
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Sidebar */}
+          <div className="space-y-6">
+            {/* Contact Card */}
+            <div className="bg-white rounded-2xl shadow-lg p-6 border border-white sticky top-6">
+              <h3 className="text-xl font-bold text-gray-800 mb-6">Contact</h3>
+
+              <div className="space-y-4 mb-6">
+                <div className="flex items-center p-3 bg-gray-50 rounded-lg">
+                  <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mr-3">
+                    <Mail className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Email</p>
+                    <p className="font-medium text-gray-800">
+                      {professional.contactInfo?.email || professional.userId?.email}
+                    </p>
+                  </div>
+                </div>
+
                 {professional.contactInfo?.phone && (
-                  <>
-                    <br />
-                    Téléphone: {professional.contactInfo.phone}
-                  </>
+                  <div className="flex items-center p-3 bg-gray-50 rounded-lg">
+                    <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center mr-3">
+                      <Phone className="w-5 h-5 text-green-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">Téléphone</p>
+                      <p className="font-medium text-gray-800">{professional.contactInfo.phone}</p>
+                    </div>
+                  </div>
                 )}
-              </p>
+              </div>
+
+              <div className="space-y-3">
+                <button className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 transform hover:scale-105 font-medium flex items-center justify-center shadow-lg">
+                  <Calendar className="w-5 h-5 mr-2" />
+                  Prendre rendez-vous
+                </button>
+                <button className="w-full bg-white text-gray-800 py-3 rounded-xl border-2 border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-all duration-300 font-medium flex items-center justify-center">
+                  <MessageCircle className="w-5 h-5 mr-2" />
+                  Contacter
+                </button>
+              </div>
             </div>
 
-            <div className="mt-6">
-              <button className="bg-primary-600 hover:bg-primary-700 text-white font-bold py-2 px-4 rounded mr-2">
-                Prendre rendez-vous
-              </button>
-              <button className="bg-white hover:bg-gray-100 text-gray-800 font-semibold py-2 px-4 border border-gray-400 rounded shadow">
-                Contacter
-              </button>
+            {/* Stats Card */}
+            <div className="bg-white rounded-2xl shadow-lg p-6 border border-white">
+              <h3 className="text-xl font-bold text-gray-800 mb-4">Statistiques</h3>
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-600">Clients satisfaits</span>
+                  <span className="font-bold text-green-600">127</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-600">Années d'expérience</span>
+                  <span className="font-bold text-blue-600">5+</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-600">Taux de réponse</span>
+                  <span className="font-bold text-orange-600">98%</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-600">Note moyenne</span>
+                  <div className="flex items-center">
+                    <Star className="w-4 h-4 text-yellow-400 mr-1" />
+                    <span className="font-bold text-yellow-600">4.9</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
-
-        {professional.services && professional.services.length > 0 && (
-          <div className="px-8 pb-8">
-            <h2 className="text-xl font-bold text-gray-800 mb-4">Services proposés</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {professional.services.map((service, index) => (
-                <div
-                  key={index}
-                  className="border rounded-lg p-4 hover:shadow-md transition-shadow"
-                >
-                  <h3 className="font-semibold text-lg">{service.name}</h3>
-                  <p className="text-gray-600">{service.description}</p>
-                  <p className="text-primary-600 font-bold mt-2">
-                    {service.price?.amount || service.price} {service.price?.currency || 'MAD'}
-                  </p>
-                  <p className="text-sm text-gray-500">{service.duration} min</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

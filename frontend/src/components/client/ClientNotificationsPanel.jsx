@@ -60,36 +60,27 @@ const ClientNotificationsPanel = ({ user }) => {
   const fetchNotifications = useCallback(async () => {
     const userId = user?._id || user?.id;
     if (!userId) {
-      console.log('ClientNotificationsPanel: No user ID, skipping fetch');
       return;
     }
 
     try {
-      console.log('ClientNotificationsPanel: Fetching notifications...');
       setLoading(true);
 
       let notificationsData = [];
 
       try {
-        console.log('ClientNotificationsPanel: Making API request...');
         const response = await userAPI.getNotifications();
 
-        console.log('ClientNotificationsPanel: API response:', response.data);
         if (response.data.success) {
           // Normaliser les données MongoDB
           notificationsData = normalizeMongoData(response.data.notifications) || [];
           // S'assurer que les dates sont valides
           notificationsData = ensureValidDates(notificationsData);
-          console.log(
-            'ClientNotificationsPanel: Normalized notifications from API:',
-            JSON.stringify(notificationsData)
-          );
         }
       } catch (error) {
         console.error('ClientNotificationsPanel: Error fetching notifications from API:', error);
 
         // Pour le développement, utiliser des données fictives
-        console.log('ClientNotificationsPanel: Using mock data');
         notificationsData = [
           {
             _id: '1',
@@ -125,31 +116,20 @@ const ClientNotificationsPanel = ({ user }) => {
         ];
       }
 
-      // Mettre à jour l'état avec les données (réelles ou fictives)
-      console.log(
-        'ClientNotificationsPanel: Setting notifications state:',
-        JSON.stringify(notificationsData)
-      );
-      console.log('ClientNotificationsPanel: Notifications length:', notificationsData.length);
-
-      // Vérifier chaque notification pour s'assurer qu'elle a les propriétés requises
-      notificationsData.forEach((notification, index) => {
-        console.log(`ClientNotificationsPanel: Notification ${index}:`, {
-          id: notification._id,
-          type: notification.type,
-          title: notification.title,
-          message: notification.message,
-          read: notification.read,
-          createdAt: notification.createdAt,
-        });
-      });
+      // // Vérifier chaque notification pour s'assurer qu'elle a les propriétés requises
+      // notificationsData.forEach((notification, index) => {
+      //   console.log(`ClientNotificationsPanel: Notification ${index}:`, {
+      //     id: notification._id,
+      //     type: notification.type,
+      //     title: notification.title,
+      //     message: notification.message,
+      //     read: notification.read,
+      //     createdAt: notification.createdAt,
+      //   });
+      // });
 
       setNotifications(notificationsData);
       setUnreadCount(notificationsData.filter(n => !n.read).length);
-      console.log(
-        'ClientNotificationsPanel: Unread count:',
-        notificationsData.filter(n => !n.read).length
-      );
     } catch (error) {
       console.error('ClientNotificationsPanel: Error in fetchNotifications:', error);
     } finally {

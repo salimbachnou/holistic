@@ -11,12 +11,12 @@ import {
   FaVideo,
   FaUser,
   FaPlus,
+  FaLink,
 } from 'react-icons/fa';
 import { Link } from 'react-router-dom';
 
 import LoadingSpinner from '../components/Common/LoadingSpinner';
 import Modal from '../components/Common/Modal';
-import ZoomMeeting from '../components/VideoCall/ZoomMeeting';
 import { useAuth } from '../contexts/AuthContext';
 import { sessionAPI } from '../utils/api';
 
@@ -31,7 +31,6 @@ const ClientSessionsPage = () => {
   const [activeTab, setActiveTab] = useState('upcoming');
   const [selectedSession, setSelectedSession] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [showVideoCall, setShowVideoCall] = useState(false);
   const [bookingInProgress, setBookingInProgress] = useState(false);
 
   useEffect(() => {
@@ -132,17 +131,11 @@ const ClientSessionsPage = () => {
   const handleSessionSelect = session => {
     setSelectedSession(session);
     setIsModalOpen(true);
-    setShowVideoCall(false);
   };
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setSelectedSession(null);
-    setShowVideoCall(false);
-  };
-
-  const joinVideoCall = () => {
-    setShowVideoCall(true);
   };
 
   const handleBookSession = async session => {
@@ -152,16 +145,20 @@ const ClientSessionsPage = () => {
     try {
       const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
       const token = localStorage.getItem('token');
-      
+
       // Utiliser l'API de booking pour créer une réservation
-      await axios.post(`${API_URL}/api/bookings`, {
-        professionalId: session.professionalId._id || session.professionalId,
-        sessionId: session._id,
-        bookingType: 'direct',
-        notes: 'Réservation directe depuis les sessions disponibles'
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await axios.post(
+        `${API_URL}/api/bookings`,
+        {
+          professionalId: session.professionalId._id || session.professionalId,
+          sessionId: session._id,
+          bookingType: 'direct',
+          notes: 'Réservation directe depuis les sessions disponibles',
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
 
       toast.success('Session réservée avec succès !');
 
@@ -556,31 +553,16 @@ const ClientSessionsPage = () => {
                 selectedSession.status === 'scheduled' &&
                 new Date(selectedSession.startTime) > new Date() && (
                   <>
-                    {selectedSession.category === 'online' && selectedSession.useBuiltInVideo && (
-                      <>
-                        <button onClick={joinVideoCall} className="btn-secondary">
-                          Rejoindre via Zoom
-                        </button>
-                        <Link
-                          to={`/video-call/${selectedSession._id}`}
-                          className="btn-primary flex items-center"
-                        >
-                          <FaVideo className="mr-2" /> Rejoindre l'appel vidéo
-                        </Link>
-                      </>
+                    {selectedSession.category === 'online' && selectedSession.meetingLink && (
+                      <a
+                        href={selectedSession.meetingLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="btn-primary flex items-center"
+                      >
+                        <FaLink className="mr-2" /> Rejoindre la session
+                      </a>
                     )}
-                    {selectedSession.category === 'online' &&
-                      selectedSession.meetingLink &&
-                      !selectedSession.useBuiltInVideo && (
-                        <a
-                          href={selectedSession.meetingLink}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="btn-primary"
-                        >
-                          Rejoindre la session
-                        </a>
-                      )}
                   </>
                 )}
               <button onClick={handleCloseModal} className="btn-secondary">
@@ -588,13 +570,6 @@ const ClientSessionsPage = () => {
               </button>
             </div>
           </div>
-
-          {/* Video Call Component */}
-          {showVideoCall && selectedSession.useBuiltInVideo && (
-            <div className="mt-4">
-              <ZoomMeeting sessionId={selectedSession._id} />
-            </div>
-          )}
         </Modal>
       )}
     </div>

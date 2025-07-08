@@ -242,7 +242,7 @@ const ClientProfilePage = () => {
     }
   };
 
-  const joinVideoCall = link => {
+  const joinMeeting = link => {
     window.open(link, '_blank', 'width=800,height=600');
   };
 
@@ -475,7 +475,7 @@ const ClientProfilePage = () => {
 
                 {booking.location.type === 'online' && booking.status === 'confirmed' && (
                   <button
-                    onClick={() => joinVideoCall(booking.location.onlineLink)}
+                    onClick={() => joinMeeting(booking.location.onlineLink)}
                     className="px-3 py-1.5 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700"
                   >
                     <FaVideo className="inline mr-1" /> Rejoindre

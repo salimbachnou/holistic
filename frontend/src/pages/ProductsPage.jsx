@@ -12,12 +12,14 @@ import {
 import { StarIcon as StarIconSolid, HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid';
 import axios from 'axios';
 import { AnimatePresence, motion } from 'framer-motion';
+import { Heart, Eye, Package, TrendingUp, Star } from 'lucide-react';
 import React, { useState, useEffect, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { Link, useNavigate } from 'react-router-dom';
 
 import LoadingSpinner from '../components/Common/LoadingSpinner';
 import { useAuth } from '../contexts/AuthContext';
+import './ProductsPage.css';
 
 // Product categories for filtering
 const PRODUCT_CATEGORIES = [
@@ -144,6 +146,8 @@ const ProductCard = ({ product, onViewProduct, favorites, onToggleFavorite }) =>
   const navigate = useNavigate();
   const isFavorite = favorites.includes(product._id);
   const [ordering, setOrdering] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
+  const [imageLoaded, setImageLoaded] = useState(false);
 
   // Generate default sizes based on product category if needed
   const getDefaultSizes = () => {
@@ -189,23 +193,6 @@ const ProductCard = ({ product, onViewProduct, favorites, onToggleFavorite }) =>
     return product.stock || 0;
   };
 
-  // Get default size for adding to cart
-  const getDefaultSize = () => {
-    if (!sizeOptions || sizeOptions.length === 0) return null;
-
-    // Si nous avons un inventaire de tailles, choisir la première taille qui a du stock
-    if (product.sizeInventory && product.sizeInventory.length > 0) {
-      // Utiliser les tailles exactes de sizeOptions qui correspondent à sizeInventory
-      for (const size of sizeOptions) {
-        const sizeInfo = product.sizeInventory.find(item => item.size === size);
-        if (sizeInfo && sizeInfo.stock > 0) return size;
-      }
-    }
-
-    // Sinon retourner la première taille
-    return sizeOptions[0];
-  };
-
   const handleOrder = e => {
     e.stopPropagation();
 
@@ -219,85 +206,116 @@ const ProductCard = ({ product, onViewProduct, favorites, onToggleFavorite }) =>
     onViewProduct(product);
   };
 
+  const handleImageLoad = () => {
+    setImageLoaded(true);
+  };
+
+  const getStockStatus = () => {
+    const totalStock = product.sizeInventory
+      ? product.sizeInventory.reduce((total, item) => total + item.stock, 0)
+      : product.stock || 0;
+
+    const inStock = totalStock > 0;
+
+    if (!inStock) return { text: 'Rupture de stock', color: 'text-red-600', bg: 'bg-red-50' };
+    if (totalStock <= 5)
+      return { text: `Plus que ${totalStock}`, color: 'text-orange-600', bg: 'bg-orange-50' };
+    return { text: 'En stock', color: 'text-green-600', bg: 'bg-green-50' };
+  };
+
+  const stockStatus = getStockStatus();
+  const totalStock = product.sizeInventory
+    ? product.sizeInventory.reduce((total, item) => total + item.stock, 0)
+    : product.stock || 0;
+
   return (
     <motion.div
       layout
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="bg-white rounded-xl shadow-sm border border-gray-100 hover:shadow-lg transition-all duration-300 group"
+      className="group relative bg-white rounded-3xl shadow-lg hover:shadow-2xl transition-all duration-700 overflow-hidden border border-gray-100 hover:border-gray-200"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      style={{
+        transform: isHovered ? 'translateY(-8px) scale(1.02)' : 'translateY(0) scale(1)',
+        boxShadow: isHovered
+          ? '0 25px 50px -12px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.05)'
+          : '0 10px 25px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+      }}
     >
+      {/* Featured Badge */}
+      {product.featured && (
+        <div className="absolute top-4 left-4 z-20">
+          <div className="flex items-center space-x-1 bg-gradient-to-r from-amber-400 to-orange-500 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg">
+            <TrendingUp className="h-3 w-3" />
+            <span>Tendance</span>
+          </div>
+        </div>
+      )}
+
       {/* Product Image */}
-      <div className="relative aspect-square overflow-hidden rounded-t-xl">
+      <div className="relative aspect-square overflow-hidden rounded-t-3xl bg-gradient-to-br from-gray-50 to-gray-100">
+        <div className="absolute inset-0 bg-gradient-to-t from-black/5 via-transparent to-transparent z-10" />
+
         <img
           src={getImageUrl(product.images?.[0])}
           alt={product.title}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+          className={`w-full h-full object-cover transition-all duration-700 ${
+            imageLoaded ? 'opacity-100 scale-100' : 'opacity-0 scale-110'
+          } ${isHovered ? 'scale-110' : 'scale-100'}`}
+          onLoad={handleImageLoad}
         />
 
-        {/* Featured Badge */}
-        {product.featured && (
-          <div className="absolute top-3 left-3">
-            <span className="bg-gradient-to-r from-primary-500 to-primary-600 text-white text-xs font-medium px-2 py-1 rounded-full">
-              Recommandé
-            </span>
+        {!imageLoaded && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-2 border-gray-300 border-t-blue-600" />
           </div>
         )}
 
-        {/* Action Buttons */}
-        <div className="absolute top-3 right-3 flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+        {/* Top Right Action Buttons */}
+        <div className="absolute top-4 right-4 flex flex-col space-y-2 z-20">
           <button
             onClick={e => {
               e.stopPropagation();
               onToggleFavorite(product._id);
             }}
-            className={`p-2 rounded-full backdrop-blur-sm transition-colors ${
-              isFavorite
-                ? 'bg-red-100 text-red-600 hover:bg-red-200'
-                : 'bg-white/80 text-gray-600 hover:bg-white hover:text-red-600'
+            className={`p-3 rounded-full backdrop-blur-md transition-all duration-300 hover:scale-110 shadow-lg ${
+              isFavorite ? 'bg-red-500/90 text-white' : 'bg-white/90 text-gray-700 hover:bg-white'
             }`}
           >
-            {isFavorite ? (
-              <HeartIconSolid className="h-4 w-4" />
-            ) : (
-              <HeartIcon className="h-4 w-4" />
-            )}
+            <Heart className={`h-5 w-5 ${isFavorite ? 'fill-current' : ''}`} />
           </button>
+
           <button
             onClick={e => {
               e.stopPropagation();
               onViewProduct(product);
             }}
-            className="p-2 rounded-full bg-white/80 backdrop-blur-sm text-gray-600 hover:bg-white hover:text-primary-600 transition-colors"
+            className="p-3 rounded-full bg-white/90 backdrop-blur-md text-gray-700 hover:bg-white transition-all duration-300 hover:scale-110 shadow-lg"
           >
-            <EyeIcon className="h-4 w-4" />
+            <Eye className="h-5 w-5" />
           </button>
         </div>
 
-        {/* Stock Warning */}
-        {product.sizeInventory
-          ? product.sizeInventory.some(item => item.stock > 0 && item.stock <= 5) && (
-              <div className="absolute bottom-3 left-3">
-                <span className="bg-orange-100 text-orange-800 text-xs font-medium px-2 py-1 rounded-full">
-                  Stock limité
-                </span>
-              </div>
-            )
-          : product.stock <= 5 &&
-            product.stock > 0 && (
-              <div className="absolute bottom-3 left-3">
-                <span className="bg-orange-100 text-orange-800 text-xs font-medium px-2 py-1 rounded-full">
-                  Plus que {product.stock} en stock
-                </span>
-              </div>
-            )}
+        {/* Overlay Actions - Center */}
 
-        {/* Out of Stock */}
-        {(product.sizeInventory
-          ? !product.sizeInventory.some(item => item.stock > 0)
-          : product.stock === 0) && (
-          <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-            <span className="bg-red-600 text-white text-sm font-medium px-3 py-1 rounded-full">
+        {/* Stock Status */}
+        <div className="absolute bottom-4 left-4 z-20">
+          <div
+            className={`${stockStatus.bg} ${stockStatus.color} text-xs font-semibold px-3 py-1.5 rounded-full border backdrop-blur-sm`}
+          >
+            <div className="flex items-center space-x-1">
+              <Package className="h-3 w-3" />
+              <span>{stockStatus.text}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Out of Stock Overlay */}
+        {totalStock === 0 && (
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-30">
+            <span className="bg-red-600 text-white text-sm font-bold px-4 py-2 rounded-full shadow-xl">
               Rupture de stock
             </span>
           </div>
@@ -305,137 +323,84 @@ const ProductCard = ({ product, onViewProduct, favorites, onToggleFavorite }) =>
       </div>
 
       {/* Product Info */}
-      <div className="p-4">
-        {/* Category */}
-        <div className="mb-2">
-          <span className="text-xs text-primary-600 font-medium uppercase tracking-wide">
+      <div className="p-3 space-y-2">
+        {/* Category & Brand */}
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-1 rounded-full">
             {PRODUCT_CATEGORIES.find(cat => cat.value === product.category)?.label ||
               product.category}
+          </span>
+          <span className="text-xs text-gray-500 font-medium">
+            {product.professionalId?.businessName || product.name || 'Professionnel'}
           </span>
         </div>
 
         {/* Title */}
-        <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2 group-hover:text-primary-600 transition-colors">
+        <h3 className="font-bold text-gray-900 text-sm leading-tight line-clamp-2 group-hover:text-blue-600 transition-colors duration-300">
           {product.title}
         </h3>
 
-        {/* Professional */}
-        <p className="text-sm text-gray-600 mb-3">
-          Par {product.professionalId?.businessName || product.name || 'Professionnel'}
-        </p>
+        {/* Description */}
+        <p className="text-gray-600 text-xs leading-relaxed line-clamp-2">{product.description}</p>
 
         {/* Rating */}
-        <div className="flex items-center space-x-1 mb-3">
-          <div className="flex">
+        <div className="flex items-center space-x-2">
+          <div className="flex items-center">
             {[...Array(5)].map((_, i) => (
-              <StarIconSolid
+              <Star
                 key={i}
                 className={`h-4 w-4 ${
-                  i < Math.floor(product.rating?.average || 0) ? 'text-yellow-400' : 'text-gray-200'
+                  i < Math.floor(product.rating?.average || 0)
+                    ? 'text-yellow-400 fill-current'
+                    : 'text-gray-200'
                 }`}
               />
             ))}
           </div>
-          <span className="text-sm text-gray-600">
-            {product.rating?.average?.toFixed(1) || '0.0'} ({product.rating?.totalReviews || 0})
+          <span className="text-sm text-gray-600 font-medium">
+            {(product.rating?.average || 0).toFixed(1)} ({product.rating?.totalReviews || 0})
           </span>
-        </div>
-
-        {/* Price */}
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center space-x-1">
-            <span className="text-2xl font-bold text-gray-900">
-              {product.price?.toFixed(2) || '0.00'}
-            </span>
-            <span className="text-gray-600">{product.currency || 'MAD'}</span>
-          </div>
         </div>
 
         {/* Size Options */}
         {sizeOptions && sizeOptions.length > 0 && (
-          <div className="mb-4">
-            <span className="text-xs text-gray-600 mb-1 block">Tailles:</span>
-            <div className="flex flex-wrap gap-1">
-              {sizeOptions.map((size, index) => {
-                const sizeStock = getStockForSize(size);
-                const isOutOfStock = sizeStock === 0;
+          <div className="flex flex-wrap gap-1">
+            {sizeOptions.slice(0, 3).map((size, index) => {
+              const sizeStock = getStockForSize(size);
+              const isOutOfStock = sizeStock === 0;
 
-                return (
-                  <span
-                    key={index}
-                    className={`w-6 h-6 flex items-center justify-center text-xs rounded-full ${
-                      isOutOfStock ? 'bg-gray-200 text-gray-400' : 'bg-gray-100 text-gray-700'
-                    }`}
-                    title={`${size}: ${sizeStock} disponibles`}
-                  >
-                    {size}
-                  </span>
-                );
-              })}
-            </div>
+              return (
+                <span
+                  key={index}
+                  className={`text-xs px-2 py-1 rounded-md font-medium ${
+                    isOutOfStock ? 'text-gray-400 bg-gray-50' : 'text-gray-600 bg-gray-50'
+                  }`}
+                  title={`${size}: ${sizeStock} disponibles`}
+                >
+                  {size}
+                </span>
+              );
+            })}
           </div>
         )}
 
-        {/* Action Buttons */}
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            onClick={() => onViewProduct(product)}
-            className="py-2 px-3 rounded-lg font-medium transition-colors bg-gray-100 text-gray-700 hover:bg-gray-200"
-          >
-            <span className="flex items-center justify-center">
-              <EyeIcon className="h-4 w-4 mr-1" />
-              <span>Détails</span>
+        {/* Price */}
+        <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+          <div className="flex items-center space-x-2">
+            <span className="text-lg font-bold text-gray-900">
+              {(product.price || 0).toFixed(2)}
             </span>
-          </button>
-
-          <button
-            onClick={handleOrder}
-            disabled={
-              (product.sizeInventory
-                ? !product.sizeInventory.some(item => item.stock > 0)
-                : product.stock === 0) || ordering
-            }
-            className={`py-2 px-3 rounded-lg font-medium transition-colors ${
-              (
-                product.sizeInventory
-                  ? !product.sizeInventory.some(item => item.stock > 0)
-                  : product.stock === 0
-              )
-                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                : 'bg-primary-600 text-white hover:bg-primary-700 active:bg-primary-800'
-            }`}
-          >
-            {ordering ? (
-              <span className="flex items-center justify-center">
-                <svg
-                  className="animate-spin h-4 w-4 mr-1 text-white"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                  ></circle>
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                  ></path>
-                </svg>
-              </span>
-            ) : (
-              <span className="flex items-center justify-center">
-                <PaperAirplaneIcon className="h-4 w-4 mr-1" />
-                <span>Commander</span>
-              </span>
-            )}
-          </button>
+            <span className="text-gray-600 font-medium">{product.currency || 'MAD'}</span>
+          </div>
         </div>
+
+        {/* Action Button */}
+        <button
+          onClick={() => onViewProduct(product)}
+          className="w-full py-2 px-3 rounded-lg font-semibold text-sm text-white bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 transition-all duration-300 transform hover:scale-105 active:scale-95 shadow-lg hover:shadow-xl"
+        >
+          Voir les détails
+        </button>
       </div>
     </motion.div>
   );
@@ -475,7 +440,7 @@ const ProductDetailModal = ({ product, isOpen, onClose }) => {
         defaultSizes = ['Taille unique'];
       }
     }
-    console.log('Using default sizes:', defaultSizes);
+    // console.log('Using default sizes:', defaultSizes);
     return defaultSizes;
   }, []);
 
@@ -656,7 +621,7 @@ Merci de confirmer cette commande. Je suis impatient(e) de recevoir ce produit!`
                         >
                           <img
                             src={getImageUrl(image)}
-                            alt={`${product.title} - image ${index + 2}`}
+                            alt={`${product.title} - vue ${index + 2}`}
                             className="w-full h-full object-cover"
                           />
                         </div>
@@ -754,7 +719,7 @@ Merci de confirmer cette commande. Je suis impatient(e) de recevoir ce produit!`
                       </p>
                       {sizeError && (
                         <p className="text-sm text-red-500 mt-1">
-                          Veuillez sélectionner une taille avant d'ajouter au panier
+                          Veuillez sélectionner une taille avant d&apos;ajouter au panier
                         </p>
                       )}
                     </div>
@@ -1014,7 +979,7 @@ const ProductsPage = () => {
       } catch (apiError) {
         console.error('API Error:', apiError);
         // Use mock data if API is not available
-        console.log('Using mock data');
+        // console.log('Using mock data');
         setProducts(MOCK_PRODUCTS);
         toast('Utilisation de données de démonstration', { icon: 'ℹ️' });
       }
@@ -1078,114 +1043,160 @@ const ProductsPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-4">Boutique Bien-être</h1>
-          <p className="text-gray-600 max-w-2xl">
+        {/* Header avec design premium */}
+        <div className="text-center mb-12">
+          <div className="inline-flex items-center px-4 py-2 rounded-full bg-gradient-to-r from-primary-100 to-primary-200 text-primary-800 text-sm font-bold mb-4">
+            <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z" />
+            </svg>
+            Boutique Premium
+          </div>
+          <h1 className="text-5xl font-extrabold bg-gradient-to-r from-gray-900 via-primary-800 to-gray-900 bg-clip-text text-transparent mb-6">
+            Boutique Bien-être
+          </h1>
+          <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
             Découvrez une sélection de produits wellness soigneusement choisis par nos
             professionnels certifiés. Des compléments naturels aux accessoires de méditation,
             trouvez tout ce dont vous avez besoin pour votre bien-être.
           </p>
         </div>
 
-        {/* Search and Filters */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-8">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0 lg:space-x-6">
-            {/* Search */}
-            <div className="flex-1 max-w-md">
-              <div className="relative">
-                <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Rechercher des produits..."
-                  value={searchTerm}
-                  onChange={e => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                />
+        {/* Search and Filters avec glassmorphism */}
+        <div className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-xl border border-white/20 p-8 mb-12 relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-r from-primary-50/50 to-transparent"></div>
+          <div className="relative z-10">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-6 lg:space-y-0 lg:space-x-8">
+              {/* Search avec design premium */}
+              <div className="flex-1 max-w-lg">
+                <label className="block text-sm font-bold text-gray-700 mb-2">
+                  Rechercher vos produits
+                </label>
+                <div className="relative">
+                  <MagnifyingGlassIcon className="absolute left-4 top-1/2 transform -translate-y-1/2 h-6 w-6 text-primary-400" />
+                  <input
+                    type="text"
+                    placeholder="Rechercher des produits wellness..."
+                    value={searchTerm}
+                    onChange={e => setSearchTerm(e.target.value)}
+                    className="w-full pl-12 pr-6 py-4 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-primary-100 focus:border-primary-400 transition-all duration-300 text-lg placeholder-gray-400"
+                  />
+                </div>
+              </div>
+
+              {/* Filters avec design amélioré */}
+              <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-6">
+                {/* Category Filter */}
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">Catégorie</label>
+                  <select
+                    value={categoryFilter}
+                    onChange={e => setCategoryFilter(e.target.value)}
+                    className="px-6 py-4 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-primary-100 focus:border-primary-400 transition-all duration-300 text-lg font-medium bg-white min-w-[200px]"
+                  >
+                    {PRODUCT_CATEGORIES.map(category => (
+                      <option key={category.value} value={category.value}>
+                        {category.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Sort */}
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">Trier par</label>
+                  <select
+                    value={sortOption}
+                    onChange={e => setSortOption(e.target.value)}
+                    className="px-6 py-4 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-primary-100 focus:border-primary-400 transition-all duration-300 text-lg font-medium bg-white min-w-[200px]"
+                  >
+                    {SORT_OPTIONS.map(option => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </div>
 
-            {/* Filters */}
-            <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
-              {/* Category Filter */}
-              <select
-                value={categoryFilter}
-                onChange={e => setCategoryFilter(e.target.value)}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-              >
-                {PRODUCT_CATEGORIES.map(category => (
-                  <option key={category.value} value={category.value}>
-                    {category.label}
-                  </option>
-                ))}
-              </select>
-
-              {/* Sort */}
-              <select
-                value={sortOption}
-                onChange={e => setSortOption(e.target.value)}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-              >
-                {SORT_OPTIONS.map(option => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-
-              {/* Clear Filters */}
-              {(searchTerm || categoryFilter || sortOption !== 'newest') && (
+            {/* Clear filters button */}
+            {(searchTerm || categoryFilter || sortOption !== 'newest') && (
+              <div className="mt-6 pt-6 border-t border-gray-200">
                 <button
                   onClick={clearFilters}
-                  className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
+                  className="inline-flex items-center px-6 py-3 rounded-xl text-sm font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-all duration-300 hover:scale-105"
                 >
+                  <XMarkIcon className="h-5 w-5 mr-2" />
                   Effacer les filtres
                 </button>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         </div>
 
-        <div className="mb-6">
-          <p className="text-gray-600">
+        {/* Results count avec style premium */}
+        <div className="mb-8">
+          <div className="inline-flex items-center px-4 py-2 rounded-full bg-primary-50 text-primary-700 font-semibold">
+            <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+              <path
+                fillRule="evenodd"
+                d="M3 3a1 1 0 000 2v8a2 2 0 002 2h2.586l-1.293 1.293a1 1 0 101.414 1.414L10 15.414l2.293 2.293a1 1 0 001.414-1.414L12.414 15H15a2 2 0 002-2V5a1 1 0 100-2H3zm11.707 4.707a1 1 0 00-1.414-1.414L10 9.586 8.707 8.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                clipRule="evenodd"
+              />
+            </svg>
             {filteredProducts.length} produit{filteredProducts.length !== 1 ? 's' : ''} trouvé
             {filteredProducts.length !== 1 ? 's' : ''}
-          </p>
+          </div>
         </div>
 
-        {/* Products Grid */}
+        {/* Products Grid avec design premium */}
         {filteredProducts.length > 0 ? (
-          <motion.div
-            layout
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
-          >
-            <AnimatePresence>
-              {filteredProducts.map(product => (
-                <ProductCard
-                  key={product._id}
-                  product={product}
-                  onViewProduct={handleViewProduct}
-                  favorites={favorites}
-                  onToggleFavorite={handleToggleFavorite}
-                />
-              ))}
-            </AnimatePresence>
-          </motion.div>
+          <div className="relative">
+            <motion.div layout className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <AnimatePresence>
+                {filteredProducts.map(product => (
+                  <ProductCard
+                    key={product._id}
+                    product={product}
+                    onViewProduct={handleViewProduct}
+                    favorites={favorites}
+                    onToggleFavorite={handleToggleFavorite}
+                  />
+                ))}
+              </AnimatePresence>
+            </motion.div>
+
+            {/* Background pattern */}
+            <div className="absolute inset-0 -z-10 overflow-hidden">
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-96 h-96 bg-gradient-to-br from-primary-100/30 to-transparent rounded-full blur-3xl"></div>
+              <div className="absolute bottom-0 right-1/4 w-72 h-72 bg-gradient-to-tl from-amber-100/30 to-transparent rounded-full blur-3xl"></div>
+            </div>
+          </div>
         ) : (
-          <div className="text-center py-12">
-            <ShoppingBagIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Aucun produit trouvé</h3>
-            <p className="text-gray-600 mb-4">
-              Essayez de modifier vos critères de recherche ou vos filtres.
-            </p>
-            <button
-              onClick={clearFilters}
-              className="text-primary-600 hover:text-primary-700 font-medium"
-            >
-              Voir tous les produits
-            </button>
+          <div className="text-center py-16">
+            <div className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-xl border border-white/20 p-12 mx-auto max-w-md">
+              <ShoppingBagIcon className="h-16 w-16 text-primary-300 mx-auto mb-6" />
+              <h3 className="text-2xl font-bold text-gray-900 mb-4">Aucun produit trouvé</h3>
+              <p className="text-gray-600 mb-6 leading-relaxed">
+                Essayez de modifier vos critères de recherche ou vos filtres pour découvrir nos
+                produits wellness.
+              </p>
+              <button
+                onClick={clearFilters}
+                className="inline-flex items-center px-6 py-3 rounded-xl bg-gradient-to-r from-primary-500 to-primary-600 text-white font-bold hover:from-primary-600 hover:to-primary-700 transition-all duration-300 hover:scale-105"
+              >
+                <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                  <path
+                    fillRule="evenodd"
+                    d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                Voir tous les produits
+              </button>
+            </div>
           </div>
         )}
       </div>

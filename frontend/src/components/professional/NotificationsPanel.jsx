@@ -45,8 +45,6 @@ const NotificationsPanel = ({ user }) => {
   const panelRef = useRef(null);
   const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
-  console.log('NotificationsPanel: Rendering with user:', user);
-
   // Handle click outside to close panel
   useEffect(() => {
     const handleClickOutside = event => {
@@ -63,34 +61,26 @@ const NotificationsPanel = ({ user }) => {
 
   // Fonction pour récupérer les notifications, mémorisée avec useCallback
   const fetchNotifications = useCallback(async () => {
-    console.log('NotificationsPanel: fetchNotifications called with user:', user);
-
     if (!user) {
-      console.log('NotificationsPanel: User object is null/undefined, skipping fetch');
       return;
     }
 
     const userId = user._id || user.id;
     if (!userId) {
-      console.log('NotificationsPanel: User ID is missing, user object:', user);
       return;
     }
 
     try {
-      console.log('NotificationsPanel: Fetching notifications for user ID:', userId);
       setLoading(true);
 
       const response = await apiService.get('/notifications');
-      console.log('NotificationsPanel: API response:', response.data);
 
       if (response.data.success) {
         const notificationsData = response.data.notifications || [];
-        console.log('NotificationsPanel: Notifications from API:', notificationsData);
 
         setNotifications(notificationsData);
         setUnreadCount(notificationsData.filter(n => !n.read).length);
       } else {
-        console.warn('NotificationsPanel: API returned unsuccessful response');
         setNotifications([]);
         setUnreadCount(0);
       }
@@ -106,13 +96,11 @@ const NotificationsPanel = ({ user }) => {
 
   // Récupérer les notifications au chargement du composant
   useEffect(() => {
-    console.log('NotificationsPanel: useEffect triggered, user:', user);
     const userId = user?._id || user?.id;
     if (userId) {
-      console.log('NotificationsPanel: User ID available, fetching notifications:', userId);
       fetchNotifications();
     } else {
-      console.log('NotificationsPanel: User or user ID not available yet');
+      // Skip fetching notifications if user ID is not available
     }
   }, [user, fetchNotifications]);
 
@@ -120,10 +108,9 @@ const NotificationsPanel = ({ user }) => {
   useEffect(() => {
     const userId = user?._id || user?.id;
     if (isOpen && userId) {
-      console.log('NotificationsPanel: Panel opened with valid user, fetching notifications');
       fetchNotifications();
     } else if (isOpen && !userId) {
-      console.log('NotificationsPanel: Panel opened but user ID not available');
+      // Panel is open but user ID is not available
     }
   }, [isOpen, fetchNotifications, user]);
 
@@ -131,11 +118,10 @@ const NotificationsPanel = ({ user }) => {
   useEffect(() => {
     const userId = user?._id || user?.id;
     if (!userId) {
-      console.log('NotificationsPanel: No user ID for socket connection');
+      // Cannot connect to socket without user ID
       return;
     }
 
-    console.log('NotificationsPanel: Setting up socket connection for user:', userId);
     socketRef.current = io(apiUrl);
 
     // Join user's notification room
@@ -143,7 +129,6 @@ const NotificationsPanel = ({ user }) => {
 
     // Listen for incoming notifications
     socketRef.current.on('receive-notification', notification => {
-      console.log('NotificationsPanel: Received new notification:', notification);
       // Add new notification to state
       setNotifications(prev => [notification, ...prev]);
 
@@ -235,7 +220,6 @@ const NotificationsPanel = ({ user }) => {
 
   // Early return if user is not loaded yet
   if (!user) {
-    console.log('NotificationsPanel: User not loaded yet, rendering placeholder');
     return (
       <div className="relative">
         <button disabled className="relative p-2 text-gray-300 rounded-lg cursor-not-allowed">
@@ -249,8 +233,6 @@ const NotificationsPanel = ({ user }) => {
     <div className="relative" ref={panelRef}>
       <button
         onClick={() => {
-          console.log('NotificationsPanel: Opening panel, notifications:', notifications);
-          console.log('NotificationsPanel: Current user when opening:', user);
           setIsOpen(!isOpen);
         }}
         className="relative p-2 text-gray-500 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-all duration-200"
@@ -275,7 +257,6 @@ const NotificationsPanel = ({ user }) => {
               <div className="flex items-center space-x-2">
                 <button
                   onClick={() => {
-                    console.log('NotificationsPanel: Manually refreshing notifications');
                     fetchNotifications();
                   }}
                   className="text-gray-500 hover:text-primary-600 transition-colors duration-200"
