@@ -62,22 +62,36 @@ const LoginPage = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Connexion à votre compte
-          </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-50 via-white to-primary-100 py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+      {/* Background decorative elements */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-primary-200 to-primary-300 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-pulse"></div>
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-br from-primary-300 to-primary-400 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-pulse"></div>
+      </div>
+
+      <div className="max-w-md w-full space-y-8 relative z-10">
+        {/* Logo Section */}
+        <div className="text-center">
+          <div className="flex justify-center mb-6">
+            <div className="relative">
+              <img src="/logo.png" alt="Logo" className="h-16 w-16 lotus-logo" />
+              <div className="absolute inset-0 rounded-full bg-gradient-lotus opacity-20 blur-md"></div>
+            </div>
+          </div>
+          <h2 className="text-3xl font-extrabold text-gradient-lotus">Connexion à votre compte</h2>
+          <p className="mt-3 text-center text-sm text-gray-600">
             Ou{' '}
-            <Link to="/register" className="font-medium text-primary-600 hover:text-primary-500">
+            <Link
+              to="/register"
+              className="font-medium text-primary-600 hover:text-primary-500 transition-colors duration-200"
+            >
               créez un nouveau compte
             </Link>
           </p>
         </div>
 
         {error && (
-          <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-4">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4 shadow-sm">
             <div className="flex">
               <div className="flex-shrink-0">
                 <svg
@@ -94,91 +108,98 @@ const LoginPage = () => {
                 </svg>
               </div>
               <div className="ml-3">
-                <p className="text-sm text-red-700">{error}</p>
+                <p className="text-sm text-red-700 font-medium">{error}</p>
               </div>
             </div>
           </div>
         )}
 
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          <div className="rounded-md shadow-sm -space-y-px">
-            <div>
-              <label htmlFor="email-address" className="sr-only">
-                Adresse email
-              </label>
-              <input
-                id="email-address"
-                name="email"
-                type="email"
-                autoComplete="email"
-                required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm"
-                placeholder="Adresse email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-              />
-            </div>
-            <div>
-              <label htmlFor="password" className="sr-only">
-                Mot de passe
-              </label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                autoComplete="current-password"
-                required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm"
-                placeholder="Mot de passe"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-              />
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <input
-                id="remember-me"
-                name="remember-me"
-                type="checkbox"
-                className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
-                checked={rememberMe}
-                onChange={e => setRememberMe(e.target.checked)}
-              />
-              <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900">
-                Se souvenir de moi
-              </label>
+        <div className="bg-white rounded-xl shadow-lotus p-8 border border-gray-100 auth-form-container">
+          <form className="space-y-6" onSubmit={handleSubmit}>
+            <div className="space-y-4">
+              <div>
+                <label
+                  htmlFor="email-address"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
+                  Adresse email
+                </label>
+                <input
+                  id="email-address"
+                  name="email"
+                  type="email"
+                  autoComplete="email"
+                  required
+                  className="auth-input appearance-none relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm transition-colors duration-200"
+                  placeholder="votre@email.com"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                />
+              </div>
+              <div>
+                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+                  Mot de passe
+                </label>
+                <input
+                  id="password"
+                  name="password"
+                  type="password"
+                  autoComplete="current-password"
+                  required
+                  className="auth-input appearance-none relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm transition-colors duration-200"
+                  placeholder="Mot de passe"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                />
+              </div>
             </div>
 
-            <div className="text-sm">
-              <Link
-                to="/forgot-password"
-                className="font-medium text-primary-600 hover:text-primary-500"
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <input
+                  id="remember-me"
+                  name="remember-me"
+                  type="checkbox"
+                  className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                  checked={rememberMe}
+                  onChange={e => setRememberMe(e.target.checked)}
+                />
+                <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900">
+                  Se souvenir de moi
+                </label>
+              </div>
+
+              <div className="text-sm">
+                <Link
+                  to="/forgot-password"
+                  className="font-medium text-primary-600 hover:text-primary-500 transition-colors duration-200"
+                >
+                  Mot de passe oublié?
+                </Link>
+              </div>
+            </div>
+
+            <div>
+              <button
+                type="submit"
+                disabled={loading}
+                className="auth-button group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-gradient-lotus hover:shadow-lotus-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
               >
-                Mot de passe oublié?
-              </Link>
+                {loading ? <LoadingSpinner size="small" /> : 'Se connecter'}
+              </button>
             </div>
-          </div>
+          </form>
+        </div>
 
-          <div>
-            <button
-              type="submit"
-              disabled={loading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
-            >
-              {loading ? <LoadingSpinner size="small" /> : 'Se connecter'}
-            </button>
-          </div>
-        </form>
-
-        <div className="mt-6">
+        <div className="mt-8">
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
               <div className="w-full border-t border-gray-300"></div>
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-gray-50 text-gray-500">Ou continuer avec</span>
+              <span className="px-4 bg-primary-50 text-gray-500 font-medium">
+                Ou continuer avec
+              </span>
             </div>
           </div>
 
@@ -187,9 +208,9 @@ const LoginPage = () => {
               type="button"
               onClick={handleGoogleLogin}
               disabled={loading}
-              className="w-full flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+              className="w-full flex items-center justify-center py-3 px-4 border border-gray-300 rounded-lg shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
             >
-              <svg className="h-5 w-5 mr-2" viewBox="0 0 24 24" width="24" height="24">
+              <svg className="h-5 w-5 mr-3" viewBox="0 0 24 24" width="24" height="24">
                 <g transform="matrix(1, 0, 0, 1, 27.009001, -39.238998)">
                   <path
                     fill="#4285F4"
@@ -209,7 +230,7 @@ const LoginPage = () => {
                   />
                 </g>
               </svg>
-              Google
+              {loading ? 'Connexion...' : 'Continuer avec Google'}
             </button>
           </div>
         </div>
