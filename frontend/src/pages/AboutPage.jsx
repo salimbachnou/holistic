@@ -114,14 +114,14 @@ const AboutPage = () => {
   return (
     <div className="min-h-screen bg-white">
       {/* Hero Section */}
-      <div className="relative bg-gradient-to-br from-primary-600 via-accent-700 to-primary-800 py-24 lg:py-32 overflow-hidden">
+      <div className="relative bg-gradient-to-br from-pink-500 via-purple-600 to-violet-700 py-24 lg:py-32 overflow-hidden">
         <div className="absolute inset-0 bg-black opacity-10"></div>
         <div className="absolute inset-0 bg-gradient-to-r from-secondary-500/20 to-accent-500/20"></div>
 
         {/* Decorative elements */}
-        <div className="absolute top-1/4 left-1/4 w-72 h-72 bg-secondary-400 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-float"></div>
+        <div className="absolute top-1/4 left-1/4 w-72 h-72 bg-pink-400 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-float"></div>
         <div
-          className="absolute bottom-1/4 right-1/4 w-72 h-72 bg-accent-400 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-float"
+          className="absolute bottom-1/4 right-1/4 w-72 h-72 bg-violet-400 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-float"
           style={{ animationDelay: '1s' }}
         ></div>
 
