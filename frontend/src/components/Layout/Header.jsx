@@ -1,12 +1,4 @@
-import {
-  Bars3Icon,
-  XMarkIcon,
-  UserIcon,
-  CalendarIcon,
-  HeartIcon,
-  ShoppingBagIcon,
-  CalendarDaysIcon,
-} from '@heroicons/react/24/outline';
+import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline';
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 
@@ -64,7 +56,6 @@ const Header = () => {
       name: 'Événements',
       href: '/events',
       current: location.pathname === '/events' || location.pathname.startsWith('/events/'),
-      icon: CalendarDaysIcon,
     },
     { name: 'À propos', href: '/about', current: location.pathname === '/about' },
     { name: 'Contact', href: '/contact', current: location.pathname === '/contact' },
@@ -72,77 +63,68 @@ const Header = () => {
 
   // Default header for non-authenticated users
   return (
-    <header className="bg-white shadow-sm border-b border-gray-200 fixed top-0 w-full z-30">
-      <nav className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8" aria-label="Top">
-        <div className="flex w-full items-center justify-between py-4">
+    <header className="bg-gradient-to-r from-pink-500 via-purple-500 to-violet-600 shadow-lg border-b border-pink-200 fixed top-0 w-full z-50 backdrop-blur-sm">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between h-16">
           {/* Logo */}
           <div className="flex items-center">
-            <Link to="/" className="flex items-center space-x-3">
-              <div className="h-12 w-12 lotus-logo">
-                <img
-                  src="/logo.png"
-                  alt="Logo Holistic.ma"
-                  className="w-full h-full object-contain"
-                  onError={e => {
-                    e.target.onerror = null;
-                    e.target.src = '/logo.svg'; // Fallback vers le logo SVG
-                  }}
-                />
+            <Link to="/" className="flex items-center space-x-3 group">
+              <div className="h-10 w-10 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center shadow-lg group-hover:shadow-xl group-hover:bg-white/30 transition-all duration-200">
+                <img src="/logo.png" alt="Holistic.ma" className="h-10 w-10 object-contain" />
               </div>
-              <span className="text-2xl font-serif font-bold text-gradient-lotus mr-8">
+              <span className="font-serif text-xl font-bold text-white tracking-tight drop-shadow-sm">
                 Holistic.ma
               </span>
             </Link>
           </div>
 
           {/* Desktop navigation */}
-          <div className="hidden lg:flex lg:items-center lg:flex-1 justify-center">
-            <nav className="flex space-x-8">
+          <div className="hidden lg:flex lg:items-center lg:space-x-40">
+            <nav className="flex space-x-1">
               {publicNavigation.map(item => (
                 <Link
                   key={item.name}
                   to={item.href}
-                  className={`text-sm font-medium transition-colors duration-200 flex items-center ${
+                  className={`px-4 py-2 rounded-lg text-sm font-medium flex items-center transition-all duration-200 whitespace-nowrap group ${
                     item.current
-                      ? 'text-primary-600 border-b-2 border-primary-600 pb-1'
-                      : 'text-gray-700 hover:text-primary-600 border-b-2 border-transparent hover:border-primary-300'
+                      ? 'bg-white/20 text-white shadow-sm border border-white/30 backdrop-blur-sm'
+                      : 'text-white/80 hover:bg-white/10 hover:text-white'
                   }`}
                 >
-                  {item.icon && <item.icon className="h-4 w-4 mr-1" />}
                   {item.name}
                 </Link>
               ))}
             </nav>
-          </div>
 
-          {/* Desktop user menu */}
-          <div className="hidden lg:flex lg:items-center">
-            <Link
-              to="/login"
-              className="text-sm font-medium text-gray-700 hover:text-primary-600 transition-colors duration-200"
-            >
-              Connexion
-            </Link>
-            <Link
-              to="/register"
-              className="ml-4 inline-flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gradient-lotus hover:shadow-lotus-hover transition-all duration-300"
-            >
-              Inscription
-            </Link>
+            {/* Auth buttons */}
+            <div className="flex items-center space-x-2 ml-4">
+              <Link
+                to="/login"
+                className="px-6 py-2.5 rounded-lg text-sm font-medium text-white hover:bg-white/10 transition-all duration-200 flex items-center"
+              >
+                Connexion
+              </Link>
+              <Link
+                to="/register"
+                className="px-6 py-2.5 rounded-lg text-sm font-medium bg-white text-purple-600 hover:bg-white/90 transition-all duration-200 shadow-sm hover:shadow-md flex items-center"
+              >
+                Inscription
+              </Link>
+            </div>
           </div>
 
           {/* Mobile menu button */}
-          <div className="lg:hidden flex items-center">
+          <div className="flex items-center lg:hidden">
             <button
               type="button"
-              className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100"
+              className="p-2 rounded-md text-white/80 hover:bg-white/10 hover:text-white transition-colors duration-200"
               onClick={() => setIsOpen(!isOpen)}
             >
               <span className="sr-only">Open main menu</span>
               {isOpen ? (
-                <XMarkIcon className="block h-6 w-6" aria-hidden="true" />
+                <XMarkIcon className="h-6 w-6" aria-hidden="true" />
               ) : (
-                <Bars3Icon className="block h-6 w-6" aria-hidden="true" />
+                <Bars3Icon className="h-6 w-6" aria-hidden="true" />
               )}
             </button>
           </div>
@@ -150,49 +132,44 @@ const Header = () => {
 
         {/* Mobile menu */}
         {isOpen && (
-          <div className="lg:hidden">
-            <div className="pt-2 pb-4 space-y-1">
+          <div className="lg:hidden bg-white border-t border-pink-200 shadow-xl">
+            <div className="pt-4 pb-6 space-y-1 px-4">
               {publicNavigation.map(item => (
                 <Link
                   key={item.name}
                   to={item.href}
-                  className={`block pl-3 pr-4 py-2 text-base font-medium ${
+                  className={`px-3 py-3 rounded-lg text-base font-medium flex items-center ${
                     item.current
-                      ? 'bg-primary-50 border-l-4 border-primary-500 text-primary-700'
-                      : 'border-l-4 border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700'
-                  }`}
+                      ? 'bg-pink-50 text-pink-700 shadow-sm border border-pink-100'
+                      : 'text-gray-600 hover:bg-pink-50 hover:text-pink-600'
+                  } transition-all duration-200`}
                   onClick={() => setIsOpen(false)}
                 >
-                  <div className="flex items-center">
-                    {item.icon && <item.icon className="h-5 w-5 mr-2" />}
-                    {item.name}
-                  </div>
+                  {item.name}
                 </Link>
               ))}
-            </div>
 
-            {/* Mobile user menu */}
-            <div className="pt-4 pb-3 border-t border-gray-200">
-              <div className="mt-3 space-y-1">
-                <Link
-                  to="/login"
-                  className="block px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100"
-                  onClick={() => setIsOpen(false)}
-                >
-                  Connexion
-                </Link>
-                <Link
-                  to="/register"
-                  className="block px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100"
-                  onClick={() => setIsOpen(false)}
-                >
-                  Inscription
-                </Link>
-              </div>
+              <div className="border-t border-gray-100 my-4"></div>
+
+              {/* Mobile auth buttons */}
+              <Link
+                to="/login"
+                className="block px-4 py-3.5 rounded-lg text-base font-medium bg-pink-50/50 text-pink-700 hover:bg-pink-50 transition-all duration-200 text-center"
+                onClick={() => setIsOpen(false)}
+              >
+                Connexion
+              </Link>
+              <Link
+                to="/register"
+                className="block px-4 py-3.5 rounded-lg text-base font-medium bg-gradient-to-r from-pink-500 to-purple-600 text-white hover:opacity-90 transition-all duration-200 text-center shadow-sm hover:shadow-md"
+                onClick={() => setIsOpen(false)}
+              >
+                Inscription
+              </Link>
             </div>
           </div>
         )}
-      </nav>
+      </div>
     </header>
   );
 };
