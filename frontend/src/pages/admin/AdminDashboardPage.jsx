@@ -30,7 +30,7 @@ const AdminDashboardPage = () => {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.get(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/admin/dashboard/stats`,
+        `${process.env.REACT_APP_API_URL || 'http://hamza-aourass.ddns.net:5001'}/api/admin/dashboard/stats`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }

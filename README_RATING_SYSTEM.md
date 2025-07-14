@@ -261,7 +261,7 @@ npm test -- --grep "RatingService"
 ```bash
 # Test de l'endpoint complet
 curl -H "Authorization: Bearer TOKEN" \
-     http://localhost:5000/api/professionals/dashboard-stats
+     http://hamza-aourass.ddns.net:5001/api/professionals/dashboard-stats
 ```
 
 ## 🐛 Problèmes Connus

@@ -70,7 +70,7 @@ const ProductDetailPage = () => {
       setLoading(true);
       setError(null);
 
-      const response = await axios.get(`http://localhost:5000/api/products/${id}`);
+      const response = await axios.get(`http://hamza-aourass.ddns.net:5001/api/products/${id}`);
 
       // Handle both wrapped and direct response formats
       const productData = response.data.data || response.data;
@@ -93,7 +93,7 @@ const ProductDetailPage = () => {
       setReviewsLoading(true);
 
       const response = await axios.get(
-        `http://localhost:5000/api/products/${product._id}/reviews`,
+        `http://hamza-aourass.ddns.net:5001/api/products/${product._id}/reviews`,
         {
           params: {
             page,
@@ -216,8 +216,35 @@ Merci de confirmer cette commande. Je suis impatient(e) de recevoir ce produit!`
       }
     } else {
       // Fallback: copy to clipboard
-      navigator.clipboard.writeText(window.location.href);
-      toast.success('Lien copié dans le presse-papiers');
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(window.location.href);
+          toast.success('Lien copié dans le presse-papiers');
+        } else {
+          // Legacy fallback for older browsers or non-HTTPS contexts
+          const textArea = document.createElement('textarea');
+          textArea.value = window.location.href;
+          textArea.style.position = 'fixed';
+          textArea.style.left = '-999999px';
+          textArea.style.top = '-999999px';
+          document.body.appendChild(textArea);
+          textArea.focus();
+          textArea.select();
+          try {
+            document.execCommand('copy');
+            toast.success('Lien copié dans le presse-papiers');
+          } catch (err) {
+            toast.error('Impossible de copier le lien. Veuillez le copier manuellement.');
+            // Show the URL to the user so they can copy it manually
+            prompt('Copiez ce lien:', window.location.href);
+          }
+          document.body.removeChild(textArea);
+        }
+      } catch (error) {
+        toast.error('Impossible de copier le lien. Veuillez le copier manuellement.');
+        // Show the URL to the user so they can copy it manually
+        prompt('Copiez ce lien:', window.location.href);
+      }
     }
   };
 

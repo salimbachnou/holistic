@@ -177,8 +177,8 @@ async function createTestDataForSpecificProfessional() {
     console.log(`Professionnel ID: ${professionalId}`);
     console.log(`User ID du professionnel: ${professional.userId._id}`);
     console.log('Vous pouvez maintenant tester les pages:');
-    console.log(`- Événements: http://localhost:3000/professionals/${professionalId}/events`);
-    console.log(`- Produits: http://localhost:3000/professionals/${professionalId}/products`);
+    console.log(`- Événements: http://hamza-aourass.ddns.net:3002/professionals/${professionalId}/events`);
+    console.log(`- Produits: http://hamza-aourass.ddns.net:3002/professionals/${professionalId}/products`);
 
   } catch (error) {
     console.error('Erreur lors de la création des données de test:', error);

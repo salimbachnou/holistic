@@ -33,7 +33,7 @@ const checkProductReviews = async () => {
       console.log(`  - ${product.name} (ID: ${product._id})`);
       console.log(`    👤 Professionnel: ${professional}`);
       console.log(`    ⭐ ${reviewCount} avis`);
-      console.log(`    🔗 URL: http://localhost:3000/products/${product._id}`);
+      console.log(`    🔗 URL: http://hamza-aourass.ddns.net:3002/products/${product._id}`);
       console.log('');
     }
 

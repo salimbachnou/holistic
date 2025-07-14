@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
+
 import LoadingSpinner from '../components/Common/LoadingSpinner';
 
 const ProfessionalProductsPageSimple = () => {
@@ -13,37 +14,41 @@ const ProfessionalProductsPageSimple = () => {
     const fetchData = async () => {
       try {
         console.log('Fetching data for professional ID:', id);
-        
+
         // Test simple fetch
-        const professionalResponse = await fetch(`http://localhost:5000/api/professionals/${id}`);
+        const professionalResponse = await fetch(
+          `http://hamza-aourass.ddns.net:5001/api/professionals/${id}`
+        );
         console.log('Professional response status:', professionalResponse.status);
-        
+
         if (!professionalResponse.ok) {
           throw new Error(`HTTP error! status: ${professionalResponse.status}`);
         }
-        
+
         const professionalData = await professionalResponse.json();
         console.log('Professional data:', professionalData);
-        
+
         if (professionalData.success) {
           setProfessional(professionalData.professional);
         } else {
           setError('Professional not found in response');
         }
-        
+
         // Test products fetch
-        const productsResponse = await fetch(`http://localhost:5000/api/professionals/${id}/products`);
+        const productsResponse = await fetch(
+          `http://hamza-aourass.ddns.net:5001/api/professionals/${id}/products`
+        );
         console.log('Products response status:', productsResponse.status);
-        
+
         if (productsResponse.ok) {
           const productsData = await productsResponse.json();
           console.log('Products data:', productsData);
-          
+
           if (productsData.success) {
             setProducts(productsData.products || []);
           }
         }
-        
+
         setLoading(false);
       } catch (error) {
         console.error('Fetch error:', error);
@@ -97,7 +102,7 @@ const ProfessionalProductsPageSimple = () => {
         <h1 className="text-3xl font-bold mb-8">
           Produits de {professional.businessName || professional.title}
         </h1>
-        
+
         <div className="mb-4">
           <p>Professionnel ID: {id}</p>
           <p>Professionnel: {professional.businessName}</p>

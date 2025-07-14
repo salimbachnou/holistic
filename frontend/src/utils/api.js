@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // API URL
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+const API_URL = process.env.REACT_APP_API_URL || 'http://hamza-aourass.ddns.net:5001';
 
 // Set up axios defaults
 axios.defaults.withCredentials = true;

@@ -7,12 +7,12 @@ import {
   CalendarIcon,
 } from '@heroicons/react/24/outline';
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
+import { Link } from 'react-router-dom';
 
+import LoadingSpinner from '../components/Common/LoadingSpinner';
 import { useAuth } from '../contexts/AuthContext';
 import HomepageService from '../services/homepage.service';
-import LoadingSpinner from '../components/Common/LoadingSpinner';
 
 // Données statiques par défaut (fallback)
 const DEFAULT_TESTIMONIALS = [
@@ -48,7 +48,7 @@ const DEFAULT_PROFESSIONALS = [
       'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=500&q=80',
     businessType: 'Coach de vie',
     rating: 4.8,
-    location: 'Casablanca'
+    location: 'Casablanca',
   },
   {
     id: 2,
@@ -58,7 +58,7 @@ const DEFAULT_PROFESSIONALS = [
       'https://images.unsplash.com/photo-1589456506629-b2ea1a8576fb?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=500&q=80',
     businessType: 'Naturopathie',
     rating: 4.9,
-    location: 'Rabat'
+    location: 'Rabat',
   },
   {
     id: 3,
@@ -68,7 +68,7 @@ const DEFAULT_PROFESSIONALS = [
       'https://images.unsplash.com/photo-1594751684241-7c959e0ad5ca?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=500&q=80',
     businessType: 'Thérapie holistique',
     rating: 4.7,
-    location: 'Marrakech'
+    location: 'Marrakech',
   },
   {
     id: 4,
@@ -78,7 +78,7 @@ const DEFAULT_PROFESSIONALS = [
       'https://images.unsplash.com/photo-1599447292761-50f16ae87093?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=500&q=80',
     businessType: 'Yoga',
     rating: 4.6,
-    location: 'Agadir'
+    location: 'Agadir',
   },
 ];
 
@@ -92,7 +92,7 @@ const DEFAULT_PRODUCTS = [
     price: 150,
     currency: 'MAD',
     rating: 4.5,
-    category: 'Aromathérapie'
+    category: 'Aromathérapie',
   },
   {
     id: 2,
@@ -103,7 +103,7 @@ const DEFAULT_PRODUCTS = [
     price: 80,
     currency: 'MAD',
     rating: 4.3,
-    category: 'Alimentation'
+    category: 'Alimentation',
   },
   {
     id: 3,
@@ -114,7 +114,7 @@ const DEFAULT_PRODUCTS = [
     price: 200,
     currency: 'MAD',
     rating: 4.7,
-    category: 'Nutrition'
+    category: 'Nutrition',
   },
 ];
 
@@ -129,7 +129,7 @@ const DEFAULT_EVENTS = [
     price: 120,
     currency: 'MAD',
     maxParticipants: 20,
-    currentParticipants: 8
+    currentParticipants: 8,
   },
   {
     id: 2,
@@ -141,7 +141,7 @@ const DEFAULT_EVENTS = [
     price: 800,
     currency: 'MAD',
     maxParticipants: 15,
-    currentParticipants: 12
+    currentParticipants: 12,
   },
   {
     id: 3,
@@ -153,7 +153,7 @@ const DEFAULT_EVENTS = [
     price: 50,
     currency: 'MAD',
     maxParticipants: 100,
-    currentParticipants: 45
+    currentParticipants: 45,
   },
 ];
 
@@ -161,7 +161,7 @@ const DEFAULT_STATS = {
   professionals: 500,
   cities: 15,
   clients: 1000,
-  satisfaction: 4.8
+  satisfaction: 4.8,
 };
 
 const advantages = [
@@ -187,7 +187,7 @@ const advantages = [
 
 const HomePage = () => {
   const { isAuthenticated } = useAuth();
-  
+
   // États pour les données dynamiques
   const [testimonials, setTestimonials] = useState(DEFAULT_TESTIMONIALS);
   const [professionals, setProfessionals] = useState(DEFAULT_PROFESSIONALS);
@@ -206,20 +206,20 @@ const HomePage = () => {
   const loadHomepageData = async () => {
     try {
       setLoading(true);
-      
+
       // Charger toutes les données en parallèle
       const [
         professionalsResponse,
         productsResponse,
         eventsResponse,
         testimonialsResponse,
-        statsResponse
+        statsResponse,
       ] = await Promise.allSettled([
         HomepageService.getFeaturedProfessionals(),
         HomepageService.getFeaturedProducts(),
         HomepageService.getUpcomingEvents(),
         HomepageService.getTestimonials(),
-        HomepageService.getPlatformStats()
+        HomepageService.getPlatformStats(),
       ]);
 
       // Traiter les réponses
@@ -242,7 +242,6 @@ const HomePage = () => {
       if (statsResponse.status === 'fulfilled' && statsResponse.value.success) {
         setStats(statsResponse.value.stats);
       }
-
     } catch (error) {
       console.error('Erreur lors du chargement des données:', error);
       // Les données par défaut sont déjà définies
@@ -251,9 +250,9 @@ const HomePage = () => {
     }
   };
 
-  const handleNewsletterSubmit = async (e) => {
+  const handleNewsletterSubmit = async e => {
     e.preventDefault();
-    
+
     if (!newsletterEmail) {
       toast.error('Veuillez saisir votre adresse email');
       return;
@@ -262,26 +261,26 @@ const HomePage = () => {
     try {
       setNewsletterLoading(true);
       const response = await HomepageService.subscribeToNewsletter(newsletterEmail);
-      
+
       if (response.success) {
         toast.success(response.message);
         setNewsletterEmail('');
       } else {
-        toast.error(response.message || 'Erreur lors de l\'inscription');
+        toast.error(response.message || "Erreur lors de l'inscription");
       }
     } catch (error) {
       console.error('Erreur newsletter:', error);
-      toast.error('Erreur lors de l\'inscription à la newsletter');
+      toast.error("Erreur lors de l'inscription à la newsletter");
     } finally {
       setNewsletterLoading(false);
     }
   };
 
-  const formatDate = (date) => {
+  const formatDate = date => {
     return new Date(date).toLocaleDateString('fr-FR', {
       day: 'numeric',
       month: 'long',
-      year: 'numeric'
+      year: 'numeric',
     });
   };
 
@@ -355,8 +354,9 @@ const HomePage = () => {
                     src={professional.image}
                     alt={professional.name}
                     className="h-full w-full object-cover transition-all hover:scale-105"
-                    onError={(e) => {
-                      e.target.src = 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=500&q=80';
+                    onError={e => {
+                      e.target.src =
+                        'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=500&q=80';
                     }}
                   />
                 </div>
@@ -421,8 +421,9 @@ const HomePage = () => {
                     src={product.image}
                     alt={product.name}
                     className="h-full w-full object-cover transition-all hover:scale-105"
-                    onError={(e) => {
-                      e.target.src = 'https://images.unsplash.com/photo-1608571423902-eed4a5ad8108?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=500&q=80';
+                    onError={e => {
+                      e.target.src =
+                        'https://images.unsplash.com/photo-1608571423902-eed4a5ad8108?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=500&q=80';
                     }}
                   />
                 </div>
@@ -481,8 +482,9 @@ const HomePage = () => {
                     src={event.image}
                     alt={event.name}
                     className="h-full w-full object-cover transition-all hover:scale-105"
-                    onError={(e) => {
-                      e.target.src = 'https://images.unsplash.com/photo-1593811167562-9cef47bfc4d7?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=500&q=80';
+                    onError={e => {
+                      e.target.src =
+                        'https://images.unsplash.com/photo-1593811167562-9cef47bfc4d7?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=500&q=80';
                     }}
                   />
                 </div>
@@ -693,7 +695,7 @@ const HomePage = () => {
                 <input
                   type="email"
                   value={newsletterEmail}
-                  onChange={(e) => setNewsletterEmail(e.target.value)}
+                  onChange={e => setNewsletterEmail(e.target.value)}
                   placeholder="Votre adresse email"
                   className="flex-grow px-4 py-3 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                   required
@@ -703,7 +705,7 @@ const HomePage = () => {
                   disabled={newsletterLoading}
                   className="btn-primary py-3 px-6 rounded-lg whitespace-nowrap disabled:opacity-50"
                 >
-                  {newsletterLoading ? 'Inscription...' : 'S\'inscrire'}
+                  {newsletterLoading ? 'Inscription...' : "S'inscrire"}
                 </button>
               </form>
             </div>

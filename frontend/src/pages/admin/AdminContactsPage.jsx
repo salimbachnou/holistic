@@ -40,7 +40,7 @@ const AdminContactsPage = () => {
       setLoading(true);
       const token = localStorage.getItem('token');
       const response = await axios.get(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/admin/contacts`,
+        `${process.env.REACT_APP_API_URL || 'http://hamza-aourass.ddns.net:5001'}/api/admin/contacts`,
         {
           headers: { Authorization: `Bearer ${token}` },
           params: {
@@ -74,7 +74,7 @@ const AdminContactsPage = () => {
     try {
       const token = localStorage.getItem('token');
       await axios.patch(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/admin/contacts/${contactId}/status`,
+        `${process.env.REACT_APP_API_URL || 'http://hamza-aourass.ddns.net:5001'}/api/admin/contacts/${contactId}/status`,
         { isProcessed: !currentStatus },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -98,7 +98,7 @@ const AdminContactsPage = () => {
     try {
       const token = localStorage.getItem('token');
       await axios.delete(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/admin/contacts/${contactId}`,
+        `${process.env.REACT_APP_API_URL || 'http://hamza-aourass.ddns.net:5001'}/api/admin/contacts/${contactId}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
@@ -126,7 +126,7 @@ const AdminContactsPage = () => {
     try {
       const token = localStorage.getItem('token');
       await axios.patch(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/admin/contacts/${contactId}/read`,
+        `${process.env.REACT_APP_API_URL || 'http://hamza-aourass.ddns.net:5001'}/api/admin/contacts/${contactId}/read`,
         { isRead: true },
         { headers: { Authorization: `Bearer ${token}` } }
       );

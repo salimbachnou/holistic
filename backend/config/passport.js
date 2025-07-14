@@ -23,7 +23,7 @@ passport.deserializeUser(async (id, done) => {
 passport.use(new GoogleStrategy({
   clientID: process.env.GOOGLE_CLIENT_ID,
   clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-  callbackURL: `${process.env.BASE_URL || 'http://localhost:5000'}/api/auth/google/callback`,
+  callbackURL: `${process.env.BASE_URL || 'http://hamza-aourass.ddns.net:5001'}/api/auth/google/callback`,
   userProfileURL: 'https://www.googleapis.com/oauth2/v3/userinfo',
   proxy: true,
   passReqToCallback: true, // Pass request to callback

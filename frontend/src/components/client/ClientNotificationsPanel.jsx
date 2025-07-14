@@ -40,7 +40,7 @@ const ClientNotificationsPanel = ({ user }) => {
   const [loading, setLoading] = useState(false);
   const socketRef = useRef(null);
   const panelRef = useRef(null);
-  const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+  const apiUrl = process.env.REACT_APP_API_URL || 'http://hamza-aourass.ddns.net:5001';
 
   // Handle click outside to close panel
   useEffect(() => {
@@ -140,10 +140,6 @@ const ClientNotificationsPanel = ({ user }) => {
   // Récupérer les notifications au chargement du composant
   useEffect(() => {
     const userId = user?._id || user?.id;
-    if (userId) {
-      console.log('ClientNotificationsPanel: User ID changed, fetching notifications:', userId);
-      fetchNotifications();
-    }
   }, [user, fetchNotifications]);
 
   // Récupérer les notifications lorsque le panneau est ouvert
@@ -159,7 +155,6 @@ const ClientNotificationsPanel = ({ user }) => {
     const userId = user?._id || user?.id;
     if (!userId) return;
 
-    console.log('ClientNotificationsPanel: Setting up socket connection for user:', userId);
     socketRef.current = io(apiUrl);
 
     // Join user's notification room

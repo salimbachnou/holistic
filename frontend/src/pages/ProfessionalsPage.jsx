@@ -240,7 +240,7 @@ const ProfessionalsPage = () => {
                             return imagePath;
                           }
                           const apiUrl =
-                            process.env.REACT_APP_API_URL || 'http://localhost:5000';
+                            process.env.REACT_APP_API_URL || 'http://hamza-aourass.ddns.net:5001';
                           return `${apiUrl}${imagePath}`;
                         };
 

@@ -28,7 +28,7 @@ const AdminEventsPage = () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
-      const BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      const BASE_URL = process.env.REACT_APP_API_URL || 'http://hamza-aourass.ddns.net:5001';
 
       const response = await axios.get(`${BASE_URL}/api/admin/events`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -54,7 +54,7 @@ const AdminEventsPage = () => {
   const handleApproveEvent = async eventId => {
     try {
       const token = localStorage.getItem('token');
-      const BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      const BASE_URL = process.env.REACT_APP_API_URL || 'http://hamza-aourass.ddns.net:5001';
 
       await axios.put(
         `${BASE_URL}/api/admin/events/${eventId}/approve`,
@@ -73,7 +73,7 @@ const AdminEventsPage = () => {
   const handleRejectEvent = async eventId => {
     try {
       const token = localStorage.getItem('token');
-      const BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      const BASE_URL = process.env.REACT_APP_API_URL || 'http://hamza-aourass.ddns.net:5001';
 
       await axios.put(
         `${BASE_URL}/api/admin/events/${eventId}/reject`,

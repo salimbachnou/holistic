@@ -14,7 +14,7 @@ const convertImageUrl = (imagePath) => {
   if (imagePath.startsWith('http') || imagePath.startsWith('data:')) {
     return imagePath;
   }
-  const baseUrl = process.env.BASE_URL || 'http://localhost:5000';
+  const baseUrl = process.env.BASE_URL || 'http://hamza-aourass.ddns.net:5001';
   return imagePath.startsWith('/uploads') ? `${baseUrl}${imagePath}` : `${baseUrl}/uploads/profiles/${imagePath}`;
 };
 
@@ -382,7 +382,11 @@ router.get('/stats', requireAuth, async (req, res) => {
 // Get user's favorites
 router.get('/favorites', requireAuth, async (req, res) => {
   try {
-    const user = await User.findById(req.user._id).populate('favorites');
+    const user = await User.findById(req.user._id).populate({
+      path: 'favorites',
+      select: 'businessName businessType description rating coverImages profilePhoto address activities categories services'
+    });
+    
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -390,9 +394,32 @@ router.get('/favorites', requireAuth, async (req, res) => {
       });
     }
 
+    // Format favorites with proper image URLs
+    const formattedFavorites = (user.favorites || []).map(favorite => {
+      if (!favorite || !favorite._id) return null;
+      
+      const favoriteData = favorite.toJSON();
+      
+      // Convert cover images to full URLs
+      if (favoriteData.coverImages && favoriteData.coverImages.length > 0) {
+        favoriteData.coverImages = favoriteData.coverImages.map(img => 
+          img && !img.startsWith('http') ? 
+          `${process.env.BASE_URL || 'http://hamza-aourass.ddns.net:5001'}${img.startsWith('/uploads') ? img : '/uploads/professionals/' + img}` : 
+          img
+        );
+      }
+      
+      // Convert profile photo to full URL
+      if (favoriteData.profilePhoto && !favoriteData.profilePhoto.startsWith('http')) {
+        favoriteData.profilePhoto = `${process.env.BASE_URL || 'http://hamza-aourass.ddns.net:5001'}${favoriteData.profilePhoto.startsWith('/uploads') ? favoriteData.profilePhoto : '/uploads/professionals/' + favoriteData.profilePhoto}`;
+      }
+      
+      return favoriteData;
+    }).filter(fav => fav !== null);
+
     res.json({
       success: true,
-      favorites: user.favorites || []
+      favorites: formattedFavorites
     });
 
   } catch (error) {

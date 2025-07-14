@@ -92,7 +92,7 @@ const ProfessionalStatsDebugger = ({ stats, error, loading }) => {
               <div>Node ENV: {process.env.NODE_ENV}</div>
               <div>
                 API URL:{' '}
-                {process.env.REACT_APP_API_URL || 'Default (http://localhost:5000)'}
+                {process.env.REACT_APP_API_URL || 'Default (http://hamza-aourass.ddns.net:5001)'}
               </div>
               <div>
                 Stats Valid:{' '}

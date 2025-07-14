@@ -43,7 +43,7 @@ const NotificationsPanel = ({ user }) => {
   const [loading, setLoading] = useState(false);
   const socketRef = useRef(null);
   const panelRef = useRef(null);
-  const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+  const apiUrl = process.env.REACT_APP_API_URL || 'http://hamza-aourass.ddns.net:5001';
 
   // Handle click outside to close panel
   useEffect(() => {

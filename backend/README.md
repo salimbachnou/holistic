@@ -39,7 +39,7 @@ GOOGLE_CLIENT_ID=your-google-client-id
 GOOGLE_CLIENT_SECRET=your-google-client-secret
 
 # Frontend URL
-FRONTEND_URL=http://localhost:3000
+FRONTEND_URL=http://hamza-aourass.ddns.net:3002
 
 # Email Configuration
 EMAIL_USER=your-email@gmail.com
@@ -50,7 +50,7 @@ PORT=5000
 NODE_ENV=development
 
 # Base URL for backend
-BASE_URL=http://localhost:5000
+BASE_URL=http://hamza-aourass.ddns.net:5001
 ```
 
 ### 3. Google OAuth Setup
@@ -59,7 +59,7 @@ BASE_URL=http://localhost:5000
 3. Enable Google+ API
 4. Create OAuth 2.0 credentials
 5. Add authorized redirect URIs:
-   - `http://localhost:5000/api/auth/google/callback` (development)
+   - `http://hamza-aourass.ddns.net:5001/api/auth/google/callback` (development)
    - Your production callback URL
 6. Copy Client ID and Client Secret to your `.env` file
 
@@ -84,7 +84,7 @@ npm run dev
 npm start
 ```
 
-The server will run on `http://localhost:5000`
+The server will run on `http://hamza-aourass.ddns.net:5001`
 
 ## API Endpoints
 

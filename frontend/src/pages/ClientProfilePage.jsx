@@ -8,22 +8,36 @@ import {
   FaComment,
   FaHeart,
   FaVideo,
+  FaTrash,
+  FaStar,
+  FaCalendar,
+  FaClock,
+  FaEuroSign,
+  FaUsers,
 } from 'react-icons/fa';
 import { Link } from 'react-router-dom';
 
 import LoadingSpinner from '../components/Common/LoadingSpinner';
 import { useAuth } from '../contexts/AuthContext';
+import { useFavorites } from '../contexts/FavoritesContext';
 import { apiService } from '../services/axiosConfig';
 
 const ClientProfilePage = () => {
   const { user, refreshUserData } = useAuth();
+  const {
+    favorites,
+    toggleSessionFavorite,
+    toggleProductFavorite,
+    toggleProfessionalFavorite,
+    toggleEventFavorite,
+    getTotalFavoritesCount,
+  } = useFavorites();
   const [activeTab, setActiveTab] = useState('personal');
   const [loading, setLoading] = useState(false);
   const [bookingsLoading, setBookingsLoading] = useState(false);
   const [bookings, setBookings] = useState([]);
   const [orders, setOrders] = useState([]);
   const [conversations, setConversations] = useState([]);
-  const [favorites, setFavorites] = useState([]);
   const [profileForm, setProfileForm] = useState({
     firstName: '',
     lastName: '',
@@ -84,22 +98,6 @@ const ClientProfilePage = () => {
     }
   }, []);
 
-  const fetchFavorites = useCallback(async () => {
-    try {
-      const response = await apiService.get('/users/favorites');
-      // Ensure we have the correct data structure
-      const favorites = response.data?.favorites || [];
-      // Filter out any favorites with missing data
-      const validFavorites = favorites.filter(fav => fav && fav._id);
-      setFavorites(validFavorites);
-    } catch (err) {
-      console.error('Error fetching favorites:', err);
-      toast.error('Impossible de charger vos favoris');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
   const loadTabData = useCallback(
     tab => {
       if (!user) return;
@@ -112,12 +110,10 @@ const ClientProfilePage = () => {
       } else if (tab === 'messages') {
         setLoading(true);
         fetchConversations();
-      } else if (tab === 'favorites') {
-        setLoading(true);
-        fetchFavorites();
       }
+      // Note: favorites are now managed by FavoritesContext, no need to fetch them here
     },
-    [user, fetchBookings, fetchOrders, fetchConversations, fetchFavorites]
+    [user, fetchBookings, fetchOrders, fetchConversations]
   );
 
   useEffect(() => {
@@ -137,7 +133,7 @@ const ClientProfilePage = () => {
         setPreviewImage(
           user.profileImage.startsWith('http')
             ? user.profileImage
-            : `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}${user.profileImage}`
+            : `${process.env.REACT_APP_API_URL || 'http://hamza-aourass.ddns.net:5001'}${user.profileImage}`
         );
       }
 
@@ -260,11 +256,30 @@ const ClientProfilePage = () => {
     }
   };
 
-  const removeFavorite = async professionalId => {
+  const removeFavorite = async (favoriteId, favoriteType) => {
     try {
-      await apiService.delete(`/users/favorites/${professionalId}`);
-      toast.success('Professionnel retiré des favoris');
-      fetchFavorites();
+      // Use the appropriate toggle function based on type
+      const favoriteItem = { id: favoriteId, _id: favoriteId };
+
+      switch (favoriteType) {
+        case 'professional':
+          toggleProfessionalFavorite(favoriteItem);
+          break;
+        case 'product':
+          toggleProductFavorite(favoriteItem);
+          break;
+        case 'event':
+          toggleEventFavorite(favoriteItem);
+          break;
+        case 'session':
+          toggleSessionFavorite(favoriteItem);
+          break;
+        default:
+          // Fallback for backwards compatibility
+          toggleProfessionalFavorite(favoriteItem);
+      }
+
+      toast.success('Retiré des favoris');
     } catch (err) {
       toast.error('Erreur lors du retrait du favori');
     }
@@ -940,89 +955,390 @@ const ClientProfilePage = () => {
     </div>
   );
 
-  const renderFavorites = () => (
-    <div className="bg-white rounded-lg shadow-sm p-3 sm:p-6">
-      <h2 className="text-lg sm:text-xl font-semibold mb-4 sm:mb-6">Mes favoris</h2>
+  const renderFavorites = () => {
+    // Combine all favorites from different categories
+    const allFavorites = [
+      ...favorites.sessions.map(item => ({ ...item, type: 'session' })),
+      ...favorites.products.map(item => ({ ...item, type: 'product' })),
+      ...favorites.professionals.map(item => ({ ...item, type: 'professional' })),
+      ...favorites.events.map(item => ({ ...item, type: 'event' })),
+    ];
 
-      {loading ? (
-        <div className="flex justify-center py-10">
-          <LoadingSpinner />
-        </div>
-      ) : favorites.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-          {favorites.map(favorite => {
-            // Safety check to prevent errors if data is missing
-            if (!favorite || !favorite._id) {
-              return null;
-            }
+    const totalFavoritesCount = getTotalFavoritesCount();
 
-            return (
-              <div key={favorite._id} className="border border-gray-200 rounded-lg overflow-hidden">
-                <div className="relative h-24 sm:h-32">
-                  {favorite.coverImages && favorite.coverImages.length > 0 ? (
-                    <img
-                      src={favorite.coverImages[0]}
-                      alt={favorite.businessName}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-gray-100">
-                      <span className="text-gray-400 text-xs sm:text-sm">Pas d&apos;image</span>
-                    </div>
-                  )}
+    const renderFavoriteCard = item => {
+      const commonCardClass =
+        'bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 border border-gray-100 relative';
 
-                  <button
-                    onClick={() => removeFavorite(favorite._id)}
-                    className="absolute top-2 right-2 bg-white rounded-full p-1 sm:p-1.5 shadow-md hover:bg-red-50 transition-colors"
-                  >
-                    <FaHeart className="text-red-500 w-3 h-3 sm:w-4 sm:h-4" />
-                  </button>
+      switch (item.type) {
+        case 'session':
+          return (
+            <div key={item.id} className={commonCardClass}>
+              <div className="absolute top-3 right-3 z-10">
+                <button
+                  onClick={() => removeFavorite(item.id, 'session')}
+                  className="p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                >
+                  <FaTrash size={12} />
+                </button>
+              </div>
+
+              <div className="h-32 sm:h-40 bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center relative overflow-hidden">
+                {item.images && item.images.length > 0 ? (
+                  <img
+                    src={item.images[0]}
+                    alt={item.title}
+                    className="w-full h-full object-cover"
+                    onError={e => {
+                      e.target.style.display = 'none';
+                    }}
+                  />
+                ) : (
+                  <div className="text-white text-center">
+                    <FaCalendar className="text-4xl mb-2 mx-auto" />
+                    <p className="text-lg font-semibold">Session</p>
+                  </div>
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
+              </div>
+
+              <div className="p-4 sm:p-6">
+                <div className="flex items-center mb-3">
+                  <FaCalendar className="text-blue-500 mr-2" />
+                  <span className="text-sm font-medium text-blue-600">Session</span>
                 </div>
-
-                <div className="p-2 sm:p-3">
-                  <h3 className="font-medium text-sm sm:text-base truncate">
-                    {favorite.businessName}
-                  </h3>
-                  <p className="text-xs sm:text-sm text-gray-500 mb-2 capitalize truncate">
-                    {favorite.businessType}
-                  </p>
-
-                  <div className="flex justify-between items-center mt-2">
-                    <div className="flex items-center text-yellow-400 text-xs sm:text-sm">
-                      {'★'.repeat(Math.floor(favorite.rating?.average || 0))}
-                      {'☆'.repeat(5 - Math.floor(favorite.rating?.average || 0))}
-                      <span className="ml-1 text-gray-500">
-                        ({favorite.rating?.totalReviews || 0})
-                      </span>
-                    </div>
-
-                    <Link
-                      to={`/professionals/${favorite._id}`}
-                      className="text-primary-600 text-xs sm:text-sm font-medium hover:underline"
-                    >
-                      Voir
-                    </Link>
+                <h3 className="text-lg font-bold text-gray-900 mb-2">{item.title}</h3>
+                <p className="text-gray-600 text-sm mb-3 line-clamp-2">{item.description}</p>
+                <div className="space-y-2 text-sm text-gray-500 mb-4">
+                  <div className="flex items-center">
+                    <FaClock className="mr-2" />
+                    <span>{new Date(item.startTime).toLocaleDateString()}</span>
+                  </div>
+                  <div className="flex items-center">
+                    <FaEuroSign className="mr-2" />
+                    <span>{item.price?.amount || item.price} MAD</span>
                   </div>
                 </div>
+                <Link
+                  to="/sessions"
+                  className="inline-block bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 transition-colors w-full text-center"
+                >
+                  Voir les sessions
+                </Link>
               </div>
-            );
-          })}
-        </div>
-      ) : (
-        <div className="text-center py-8">
-          <p className="text-gray-500 mb-4 text-sm sm:text-base">
-            Vous n&apos;avez pas encore de favoris
-          </p>
-          <Link
-            to="/professionals"
-            className="inline-block bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 text-sm sm:text-base"
-          >
-            Explorer les professionnels
-          </Link>
-        </div>
-      )}
-    </div>
-  );
+            </div>
+          );
+
+        case 'product':
+          return (
+            <div key={item.id} className={commonCardClass}>
+              <div className="absolute top-3 right-3 z-10">
+                <button
+                  onClick={() => removeFavorite(item.id, 'product')}
+                  className="p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                >
+                  <FaTrash size={12} />
+                </button>
+              </div>
+
+              <div className="h-32 sm:h-40 bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center relative overflow-hidden">
+                {item.images && item.images.length > 0 ? (
+                  <img
+                    src={item.images[0]}
+                    alt={item.title}
+                    className="w-full h-full object-cover"
+                    onError={e => {
+                      e.target.style.display = 'none';
+                    }}
+                  />
+                ) : (
+                  <div className="text-white text-center">
+                    <FaShoppingBag className="text-4xl mb-2 mx-auto" />
+                    <p className="text-lg font-semibold">Produit</p>
+                  </div>
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
+              </div>
+
+              <div className="p-4 sm:p-6">
+                <div className="flex items-center mb-3">
+                  <FaShoppingBag className="text-green-500 mr-2" />
+                  <span className="text-sm font-medium text-green-600">Produit</span>
+                </div>
+                <h3 className="text-lg font-bold text-gray-900 mb-2">{item.title}</h3>
+                <p className="text-gray-600 text-sm mb-3 line-clamp-2">{item.description}</p>
+                <div className="flex items-center justify-between mb-4">
+                  <span className="text-xl font-bold text-gray-900">
+                    {item.price} {item.currency || 'MAD'}
+                  </span>
+                  {item.rating && (
+                    <div className="flex items-center">
+                      <FaStar className="text-yellow-400 mr-1" />
+                      <span className="text-sm text-gray-600">{item.rating.average}</span>
+                    </div>
+                  )}
+                </div>
+                <Link
+                  to={`/products/${item.id}`}
+                  className="inline-block bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700 transition-colors w-full text-center"
+                >
+                  Voir le produit
+                </Link>
+              </div>
+            </div>
+          );
+
+        case 'professional':
+          return (
+            <div key={item.id} className={commonCardClass}>
+              <div className="absolute top-3 right-3 z-10">
+                <button
+                  onClick={() => removeFavorite(item.id, 'professional')}
+                  className="p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                >
+                  <FaTrash size={12} />
+                </button>
+              </div>
+
+              <div className="h-32 sm:h-40 bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center relative overflow-hidden">
+                {item.coverImages && item.coverImages.length > 0 ? (
+                  <img
+                    src={item.coverImages[0]}
+                    alt={item.businessName}
+                    className="w-full h-full object-cover"
+                    onError={e => {
+                      e.target.style.display = 'none';
+                    }}
+                  />
+                ) : item.profilePhoto ? (
+                  <img
+                    src={item.profilePhoto}
+                    alt={item.businessName}
+                    className="w-full h-full object-cover"
+                    onError={e => {
+                      e.target.style.display = 'none';
+                    }}
+                  />
+                ) : (
+                  <div className="text-white text-center">
+                    <FaUser className="text-4xl mb-2 mx-auto" />
+                    <p className="text-lg font-semibold">Professionnel</p>
+                  </div>
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
+              </div>
+
+              <div className="p-4 sm:p-6">
+                <div className="flex items-center mb-3">
+                  <FaUser className="text-purple-500 mr-2" />
+                  <span className="text-sm font-medium text-purple-600">Professionnel</span>
+                </div>
+                <h3 className="text-lg font-bold text-gray-900 mb-2">{item.businessName}</h3>
+                <p className="text-gray-600 text-sm mb-3 capitalize">{item.businessType}</p>
+                {item.rating && (
+                  <div className="flex items-center mb-3">
+                    {[...Array(5)].map((_, i) => (
+                      <FaStar
+                        key={i}
+                        className={
+                          i < Math.floor(item.rating.average || 0)
+                            ? 'text-yellow-400'
+                            : 'text-gray-300'
+                        }
+                      />
+                    ))}
+                    <span className="ml-2 text-sm text-gray-600">
+                      {item.rating.totalReviews || 0} avis
+                    </span>
+                  </div>
+                )}
+                <Link
+                  to={`/professionals/${item.id}`}
+                  className="inline-block bg-purple-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-purple-700 transition-colors w-full text-center"
+                >
+                  Voir le profil
+                </Link>
+              </div>
+            </div>
+          );
+
+        case 'event':
+          return (
+            <div key={item.id} className={commonCardClass}>
+              <div className="absolute top-3 right-3 z-10">
+                <button
+                  onClick={() => removeFavorite(item.id, 'event')}
+                  className="p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                >
+                  <FaTrash size={12} />
+                </button>
+              </div>
+
+              <div className="h-32 sm:h-40 bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center relative overflow-hidden">
+                {item.images && item.images.length > 0 ? (
+                  <img
+                    src={item.images[0]}
+                    alt={item.title}
+                    className="w-full h-full object-cover"
+                    onError={e => {
+                      e.target.style.display = 'none';
+                    }}
+                  />
+                ) : (
+                  <div className="text-white text-center">
+                    <FaCalendar className="text-4xl mb-2 mx-auto" />
+                    <p className="text-lg font-semibold">Événement</p>
+                  </div>
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
+              </div>
+
+              <div className="p-4 sm:p-6">
+                <div className="flex items-center mb-3">
+                  <FaCalendar className="text-orange-500 mr-2" />
+                  <span className="text-sm font-medium text-orange-600">Événement</span>
+                </div>
+                <h3 className="text-lg font-bold text-gray-900 mb-2">{item.title}</h3>
+                <p className="text-gray-600 text-sm mb-3 line-clamp-2">{item.description}</p>
+                <div className="space-y-2 text-sm text-gray-500 mb-4">
+                  <div className="flex items-center">
+                    <FaCalendar className="mr-2" />
+                    <span>
+                      {item.date ? new Date(item.date).toLocaleDateString() : 'Date non spécifiée'}
+                    </span>
+                  </div>
+                  <div className="flex items-center">
+                    <FaClock className="mr-2" />
+                    <span>{item.time || 'Heure non spécifiée'}</span>
+                  </div>
+                </div>
+                <Link
+                  to={`/events/${item.id}`}
+                  className="inline-block bg-orange-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-orange-700 transition-colors w-full text-center"
+                >
+                  Voir l&apos;événement
+                </Link>
+              </div>
+            </div>
+          );
+
+        default:
+          return null;
+      }
+    };
+
+    return (
+      <div className="bg-white rounded-lg shadow-sm p-3 sm:p-6">
+        <h2 className="text-lg sm:text-xl font-semibold mb-4 sm:mb-6">Mes favoris</h2>
+
+        {totalFavoritesCount > 0 ? (
+          <>
+            {/* Statistiques des favoris */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+              <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-blue-600 mb-1">Sessions</p>
+                    <p className="text-xl font-bold text-blue-900">
+                      {favorites.sessions?.length || 0}
+                    </p>
+                  </div>
+                  <FaCalendar className="text-2xl text-blue-500" />
+                </div>
+              </div>
+              <div className="bg-green-50 border-2 border-green-200 rounded-xl p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-green-600 mb-1">Produits</p>
+                    <p className="text-xl font-bold text-green-900">
+                      {favorites.products?.length || 0}
+                    </p>
+                  </div>
+                  <FaShoppingBag className="text-2xl text-green-500" />
+                </div>
+              </div>
+              <div className="bg-purple-50 border-2 border-purple-200 rounded-xl p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-purple-600 mb-1">Professionnels</p>
+                    <p className="text-xl font-bold text-purple-900">
+                      {favorites.professionals?.length || 0}
+                    </p>
+                  </div>
+                  <FaUser className="text-2xl text-purple-500" />
+                </div>
+              </div>
+              <div className="bg-orange-50 border-2 border-orange-200 rounded-xl p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-orange-600 mb-1">Événements</p>
+                    <p className="text-xl font-bold text-orange-900">
+                      {favorites.events?.length || 0}
+                    </p>
+                  </div>
+                  <FaCalendar className="text-2xl text-orange-500" />
+                </div>
+              </div>
+            </div>
+
+            {/* Liste des favoris */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-6">
+              {allFavorites.slice(0, 6).map(item => renderFavoriteCard(item))}
+            </div>
+
+            {/* Actions de gestion */}
+            <div className="pt-4 border-t border-gray-200 flex justify-between items-center">
+              <p className="text-sm text-gray-600">
+                {totalFavoritesCount} élément{totalFavoritesCount > 1 ? 's' : ''} en favoris
+              </p>
+              <Link
+                to="/favorites"
+                className="text-sm text-primary-600 hover:text-primary-800 font-medium"
+              >
+                Voir tous mes favoris
+              </Link>
+            </div>
+          </>
+        ) : (
+          <div className="text-center py-12">
+            <div className="text-gray-400 text-6xl mb-4">
+              <FaHeart className="mx-auto" />
+            </div>
+            <h3 className="text-xl font-semibold text-gray-900 mb-3">Aucun favori</h3>
+            <p className="text-gray-600 mb-6 text-base">
+              Explorez nos contenus et ajoutez vos préférés pour les retrouver facilement
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <Link
+                to="/sessions"
+                className="inline-block bg-blue-600 text-white px-4 py-3 rounded-lg hover:bg-blue-700 transition-colors text-sm"
+              >
+                Sessions
+              </Link>
+              <Link
+                to="/products"
+                className="inline-block bg-green-600 text-white px-4 py-3 rounded-lg hover:bg-green-700 transition-colors text-sm"
+              >
+                Produits
+              </Link>
+              <Link
+                to="/professionals"
+                className="inline-block bg-purple-600 text-white px-4 py-3 rounded-lg hover:bg-purple-700 transition-colors text-sm"
+              >
+                Professionnels
+              </Link>
+              <Link
+                to="/events"
+                className="inline-block bg-orange-600 text-white px-4 py-3 rounded-lg hover:bg-orange-700 transition-colors text-sm"
+              >
+                Événements
+              </Link>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   const renderContactForm = () => (
     <div className="bg-white rounded-lg shadow-sm p-3 sm:p-6">

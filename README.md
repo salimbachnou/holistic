@@ -15,8 +15,8 @@ Pour lancer le projet complet (frontend et backend) avec une seule commande:
    ```
 
 Cette commande lancera simultanément:
-- Le backend sur http://localhost:5000
-- Le frontend sur http://localhost:3000
+- Le backend sur http://hamza-aourass.ddns.net:5001
+- Le frontend sur http://hamza-aourass.ddns.net:3002
 
 ## Commandes individuelles
 

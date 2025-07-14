@@ -69,7 +69,7 @@ const getImageUrl = imagePath => {
   }
 
   // Otherwise, prepend the API URL
-  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+  const API_URL = process.env.REACT_APP_API_URL || 'http://hamza-aourass.ddns.net:5001';
   return `${API_URL}${imagePath}`;
 };
 
@@ -130,7 +130,7 @@ const ProfessionalProductsPage = () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
-      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      const API_URL = process.env.REACT_APP_API_URL || 'http://hamza-aourass.ddns.net:5001';
 
       const response = await axios.get(`${API_URL}/api/professionals/products`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -164,7 +164,7 @@ const ProfessionalProductsPage = () => {
     try {
       setLoadingOrders(true);
       const token = localStorage.getItem('token');
-      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      const API_URL = process.env.REACT_APP_API_URL || 'http://hamza-aourass.ddns.net:5001';
 
       const response = await axios.get(`${API_URL}/api/orders/by-product/${productId}`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -185,7 +185,7 @@ const ProfessionalProductsPage = () => {
     try {
       setUpdatingOrderStatus(orderId);
       const token = localStorage.getItem('token');
-      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      const API_URL = process.env.REACT_APP_API_URL || 'http://hamza-aourass.ddns.net:5001';
 
       await axios.put(
         `${API_URL}/api/orders/${orderId}/status`,
@@ -221,7 +221,7 @@ const ProfessionalProductsPage = () => {
     try {
       setUpdatingOrderStatus(orderId);
       const token = localStorage.getItem('token');
-      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      const API_URL = process.env.REACT_APP_API_URL || 'http://hamza-aourass.ddns.net:5001';
 
       await axios.put(
         `${API_URL}/api/orders/${orderId}/deliver`,
@@ -345,7 +345,7 @@ const ProfessionalProductsPage = () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
-      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      const API_URL = process.env.REACT_APP_API_URL || 'http://hamza-aourass.ddns.net:5001';
 
       const productData = {
         ...formData,

@@ -6,7 +6,7 @@
 
 const environments = {
   development: {
-    baseURL: 'http://localhost:5000/api',
+    baseURL: 'http://hamza-aourass.ddns.net:5001/api',
     timeout: 10000,
   },
   staging: {

@@ -83,11 +83,9 @@ const ProfessionalDetailPage = () => {
         const response = await apiService.get(
           `/sessions/professional/${professionalId}?startDate=2020-01-01`
         );
-        console.log('Sessions API response:', response);
 
         // Check if the response has the expected structure
         if (response && response.sessions) {
-          console.log('Sessions found:', response.sessions.length);
           setSessions(response.sessions || []);
         } else {
           console.error('Unexpected API response structure:', response);
@@ -117,7 +115,7 @@ const ProfessionalDetailPage = () => {
           if (!imagePath) return getDefaultFallbackImage();
           return imagePath.startsWith('http')
             ? imagePath
-            : `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}${imagePath}`;
+            : `${process.env.REACT_APP_API_URL || 'http://hamza-aourass.ddns.net:5001'}${imagePath}`;
         });
         setCoverImageUrls(urls);
       } else {
@@ -128,12 +126,12 @@ const ProfessionalDetailPage = () => {
       if (professional.profilePhoto) {
         const imageUrl = professional.profilePhoto.startsWith('http')
           ? professional.profilePhoto
-          : `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}${professional.profilePhoto}`;
+          : `${process.env.REACT_APP_API_URL || 'http://hamza-aourass.ddns.net:5001'}${professional.profilePhoto}`;
         setProfileImageUrl(imageUrl);
       } else if (professional.userId?.profileImage) {
         const imageUrl = professional.userId.profileImage.startsWith('http')
           ? professional.userId.profileImage
-          : `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}${professional.userId.profileImage}`;
+          : `${process.env.REACT_APP_API_URL || 'http://hamza-aourass.ddns.net:5001'}${professional.userId.profileImage}`;
         setProfileImageUrl(imageUrl);
       } else {
         setProfileImageUrl(null);

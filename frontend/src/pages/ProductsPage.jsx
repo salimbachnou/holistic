@@ -138,7 +138,7 @@ const getImageUrl = imagePath => {
   ) {
     return imagePath;
   }
-  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+  const API_URL = process.env.REACT_APP_API_URL || 'http://hamza-aourass.ddns.net:5001';
   return `${API_URL}${imagePath}`;
 };
 
@@ -487,7 +487,7 @@ const ProductsPage = () => {
   const fetchProducts = async () => {
     try {
       setLoading(true);
-      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      const API_URL = process.env.REACT_APP_API_URL || 'http://hamza-aourass.ddns.net:5001';
 
       try {
         // Try to fetch from API

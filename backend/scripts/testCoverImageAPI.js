@@ -5,7 +5,7 @@ const Professional = require('../models/Professional');
 const jwt = require('jsonwebtoken');
 
 // Configuration
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_BASE_URL = 'http://hamza-aourass.ddns.net:5001/api';
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/holistic-platform';
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 

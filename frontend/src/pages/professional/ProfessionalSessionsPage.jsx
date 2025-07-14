@@ -2370,7 +2370,9 @@ const ProfessionalSessionsPage = () => {
                       title="Voir les avis de cette session"
                     >
                       <StarIcon className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
-                      <span className="hidden sm:inline">Avis ({selectedSession.reviewCount || 0})</span>
+                      <span className="hidden sm:inline">
+                        Avis ({selectedSession.reviewCount || 0})
+                      </span>
                       <span className="sm:hidden">Avis ({selectedSession.reviewCount || 0})</span>
                     </button>
 

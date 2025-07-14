@@ -129,7 +129,7 @@ const createProductReviews = async () => {
     });
 
     console.log(`✅ Note moyenne du produit mise à jour: ${avgRating.toFixed(1)}/5 (${reviewsData.length} avis)`);
-    console.log(`🔗 URL du produit: http://localhost:3000/products/${product._id}`);
+    console.log(`🔗 URL du produit: http://hamza-aourass.ddns.net:3002/products/${product._id}`);
 
   } catch (error) {
     console.error('❌ Erreur:', error);
