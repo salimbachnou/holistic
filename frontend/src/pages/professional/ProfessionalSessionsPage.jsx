@@ -55,11 +55,11 @@ import 'react-big-calendar/lib/css/react-big-calendar.css';
 moment.locale('fr');
 const localizer = momentLocalizer(moment);
 
-// Google Maps options
-const mapContainerStyle = {
+// Google Maps options - Responsive
+const getMapContainerStyle = () => ({
   width: '100%',
-  height: '300px',
-};
+  height: window.innerWidth < 640 ? '200px' : window.innerWidth < 1024 ? '250px' : '300px',
+});
 
 const defaultCenter = {
   lat: 33.589886, // Morocco center
@@ -212,7 +212,7 @@ const ProfessionalSessionsPage = () => {
   const fetchProfessionalCategories = async () => {
     try {
       setLoadingCategories(true);
-      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      const API_URL = process.env.REACT_APP_API_URL || 'http://hamza-aourass.ddns.net:5001';
       const token = localStorage.getItem('token');
 
       const response = await axios.get(`${API_URL}/api/professionals/me/categories`, {
@@ -233,7 +233,7 @@ const ProfessionalSessionsPage = () => {
   // Add function to add a new category
   const addCategory = async categoryName => {
     try {
-      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      const API_URL = process.env.REACT_APP_API_URL || 'http://hamza-aourass.ddns.net:5001';
       const token = localStorage.getItem('token');
 
       const response = await axios.post(
@@ -261,7 +261,7 @@ const ProfessionalSessionsPage = () => {
   // Add function to delete a category
   const deleteCategory = async categoryName => {
     try {
-      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      const API_URL = process.env.REACT_APP_API_URL || 'http://hamza-aourass.ddns.net:5001';
       const token = localStorage.getItem('token');
 
       const response = await axios.delete(
@@ -287,7 +287,7 @@ const ProfessionalSessionsPage = () => {
   const fetchSessionReviews = async sessionId => {
     try {
       setLoadingReviews(true);
-      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      const API_URL = process.env.REACT_APP_API_URL || 'http://hamza-aourass.ddns.net:5001';
       const token = localStorage.getItem('token');
 
       const response = await axios.get(`${API_URL}/api/reviews/session/${sessionId}`, {
@@ -344,7 +344,7 @@ const ProfessionalSessionsPage = () => {
 
     try {
       setSubmittingResponse(true);
-      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      const API_URL = process.env.REACT_APP_API_URL || 'http://hamza-aourass.ddns.net:5001';
       const token = localStorage.getItem('token');
 
       await axios.put(
@@ -377,7 +377,7 @@ const ProfessionalSessionsPage = () => {
   const fetchSessions = async () => {
     try {
       setLoading(true);
-      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      const API_URL = process.env.REACT_APP_API_URL || 'http://hamza-aourass.ddns.net:5001';
       const token = localStorage.getItem('token');
 
       const response = await axios.get(`${API_URL}/api/sessions/professional`, {
@@ -397,7 +397,7 @@ const ProfessionalSessionsPage = () => {
   const fetchSessionBookings = async sessionId => {
     try {
       setIsLoadingRequests(true);
-      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      const API_URL = process.env.REACT_APP_API_URL || 'http://hamza-aourass.ddns.net:5001';
       const token = localStorage.getItem('token');
 
       const response = await axios.get(`${API_URL}/api/sessions/${sessionId}/bookings`, {
@@ -434,7 +434,7 @@ const ProfessionalSessionsPage = () => {
 
   const fetchSpecificBooking = async bookingId => {
     try {
-      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      const API_URL = process.env.REACT_APP_API_URL || 'http://hamza-aourass.ddns.net:5001';
       const token = localStorage.getItem('token');
 
       const response = await axios.get(`${API_URL}/api/bookings/${bookingId}`, {
@@ -533,7 +533,7 @@ const ProfessionalSessionsPage = () => {
         return;
       }
 
-      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      const API_URL = process.env.REACT_APP_API_URL || 'http://hamza-aourass.ddns.net:5001';
       const token = localStorage.getItem('token');
 
       if (!token) {
@@ -715,7 +715,7 @@ const ProfessionalSessionsPage = () => {
 
   const handleDeleteConfirm = async () => {
     try {
-      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      const API_URL = process.env.REACT_APP_API_URL || 'http://hamza-aourass.ddns.net:5001';
       const token = localStorage.getItem('token');
 
       await axios.put(
@@ -826,7 +826,7 @@ const ProfessionalSessionsPage = () => {
 
   const handleBookingStatusChange = async (bookingId, status, reason = '') => {
     try {
-      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      const API_URL = process.env.REACT_APP_API_URL || 'http://hamza-aourass.ddns.net:5001';
       const token = localStorage.getItem('token');
 
       await axios.put(
@@ -855,7 +855,7 @@ const ProfessionalSessionsPage = () => {
 
   const handleCompleteSession = async sessionId => {
     try {
-      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      const API_URL = process.env.REACT_APP_API_URL || 'http://hamza-aourass.ddns.net:5001';
       const token = localStorage.getItem('token');
 
       const response = await axios.put(
@@ -1087,7 +1087,7 @@ const ProfessionalSessionsPage = () => {
     return (
       <div className="mb-4 relative">
         <GoogleMap
-          mapContainerStyle={mapContainerStyle}
+          mapContainerStyle={getMapContainerStyle()}
           center={mapCenter}
           zoom={13}
           onClick={handleMapClick}
@@ -2256,7 +2256,7 @@ const ProfessionalSessionsPage = () => {
                       selectedSession.locationCoordinates.lat &&
                       selectedSession.locationCoordinates.lng &&
                       isLoaded && (
-                        <div className="h-64 rounded-2xl overflow-hidden shadow-xl border-2 border-pink-300">
+                        <div className="h-48 sm:h-56 lg:h-64 rounded-xl lg:rounded-2xl overflow-hidden shadow-xl border-2 border-pink-300">
                           <GoogleMap
                             mapContainerStyle={{ width: '100%', height: '100%' }}
                             center={{
@@ -2360,22 +2360,23 @@ const ProfessionalSessionsPage = () => {
                 </div>
               )}
 
-              {/* Actions du modal */}
-              <div className="border-t-2 border-purple-200 pt-8">
-                <div className="flex flex-wrap gap-4 justify-between">
-                  <div className="flex gap-4">
+              {/* Actions du modal - Responsive */}
+              <div className="border-t-2 border-purple-200 pt-6 sm:pt-8">
+                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 sm:justify-between">
+                  <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
                     <button
                       onClick={() => handleOpenReviewsModal(selectedSession)}
-                      className="bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-600 hover:to-amber-700 text-white px-8 py-4 rounded-2xl flex items-center transition-all duration-300 transform hover:-translate-y-1 hover:scale-105 shadow-lg hover:shadow-xl font-bold"
+                      className="bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-600 hover:to-amber-700 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-xl sm:rounded-2xl flex items-center justify-center transition-all duration-300 transform hover:-translate-y-1 hover:scale-105 shadow-lg hover:shadow-xl font-bold text-sm sm:text-base"
                       title="Voir les avis de cette session"
                     >
-                      <StarIcon className="h-5 w-5 mr-2" />
-                      Avis ({selectedSession.reviewCount || 0})
+                      <StarIcon className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
+                      <span className="hidden sm:inline">Avis ({selectedSession.reviewCount || 0})</span>
+                      <span className="sm:hidden">Avis ({selectedSession.reviewCount || 0})</span>
                     </button>
 
                     <button
                       onClick={() => handleEditSession(selectedSession)}
-                      className="bg-gradient-to-r from-blue-500 to-violet-600 hover:from-blue-600 hover:to-violet-700 text-white px-8 py-4 rounded-2xl flex items-center transition-all duration-300 transform hover:-translate-y-1 hover:scale-105 shadow-lg hover:shadow-xl font-bold disabled:opacity-50 disabled:transform-none disabled:hover:scale-100"
+                      className="bg-gradient-to-r from-blue-500 to-violet-600 hover:from-blue-600 hover:to-violet-700 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-xl sm:rounded-2xl flex items-center justify-center transition-all duration-300 transform hover:-translate-y-1 hover:scale-105 shadow-lg hover:shadow-xl font-bold disabled:opacity-50 disabled:transform-none disabled:hover:scale-100 text-sm sm:text-base"
                       disabled={!canModifySession(selectedSession)}
                       title={
                         !canModifySession(selectedSession)
@@ -2386,17 +2387,17 @@ const ProfessionalSessionsPage = () => {
                           : 'Modifier cette session'
                       }
                     >
-                      <PencilIcon className="h-5 w-5 mr-2" />
+                      <PencilIcon className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
                       Modifier
                     </button>
 
                     {selectedSession.status === 'scheduled' && (
                       <button
                         onClick={() => handleCompleteSession(selectedSession._id)}
-                        className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white px-8 py-4 rounded-2xl flex items-center transition-all duration-300 transform hover:-translate-y-1 hover:scale-105 shadow-lg hover:shadow-xl font-bold"
+                        className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-xl sm:rounded-2xl flex items-center justify-center transition-all duration-300 transform hover:-translate-y-1 hover:scale-105 shadow-lg hover:shadow-xl font-bold text-sm sm:text-base"
                         title="Marquer comme terminée et envoyer les demandes d'avis aux participants"
                       >
-                        <CheckIcon className="h-5 w-5 mr-2" />
+                        <CheckIcon className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
                         Terminer
                       </button>
                     )}
@@ -2404,7 +2405,7 @@ const ProfessionalSessionsPage = () => {
 
                   <button
                     onClick={() => setIsDeleteModalOpen(true)}
-                    className="bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 text-white px-8 py-4 rounded-2xl flex items-center transition-all duration-300 transform hover:-translate-y-1 hover:scale-105 shadow-lg hover:shadow-xl font-bold disabled:opacity-50 disabled:transform-none disabled:hover:scale-100"
+                    className="bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-xl sm:rounded-2xl flex items-center justify-center transition-all duration-300 transform hover:-translate-y-1 hover:scale-105 shadow-lg hover:shadow-xl font-bold disabled:opacity-50 disabled:transform-none disabled:hover:scale-100 text-sm sm:text-base"
                     disabled={!canModifySession(selectedSession)}
                     title={
                       !canModifySession(selectedSession)
@@ -2415,7 +2416,7 @@ const ProfessionalSessionsPage = () => {
                         : 'Annuler cette session'
                     }
                   >
-                    <TrashIcon className="h-5 w-5 mr-2" />
+                    <TrashIcon className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
                     Annuler
                   </button>
                 </div>
@@ -2425,18 +2426,18 @@ const ProfessionalSessionsPage = () => {
         </div>
       )}
 
-      {/* Session Form Modal */}
+      {/* Session Form Modal - Responsive */}
       {isFormModalOpen && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-3xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-4">
+          <div className="bg-white rounded-xl sm:rounded-2xl lg:rounded-3xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden">
             {/* Header du modal avec gradient */}
-            <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 px-8 py-6">
+            <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
               <div className="flex justify-between items-center">
                 <div>
-                  <h2 className="text-3xl font-bold text-white">
+                  <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-white">
                     {isEditing ? '✏️ Modifier la session' : '✨ Créer une nouvelle session'}
                   </h2>
-                  <p className="text-indigo-100 mt-2 text-lg">
+                  <p className="text-indigo-100 mt-2 text-sm sm:text-base lg:text-lg">
                     {isEditing
                       ? 'Modifiez les détails de votre session'
                       : 'Configurez votre nouvelle session'}
@@ -2444,16 +2445,16 @@ const ProfessionalSessionsPage = () => {
                 </div>
                 <button
                   onClick={handleCloseFormModal}
-                  className="text-white hover:text-gray-200 transition-colors p-3 rounded-full hover:bg-white/10"
+                  className="text-white hover:text-gray-200 transition-colors p-2 sm:p-3 rounded-full hover:bg-white/10"
                 >
-                  <XMarkIcon className="h-6 w-6" />
+                  <XMarkIcon className="h-5 w-5 sm:h-6 sm:w-6" />
                 </button>
               </div>
             </div>
 
             {/* Contenu du formulaire avec scroll */}
             <div className="overflow-y-auto max-h-[calc(90vh-120px)]">
-              <form onSubmit={handleFormSubmit} className="p-8">
+              <form onSubmit={handleFormSubmit} className="p-4 sm:p-6 lg:p-8">
                 <div className="space-y-8">
                   {/* Informations de base */}
                   <div className="bg-gradient-to-br from-blue-50 to-indigo-100 p-6 rounded-2xl border-2 border-blue-200">
@@ -2921,18 +2922,18 @@ const ProfessionalSessionsPage = () => {
                     )}
                   </div>
 
-                  {/* Actions du formulaire */}
-                  <div className="bg-gradient-to-r from-gray-50 to-slate-100 px-8 py-6 border-t-2 border-gray-200 flex justify-end space-x-4">
+                  {/* Actions du formulaire - Responsive */}
+                  <div className="bg-gradient-to-r from-gray-50 to-slate-100 px-4 sm:px-6 lg:px-8 py-4 sm:py-6 border-t-2 border-gray-200 flex flex-col sm:flex-row justify-end space-y-3 sm:space-y-0 sm:space-x-4">
                     <button
                       type="button"
                       onClick={handleCloseFormModal}
-                      className="px-8 py-3 border-2 border-gray-300 text-gray-700 bg-white rounded-xl hover:bg-gray-50 transition-colors duration-200 font-semibold"
+                      className="w-full sm:w-auto px-6 sm:px-8 py-3 border-2 border-gray-300 text-gray-700 bg-white rounded-lg sm:rounded-xl hover:bg-gray-50 transition-colors duration-200 font-semibold text-sm sm:text-base"
                     >
                       Annuler
                     </button>
                     <button
                       type="submit"
-                      className="px-8 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-xl transition-all duration-300 transform hover:-translate-y-1 shadow-lg hover:shadow-xl font-bold"
+                      className="w-full sm:w-auto px-6 sm:px-8 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-lg sm:rounded-xl transition-all duration-300 transform hover:-translate-y-1 shadow-lg hover:shadow-xl font-bold text-sm sm:text-base"
                     >
                       {isEditing ? 'Mettre à jour' : 'Créer la session'}
                     </button>
