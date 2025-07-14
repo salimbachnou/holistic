@@ -16,8 +16,14 @@ router.post('/', requireAuth, [
   body('sessionId').notEmpty().withMessage('Session ID is required')
 ], async (req, res) => {
   try {
+    console.log('=== CREATING NEW BOOKING ===');
+    console.log('Request body:', JSON.stringify(req.body, null, 2));
+    console.log('User ID:', req.user._id);
+    console.log('User role:', req.user.role);
+
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      console.log('Validation errors:', errors.array());
       return res.status(400).json({
         success: false,
         message: 'Validation errors',
@@ -27,26 +33,56 @@ router.post('/', requireAuth, [
 
     const { professionalId, sessionId, notes, bookingType } = req.body;
 
+    // Vérifier que les IDs sont valides
+    if (!professionalId || !sessionId) {
+      console.log('Missing required IDs:', { professionalId, sessionId });
+      return res.status(400).json({
+        success: false,
+        message: 'Professional ID and Session ID are required'
+      });
+    }
+
     // Verify professional exists
     const professional = await Professional.findById(professionalId);
     if (!professional) {
+      console.log('Professional not found:', professionalId);
       return res.status(404).json({
         success: false,
         message: 'Professional not found'
       });
     }
 
+    console.log('Professional found:', {
+      id: professional._id,
+      businessName: professional.businessName,
+      userId: professional.userId
+    });
+
     // Verify session exists
     const session = await Session.findById(sessionId);
     if (!session) {
+      console.log('Session not found:', sessionId);
       return res.status(404).json({
         success: false,
         message: 'Session not found'
       });
     }
 
+    console.log('Session found:', {
+      id: session._id,
+      title: session.title,
+      professionalId: session.professionalId,
+      participants: session.participants?.length || 0,
+      maxParticipants: session.maxParticipants,
+      status: session.status,
+      startTime: session.startTime
+    });
+
     // Check if session belongs to professional
     if (session.professionalId.toString() !== professionalId) {
+      console.log('Session does not belong to professional');
+      console.log('Session professionalId:', session.professionalId);
+      console.log('Request professionalId:', professionalId);
       return res.status(400).json({
         success: false,
         message: 'Session does not belong to this professional'
@@ -55,6 +91,11 @@ router.post('/', requireAuth, [
 
     // Check if session is available (not in the past and not full)
     if (!session.canBeBooked()) {
+      console.log('Session is not available for booking');
+      console.log('Session status:', session.status);
+      console.log('Session is past:', session.isPast());
+      console.log('Session is full:', session.isFull);
+      console.log('Participants:', session.participants?.length || 0, '/', session.maxParticipants);
       return res.status(400).json({
         success: false,
         message: 'Session is not available for booking'
@@ -68,6 +109,7 @@ router.post('/', requireAuth, [
     });
 
     if (existingBooking) {
+      console.log('User already booked this session');
       return res.status(409).json({
         success: false,
         message: 'You have already booked this session'
@@ -99,9 +141,9 @@ router.post('/', requireAuth, [
         type: session.category === 'online' ? 'online' : 'in_person',
         address: session.category !== 'online' ? {
           street: session.location,
-          city: professional.businessAddress.city,
-          postalCode: professional.businessAddress.postalCode,
-          country: professional.businessAddress.country
+          city: professional.businessAddress?.city || 'Casablanca',
+          postalCode: professional.businessAddress?.postalCode || '20000',
+          country: professional.businessAddress?.country || 'Morocco'
         } : undefined,
         onlineLink: session.category === 'online' ? session.meetingLink : undefined
       },
@@ -114,6 +156,8 @@ router.post('/', requireAuth, [
       },
       clientNotes: notes
     };
+
+    console.log('Booking data to save:', JSON.stringify(bookingData, null, 2));
 
     // Create booking
     const booking = new Booking(bookingData);
@@ -138,6 +182,7 @@ router.post('/', requireAuth, [
     booking.bookingNumber = `BK${year}${month}${day}${String(sequence).padStart(4, '0')}`;
     
     await booking.save();
+    console.log('Booking saved successfully:', booking._id);
 
     // Add user to session participants for direct session bookings
     // For session bookings, add participant immediately since it's a direct booking
@@ -146,6 +191,9 @@ router.post('/', requireAuth, [
       if (!session.participants.includes(req.user._id)) {
         session.participants.push(req.user._id);
         await session.save();
+        console.log('User added to session participants');
+      } else {
+        console.log('User already in session participants');
       }
     } else if (booking.status === 'confirmed') {
       // For regular bookings, only add if confirmed
@@ -165,9 +213,16 @@ router.post('/', requireAuth, [
       // Populate client data for notification
       const populatedBooking = await Booking.findById(booking._id).populate('client', 'firstName lastName');
       await NotificationService.notifyNewBooking(populatedBooking);
+      console.log('Notification sent to professional');
     } catch (error) {
       console.error('Erreur lors de la notification de nouvelle réservation:', error);
     }
+
+    console.log('=== BOOKING CREATION COMPLETED ===');
+    console.log('Booking ID:', booking._id);
+    console.log('Booking Number:', booking.bookingNumber);
+    console.log('Session ID:', sessionId);
+    console.log('Client ID:', req.user._id);
 
     res.status(201).json({
       success: true,
@@ -176,7 +231,208 @@ router.post('/', requireAuth, [
     });
 
   } catch (error) {
+    console.error('=== BOOKING CREATION ERROR ===');
     console.error('Error creating booking:', error);
+    console.error('Error stack:', error.stack);
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+// Debug route to check all bookings for a professional
+router.get('/professional/debug', requireAuth, async (req, res) => {
+  try {
+    // Check if user is a professional
+    if (req.user.role !== 'professional' && req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. Professional role required.'
+      });
+    }
+
+    // Find professional profile
+    const professional = await Professional.findOne({ userId: req.user._id });
+    if (!professional) {
+      return res.status(404).json({
+        success: false,
+        message: 'Professional profile not found'
+      });
+    }
+
+    console.log('=== DEBUG PROFESSIONAL BOOKINGS ===');
+    console.log('Professional ID:', professional._id);
+    console.log('User ID:', req.user._id);
+
+    // Get ALL bookings for this professional
+    const allBookings = await Booking.find({ professional: professional._id })
+      .populate('client', 'firstName lastName email phone profileImage')
+      .sort({ createdAt: -1 });
+
+    console.log(`Found ${allBookings.length} total bookings for professional`);
+    
+    allBookings.forEach((booking, index) => {
+      console.log(`Booking ${index + 1}:`, {
+        id: booking._id,
+        bookingNumber: booking.bookingNumber,
+        client: booking.client ? `${booking.client.firstName} ${booking.client.lastName}` : 'Unknown',
+        service: {
+          name: booking.service?.name,
+          sessionId: booking.service?.sessionId,
+          hasSessionId: !!booking.service?.sessionId
+        },
+        status: booking.status,
+        appointmentDate: booking.appointmentDate,
+        createdAt: booking.createdAt
+      });
+    });
+
+    // Count bookings with and without sessionId
+    const withSessionId = allBookings.filter(b => b.service?.sessionId);
+    const withoutSessionId = allBookings.filter(b => !b.service?.sessionId);
+
+    console.log(`Bookings with sessionId: ${withSessionId.length}`);
+    console.log(`Bookings without sessionId: ${withoutSessionId.length}`);
+
+    res.json({
+      success: true,
+      debug: {
+        professionalId: professional._id,
+        totalBookings: allBookings.length,
+        withSessionId: withSessionId.length,
+        withoutSessionId: withoutSessionId.length,
+        bookings: allBookings.map(booking => ({
+          id: booking._id,
+          bookingNumber: booking.bookingNumber,
+          client: booking.client ? `${booking.client.firstName} ${booking.client.lastName}` : 'Unknown',
+          serviceName: booking.service?.name,
+          hasSessionId: !!booking.service?.sessionId,
+          sessionId: booking.service?.sessionId,
+          status: booking.status,
+          appointmentDate: booking.appointmentDate,
+          createdAt: booking.createdAt
+        }))
+      }
+    });
+
+  } catch (error) {
+    console.error('Error in debug route:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+});
+
+// Get all session bookings for a professional
+router.get('/professional/sessions', requireAuth, async (req, res) => {
+  try {
+    // Check if user is a professional
+    if (req.user.role !== 'professional' && req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. Professional role required.'
+      });
+    }
+
+    // Find professional profile
+    const professional = await Professional.findOne({ userId: req.user._id });
+    if (!professional) {
+      return res.status(404).json({
+        success: false,
+        message: 'Professional profile not found'
+      });
+    }
+
+    const { status, page = 1, limit = 100, sortBy = 'appointmentDate', sortOrder = 'desc', includeAll = 'false' } = req.query;
+    
+    // Build query for bookings
+    const query = { 
+      professional: professional._id
+    };
+    
+    // If includeAll is false, only show bookings with sessionId (session-specific bookings)
+    // If includeAll is true, show all bookings
+    if (includeAll === 'false') {
+      query['service.sessionId'] = { $exists: true, $ne: null };
+    }
+    
+    if (status) {
+      query.status = status;
+    }
+    
+    // Build sort object
+    const sort = {};
+    sort[sortBy] = sortOrder === 'desc' ? -1 : 1;
+    
+    console.log('=== FETCHING BOOKINGS ===');
+    console.log('Query:', JSON.stringify(query));
+    console.log('Sort:', sort);
+    console.log('Limit:', limit, 'Page:', page);
+
+    const bookings = await Booking.find(query)
+      .populate('client', 'firstName lastName email phone profileImage')
+      .populate({
+        path: 'service.sessionId',
+        model: 'Session',
+        select: 'title description startTime duration category location meetingLink price maxParticipants',
+        // Add strictPopulate: false to handle cases where sessionId might not exist
+        options: { strictPopulate: false }
+      })
+      .sort(sort)
+      .limit(limit * 1)
+      .skip((page - 1) * limit);
+
+    console.log(`Found ${bookings.length} bookings`);
+      
+    // Transform bookings to include session details at the root level
+    const transformedBookings = bookings.map(booking => {
+      const session = booking.service.sessionId;
+      return {
+        _id: booking._id,
+        bookingNumber: booking.bookingNumber,
+        client: booking.client,
+        status: booking.status,
+        paymentStatus: booking.paymentStatus,
+        totalAmount: booking.totalAmount,
+        appointmentDate: booking.appointmentDate,
+        createdAt: booking.createdAt,
+        updatedAt: booking.updatedAt,
+        notes: booking.clientNotes,
+        cancellation: booking.cancellation,
+        paymentMethod: booking.paymentMethod,
+        service: {
+          sessionId: session?._id,
+          title: session?.title || booking.service.name,
+          description: session?.description || booking.service.description,
+          startTime: session?.startTime || booking.appointmentDate,
+          duration: session?.duration || booking.service.duration,
+          category: session?.category || 'individual',
+          location: session?.location,
+          meetingLink: session?.meetingLink,
+          price: session?.price || booking.service.price?.amount || booking.totalAmount?.amount,
+          maxParticipants: session?.maxParticipants
+        }
+      };
+    });
+      
+    const total = await Booking.countDocuments(query);
+    
+    res.json({
+      success: true,
+      bookings: transformedBookings,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / limit)
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error fetching professional session bookings:', error);
     res.status(500).json({
       success: false,
       message: 'Server error'
@@ -227,7 +483,7 @@ router.get('/my-bookings', requireAuth, async (req, res) => {
 router.get('/:id', requireAuth, async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.id)
-      .populate('professional', 'businessName businessType businessAddress contactInfo')
+      .populate('professional', 'businessName businessType businessAddress contactInfo userId')
       .populate('client', 'firstName lastName email profileImage');
       
     if (!booking) {
@@ -266,7 +522,8 @@ router.get('/:id', requireAuth, async (req, res) => {
 // Cancel a booking
 router.put('/:id/cancel', requireAuth, async (req, res) => {
   try {
-    const booking = await Booking.findById(req.params.id);
+    const booking = await Booking.findById(req.params.id)
+      .populate('professional', 'userId');
     
     if (!booking) {
       return res.status(404).json({
@@ -278,6 +535,7 @@ router.put('/:id/cancel', requireAuth, async (req, res) => {
     // Check if the user is authorized to cancel this booking
     if (
       booking.client.toString() !== req.user._id.toString() && 
+      booking.professional && 
       !booking.professional.userId.equals(req.user._id) &&
       req.user.role !== 'admin'
     ) {

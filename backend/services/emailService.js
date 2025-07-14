@@ -1,32 +1,77 @@
 const nodemailer = require('nodemailer');
 const { format } = require('date-fns');
 const { fr } = require('date-fns/locale');
+const Settings = require('../models/Settings');
 
-// Create email transporter
-const createTransporter = () => {
-  // Check if email credentials are configured
-  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-    console.warn('Email credentials not configured. Email sending will be skipped.');
+// Create email transporter using dynamic settings
+const createTransporter = async () => {
+  try {
+    const settingsDoc = await Settings.getSettings();
+    const emailSettings = settingsDoc.settings.email;
+    
+    // Check if email credentials are configured
+    if (!emailSettings.smtpHost || !emailSettings.smtpUser || !emailSettings.smtpPassword) {
+      // Fallback to environment variables
+      if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+        console.warn('Email credentials not configured in settings or environment. Email sending will be skipped.');
+        return null;
+      }
+      
+      return nodemailer.createTransporter({
+        service: 'gmail',
+        auth: {
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASS
+        },
+        tls: {
+          rejectUnauthorized: process.env.NODE_ENV === 'production'
+        }
+      });
+    }
+
+    // Use settings from database
+    return nodemailer.createTransporter({
+      host: emailSettings.smtpHost,
+      port: parseInt(emailSettings.smtpPort),
+      secure: emailSettings.smtpSecure, // true for 465, false for other ports
+      auth: {
+        user: emailSettings.smtpUser,
+        pass: emailSettings.smtpPassword
+      },
+      tls: {
+        rejectUnauthorized: process.env.NODE_ENV === 'production'
+      }
+    });
+  } catch (error) {
+    console.error('Error creating email transporter:', error);
     return null;
   }
+};
 
-  return nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS
-    },
-    // Ignore self-signed certificates in development
-    tls: {
-      rejectUnauthorized: process.env.NODE_ENV === 'production'
-    }
-  });
+// Get email settings for from address and name
+const getEmailSettings = async () => {
+  try {
+    const settingsDoc = await Settings.getSettings();
+    return {
+      fromName: settingsDoc.settings.email.emailFromName,
+      fromAddress: settingsDoc.settings.email.emailFromAddress,
+      siteName: settingsDoc.settings.general.siteName
+    };
+  } catch (error) {
+    console.error('Error getting email settings:', error);
+    return {
+      fromName: 'Holistic.ma',
+      fromAddress: 'noreply@holistic.ma',
+      siteName: 'Holistic.ma'
+    };
+  }
 };
 
 // Send booking confirmation to client
 const sendBookingConfirmationToClient = async (booking, client, professional) => {
   try {
-    const transporter = createTransporter();
+    const transporter = await createTransporter();
+    const emailSettings = await getEmailSettings();
     
     // Skip email sending if transporter is not configured
     if (!transporter) {
@@ -45,7 +90,7 @@ const sendBookingConfirmationToClient = async (booking, client, professional) =>
     const formattedDate = format(new Date(booking.appointmentDate), 'EEEE d MMMM yyyy', { locale: fr });
     
     const mailOptions = {
-      from: process.env.EMAIL_USER,
+      from: `${emailSettings.fromName} <${emailSettings.fromAddress}>`,
       to: client.email,
       subject: `Confirmation de réservation - ${professional.businessName}`,
       html: `
@@ -105,7 +150,7 @@ const sendBookingConfirmationToClient = async (booking, client, professional) =>
           
           <p>Vous pouvez également consulter et gérer vos réservations depuis votre espace client.</p>
           
-          <p>Cordialement,<br/>L'équipe Holistic.ma</p>
+          <p>Cordialement,<br/>L'équipe ${emailSettings.siteName}</p>
         </div>
       `
     };
@@ -122,7 +167,8 @@ const sendBookingConfirmationToClient = async (booking, client, professional) =>
 // Send booking notification to professional
 const sendBookingNotificationToProfessional = async (booking, client, professional) => {
   try {
-    const transporter = createTransporter();
+    const transporter = await createTransporter();
+    const emailSettings = await getEmailSettings();
     
     // Skip email sending if transporter is not configured
     if (!transporter) {
@@ -133,7 +179,7 @@ const sendBookingNotificationToProfessional = async (booking, client, profession
     const formattedDate = format(new Date(booking.appointmentDate), 'EEEE d MMMM yyyy', { locale: fr });
     
     const mailOptions = {
-      from: process.env.EMAIL_USER,
+      from: `${emailSettings.fromName} <${emailSettings.fromAddress}>`,
       to: professional.contactInfo.email,
       subject: `Nouvelle réservation - ${booking.service.name}`,
       html: `

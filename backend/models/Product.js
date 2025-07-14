@@ -56,9 +56,7 @@ const productSchema = new mongoose.Schema({
   category: {
     type: String,
     required: true,
-    enum: [
-      'supplements', 'equipment', 'books', 'accessories', 'skincare', 'aromatherapy', 'other'
-    ]
+    trim: true
   },
   currency: {
     type: String,

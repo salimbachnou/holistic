@@ -345,14 +345,14 @@ const ProfessionalSettingsPage = () => {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 sm:space-y-8 px-4 sm:px-0">
       {/* Header */}
-      <div className="mb-8">
+      <div className="mb-6 sm:mb-8">
         <div className="flex items-center mb-4">
-          <CogIcon className="h-8 w-8 text-primary-600 mr-3" />
-          <h1 className="text-3xl font-bold text-gray-900">Paramètres</h1>
+          <CogIcon className="h-6 w-6 sm:h-8 sm:w-8 text-primary-600 mr-3" />
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Paramètres</h1>
         </div>
-        <p className="text-gray-600">
+        <p className="text-gray-600 text-sm sm:text-base">
           Gérez vos paramètres de compte et préférences professionnelles
         </p>
       </div>
@@ -360,7 +360,31 @@ const ProfessionalSettingsPage = () => {
       {/* Tabs Navigation */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200">
         <div className="border-b border-gray-200">
-          <nav className="flex space-x-8 px-6">
+          {/* Mobile tabs - horizontal scroll */}
+          <div className="sm:hidden">
+            <div className="flex overflow-x-auto scrollbar-hide px-4 py-2">
+              {tabs.map(tab => {
+                const Icon = tab.icon;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`flex items-center px-4 py-3 rounded-lg font-medium text-sm whitespace-nowrap mr-2 min-w-fit ${
+                      activeTab === tab.id
+                        ? 'bg-primary-50 text-primary-600 border border-primary-200'
+                        : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                    } transition-all duration-200`}
+                  >
+                    <Icon className="h-4 w-4 mr-2" />
+                    {tab.name}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Desktop tabs */}
+          <nav className="hidden sm:flex space-x-8 px-6">
             {tabs.map(tab => {
               const Icon = tab.icon;
               return (
@@ -381,7 +405,7 @@ const ProfessionalSettingsPage = () => {
           </nav>
         </div>
 
-        <div className="p-6">
+        <div className="p-4 sm:p-6">
           {/* Account Settings */}
           {activeTab === 'account' && (
             <motion.div
@@ -391,14 +415,17 @@ const ProfessionalSettingsPage = () => {
             >
               <ProfessionalCard title="Informations personnelles" icon={UserIcon}>
                 {/* Tous les champs sont modifiables sauf l'email */}
-                <form onSubmit={handleAccountSubmit(onAccountSubmit)} className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <form
+                  onSubmit={handleAccountSubmit(onAccountSubmit)}
+                  className="space-y-4 sm:space-y-6"
+                >
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">Prénom</label>
                       <input
                         type="text"
                         {...registerAccount('firstName', { required: 'Le prénom est requis' })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                        className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm sm:text-base"
                       />
                       {accountErrors.firstName && (
                         <p className="text-red-600 text-sm mt-1">
@@ -412,7 +439,7 @@ const ProfessionalSettingsPage = () => {
                       <input
                         type="text"
                         {...registerAccount('lastName', { required: 'Le nom est requis' })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                        className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm sm:text-base"
                       />
                       {accountErrors.lastName && (
                         <p className="text-red-600 text-sm mt-1">
@@ -426,7 +453,7 @@ const ProfessionalSettingsPage = () => {
                       <input
                         type="email"
                         {...registerAccount('email', { required: "L'email est requis" })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-gray-50"
+                        className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-gray-50 text-sm sm:text-base"
                         disabled
                       />
                       <p className="text-xs text-gray-500 mt-1">
@@ -441,12 +468,12 @@ const ProfessionalSettingsPage = () => {
                       <input
                         type="tel"
                         {...registerAccount('phone')}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                        className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm sm:text-base"
                       />
                     </div>
                   </div>
 
-                  <div className="flex justify-end">
+                  <div className="flex justify-end pt-4">
                     <ProfessionalButton type="submit" variant="primary" disabled={isLoading}>
                       {isLoading ? 'Enregistrement...' : 'Enregistrer'}
                     </ProfessionalButton>
@@ -464,8 +491,11 @@ const ProfessionalSettingsPage = () => {
               transition={{ duration: 0.3 }}
             >
               <ProfessionalCard title="Informations d'entreprise" icon={BuildingOfficeIcon}>
-                <form onSubmit={handleBusinessSubmit(onBusinessSubmit)} className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <form
+                  onSubmit={handleBusinessSubmit(onBusinessSubmit)}
+                  className="space-y-4 sm:space-y-6"
+                >
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Nom de l'entreprise
@@ -475,7 +505,7 @@ const ProfessionalSettingsPage = () => {
                         {...registerBusiness('businessName', {
                           required: "Le nom d'entreprise est requis",
                         })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                        className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm sm:text-base"
                       />
                       {businessErrors.businessName && (
                         <p className="text-red-600 text-sm mt-1">
@@ -490,7 +520,7 @@ const ProfessionalSettingsPage = () => {
                       </label>
                       <select
                         {...registerBusiness('businessType')}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                        className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm sm:text-base"
                       >
                         <option value="">Sélectionner un type</option>
                         <option value="coach">Coach</option>
@@ -524,7 +554,7 @@ const ProfessionalSettingsPage = () => {
                         type="url"
                         {...registerBusiness('website')}
                         placeholder="https://monsite.com"
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                        className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm sm:text-base"
                       />
                     </div>
 
@@ -533,15 +563,17 @@ const ProfessionalSettingsPage = () => {
                         Adresse
                       </label>
                       <div className="space-y-4">
-                        <MapPicker
-                          initialAddress={businessAddress.address}
-                          initialCoordinates={
-                            businessAddress.coordinates.lat ? businessAddress.coordinates : null
-                          }
-                          onAddressSelected={handleAddressSelected}
-                          height="300px"
-                        />
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="h-64 sm:h-80">
+                          <MapPicker
+                            initialAddress={businessAddress.address}
+                            initialCoordinates={
+                              businessAddress.coordinates.lat ? businessAddress.coordinates : null
+                            }
+                            onAddressSelected={handleAddressSelected}
+                            height="100%"
+                          />
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
                               Pays
@@ -552,7 +584,7 @@ const ProfessionalSettingsPage = () => {
                               onChange={e =>
                                 setBusinessAddress(prev => ({ ...prev, country: e.target.value }))
                               }
-                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                              className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm sm:text-base"
                             />
                           </div>
                           <div>
@@ -565,7 +597,7 @@ const ProfessionalSettingsPage = () => {
                               onChange={e =>
                                 setBusinessAddress(prev => ({ ...prev, city: e.target.value }))
                               }
-                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                              className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm sm:text-base"
                             />
                           </div>
                           <div>
@@ -578,7 +610,7 @@ const ProfessionalSettingsPage = () => {
                               onChange={e =>
                                 setBusinessAddress(prev => ({ ...prev, street: e.target.value }))
                               }
-                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                              className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm sm:text-base"
                             />
                           </div>
                         </div>
@@ -599,8 +631,8 @@ const ProfessionalSettingsPage = () => {
                       </label>
                       <textarea
                         {...registerBusiness('description')}
-                        rows={8}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                        rows={6}
+                        className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm sm:text-base"
                         placeholder="Décrivez votre entreprise, vos services et parlez de votre parcours..."
                       />
                       <p className="text-sm text-gray-500 mt-2">
@@ -610,7 +642,7 @@ const ProfessionalSettingsPage = () => {
                     </div>
                   </div>
 
-                  <div className="flex justify-end">
+                  <div className="flex justify-end pt-4">
                     <ProfessionalButton type="submit" variant="primary" disabled={isLoading}>
                       {isLoading ? 'Enregistrement...' : 'Enregistrer'}
                     </ProfessionalButton>
@@ -630,13 +662,15 @@ const ProfessionalSettingsPage = () => {
               <ProfessionalCard title="Préférences de notification" icon={BellIcon}>
                 <div className="space-y-6">
                   <div>
-                    <h4 className="text-lg font-medium text-gray-900 mb-4">
+                    <h4 className="text-base sm:text-lg font-medium text-gray-900 mb-4">
                       Notifications par email
                     </h4>
                     <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-medium text-gray-700">Nouvelles réservations</p>
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <div className="flex-1">
+                          <p className="font-medium text-gray-700 text-sm sm:text-base">
+                            Nouvelles réservations
+                          </p>
                           <p className="text-sm text-gray-500">
                             Recevoir un email pour chaque nouvelle réservation
                           </p>
@@ -654,9 +688,11 @@ const ProfessionalSettingsPage = () => {
                         </label>
                       </div>
 
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-medium text-gray-700">Messages clients</p>
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <div className="flex-1">
+                          <p className="font-medium text-gray-700 text-sm sm:text-base">
+                            Messages clients
+                          </p>
                           <p className="text-sm text-gray-500">
                             Recevoir un email pour chaque nouveau message
                           </p>
@@ -674,9 +710,11 @@ const ProfessionalSettingsPage = () => {
                         </label>
                       </div>
 
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-medium text-gray-700">Marketing</p>
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <div className="flex-1">
+                          <p className="font-medium text-gray-700 text-sm sm:text-base">
+                            Marketing
+                          </p>
                           <p className="text-sm text-gray-500">
                             Recevoir des conseils et promotions
                           </p>
@@ -697,11 +735,15 @@ const ProfessionalSettingsPage = () => {
                   </div>
 
                   <div>
-                    <h4 className="text-lg font-medium text-gray-900 mb-4">Notifications push</h4>
+                    <h4 className="text-base sm:text-lg font-medium text-gray-900 mb-4">
+                      Notifications push
+                    </h4>
                     <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-medium text-gray-700">Réservations</p>
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <div className="flex-1">
+                          <p className="font-medium text-gray-700 text-sm sm:text-base">
+                            Réservations
+                          </p>
                           <p className="text-sm text-gray-500">
                             Notifications instantanées pour les réservations
                           </p>
@@ -719,9 +761,9 @@ const ProfessionalSettingsPage = () => {
                         </label>
                       </div>
 
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-medium text-gray-700">Messages</p>
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <div className="flex-1">
+                          <p className="font-medium text-gray-700 text-sm sm:text-base">Messages</p>
                           <p className="text-sm text-gray-500">
                             Notifications instantanées pour les messages
                           </p>
@@ -753,7 +795,10 @@ const ProfessionalSettingsPage = () => {
               transition={{ duration: 0.3 }}
             >
               <ProfessionalCard title="Sécurité du compte" icon={ShieldCheckIcon}>
-                <form onSubmit={handlePasswordSubmit(onPasswordSubmit)} className="space-y-6">
+                <form
+                  onSubmit={handlePasswordSubmit(onPasswordSubmit)}
+                  className="space-y-4 sm:space-y-6"
+                >
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Mot de passe actuel
@@ -764,7 +809,7 @@ const ProfessionalSettingsPage = () => {
                         {...registerPassword('currentPassword', {
                           required: 'Le mot de passe actuel est requis',
                         })}
-                        className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                        className="w-full px-3 sm:px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm sm:text-base"
                       />
                       <button
                         type="button"
@@ -799,7 +844,7 @@ const ProfessionalSettingsPage = () => {
                             message: 'Le mot de passe doit contenir au moins 6 caractères',
                           },
                         })}
-                        className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                        className="w-full px-3 sm:px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm sm:text-base"
                       />
                       <button
                         type="button"
@@ -830,7 +875,7 @@ const ProfessionalSettingsPage = () => {
                         {...registerPassword('confirmPassword', {
                           required: 'La confirmation est requise',
                         })}
-                        className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                        className="w-full px-3 sm:px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm sm:text-base"
                       />
                       <button
                         type="button"
@@ -851,7 +896,7 @@ const ProfessionalSettingsPage = () => {
                     )}
                   </div>
 
-                  <div className="flex justify-end">
+                  <div className="flex justify-end pt-4">
                     <ProfessionalButton type="submit" variant="primary" disabled={isLoading}>
                       {isLoading ? 'Modification...' : 'Modifier le mot de passe'}
                     </ProfessionalButton>
@@ -904,9 +949,11 @@ const ProfessionalSettingsPage = () => {
                   </div>
 
                   <div className="space-y-4">
-                    <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                      <div>
-                        <h4 className="font-medium text-gray-900">Profil public</h4>
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 border border-gray-200 rounded-lg gap-4">
+                      <div className="flex-1">
+                        <h4 className="font-medium text-gray-900 text-sm sm:text-base">
+                          Profil public
+                        </h4>
                         <p className="text-sm text-gray-500">
                           Votre profil est visible par tous les utilisateurs
                         </p>
@@ -916,9 +963,11 @@ const ProfessionalSettingsPage = () => {
                       </ProfessionalButton>
                     </div>
 
-                    <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                      <div>
-                        <h4 className="font-medium text-gray-900">Données d'utilisation</h4>
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 border border-gray-200 rounded-lg gap-4">
+                      <div className="flex-1">
+                        <h4 className="font-medium text-gray-900 text-sm sm:text-base">
+                          Données d'utilisation
+                        </h4>
                         <p className="text-sm text-gray-500">
                           Données collectées pour améliorer l'expérience
                         </p>
@@ -928,9 +977,11 @@ const ProfessionalSettingsPage = () => {
                       </ProfessionalButton>
                     </div>
 
-                    <div className="flex items-center justify-between p-4 border border-red-200 rounded-lg bg-red-50">
-                      <div>
-                        <h4 className="font-medium text-red-900">Supprimer le compte</h4>
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 border border-red-200 rounded-lg bg-red-50 gap-4">
+                      <div className="flex-1">
+                        <h4 className="font-medium text-red-900 text-sm sm:text-base">
+                          Supprimer le compte
+                        </h4>
                         <p className="text-sm text-red-700">
                           Suppression définitive de votre compte et données
                         </p>
@@ -956,11 +1007,13 @@ const ProfessionalSettingsPage = () => {
               >
                 <div className="space-y-4">
                   <div className="flex items-center gap-3 p-4 bg-red-50 rounded-lg">
-                    <ExclamationTriangleIcon className="h-6 w-6 text-red-600" />
-                    <p className="text-red-700 font-medium">Cette action est irréversible</p>
+                    <ExclamationTriangleIcon className="h-6 w-6 text-red-600 flex-shrink-0" />
+                    <p className="text-red-700 font-medium text-sm sm:text-base">
+                      Cette action est irréversible
+                    </p>
                   </div>
 
-                  <p className="text-gray-700">
+                  <p className="text-gray-700 text-sm sm:text-base">
                     La suppression de votre compte entraînera la perte définitive de toutes vos
                     données, y compris votre profil, vos réservations et votre historique.
                   </p>
@@ -968,25 +1021,30 @@ const ProfessionalSettingsPage = () => {
                   <div className="mt-4">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Pour confirmer, veuillez saisir votre email :{' '}
-                      <span className="font-bold">{user?.email}</span>
+                      <span className="font-bold break-all">{user?.email}</span>
                     </label>
                     <input
                       type="text"
                       value={deleteConfirmText}
                       onChange={e => setDeleteConfirmText(e.target.value)}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm sm:text-base"
                       placeholder="Votre email"
                     />
                   </div>
 
-                  <div className="flex justify-end gap-3 mt-6">
-                    <ProfessionalButton variant="outline" onClick={() => setShowDeleteModal(false)}>
+                  <div className="flex flex-col sm:flex-row justify-end gap-3 mt-6">
+                    <ProfessionalButton
+                      variant="outline"
+                      onClick={() => setShowDeleteModal(false)}
+                      className="w-full sm:w-auto"
+                    >
                       Annuler
                     </ProfessionalButton>
                     <ProfessionalButton
                       variant="danger"
                       onClick={handleDeleteAccount}
                       disabled={deleteLoading || deleteConfirmText !== user?.email}
+                      className="w-full sm:w-auto"
                     >
                       {deleteLoading ? 'Suppression...' : 'Confirmer la suppression'}
                     </ProfessionalButton>

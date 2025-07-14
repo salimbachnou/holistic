@@ -6,12 +6,16 @@ import {
   MapPinIcon,
   CalendarIcon,
 } from '@heroicons/react/24/outline';
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { toast } from 'react-hot-toast';
 
 import { useAuth } from '../contexts/AuthContext';
+import HomepageService from '../services/homepage.service';
+import LoadingSpinner from '../components/Common/LoadingSpinner';
 
-const testimonials = [
+// Données statiques par défaut (fallback)
+const DEFAULT_TESTIMONIALS = [
   {
     id: 1,
     text: "Holistic.ma m'a permis de trouver une coach de yoga exceptionnelle qui m'a aidée à surmonter mon stress. L'accompagnement personnalisé fait toute la différence !",
@@ -35,13 +39,16 @@ const testimonials = [
   },
 ];
 
-const professionals = [
+const DEFAULT_PROFESSIONALS = [
   {
     id: 1,
     name: 'Coach Bien-être',
     description: 'Accompagnement pour retrouver équilibre et vitalité',
     image:
       'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=500&q=80',
+    businessType: 'Coach de vie',
+    rating: 4.8,
+    location: 'Casablanca'
   },
   {
     id: 2,
@@ -49,6 +56,9 @@ const professionals = [
     description: 'Solutions naturelles pour votre santé',
     image:
       'https://images.unsplash.com/photo-1589456506629-b2ea1a8576fb?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=500&q=80',
+    businessType: 'Naturopathie',
+    rating: 4.9,
+    location: 'Rabat'
   },
   {
     id: 3,
@@ -56,6 +66,9 @@ const professionals = [
     description: 'Approche globale pour votre bien-être',
     image:
       'https://images.unsplash.com/photo-1594751684241-7c959e0ad5ca?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=500&q=80',
+    businessType: 'Thérapie holistique',
+    rating: 4.7,
+    location: 'Marrakech'
   },
   {
     id: 4,
@@ -63,16 +76,23 @@ const professionals = [
     description: 'Harmonisez corps et esprit',
     image:
       'https://images.unsplash.com/photo-1599447292761-50f16ae87093?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=500&q=80',
+    businessType: 'Yoga',
+    rating: 4.6,
+    location: 'Agadir'
   },
 ];
 
-const products = [
+const DEFAULT_PRODUCTS = [
   {
     id: 1,
     name: 'Huiles essentielles',
     description: '100% naturelles et bio',
     image:
       'https://images.unsplash.com/photo-1608571423902-eed4a5ad8108?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=500&q=80',
+    price: 150,
+    currency: 'MAD',
+    rating: 4.5,
+    category: 'Aromathérapie'
   },
   {
     id: 2,
@@ -80,6 +100,10 @@ const products = [
     description: 'Saveurs authentiques et bienfaits naturels',
     image:
       'https://images.unsplash.com/photo-1563911892437-1feda0179e1b?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=500&q=80',
+    price: 80,
+    currency: 'MAD',
+    rating: 4.3,
+    category: 'Alimentation'
   },
   {
     id: 3,
@@ -87,35 +111,58 @@ const products = [
     description: 'Pour renforcer votre vitalité',
     image:
       'https://images.unsplash.com/photo-1568717099337-c5008c1d8747?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=500&q=80',
+    price: 200,
+    currency: 'MAD',
+    rating: 4.7,
+    category: 'Nutrition'
   },
 ];
 
-const events = [
+const DEFAULT_EVENTS = [
   {
     id: 1,
     name: 'Atelier méditation pleine conscience',
-    date: '15 juillet 2023',
+    date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // Dans 7 jours
     location: 'Casablanca',
     image:
       'https://images.unsplash.com/photo-1593811167562-9cef47bfc4d7?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=500&q=80',
+    price: 120,
+    currency: 'MAD',
+    maxParticipants: 20,
+    currentParticipants: 8
   },
   {
     id: 2,
     name: 'Retraite yoga weekend',
-    date: '22-23 juillet 2023',
+    date: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // Dans 14 jours
     location: 'Marrakech',
     image:
       'https://images.unsplash.com/photo-1545389336-cf090694435e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=500&q=80',
+    price: 800,
+    currency: 'MAD',
+    maxParticipants: 15,
+    currentParticipants: 12
   },
   {
     id: 3,
     name: 'Conférence alimentation & santé',
-    date: '5 août 2023',
+    date: new Date(Date.now() + 21 * 24 * 60 * 60 * 1000), // Dans 21 jours
     location: 'Rabat',
     image:
       'https://images.unsplash.com/photo-1475721027785-f74eccf877e2?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=500&q=80',
+    price: 50,
+    currency: 'MAD',
+    maxParticipants: 100,
+    currentParticipants: 45
   },
 ];
+
+const DEFAULT_STATS = {
+  professionals: 500,
+  cities: 15,
+  clients: 1000,
+  satisfaction: 4.8
+};
 
 const advantages = [
   {
@@ -140,6 +187,115 @@ const advantages = [
 
 const HomePage = () => {
   const { isAuthenticated } = useAuth();
+  
+  // États pour les données dynamiques
+  const [testimonials, setTestimonials] = useState(DEFAULT_TESTIMONIALS);
+  const [professionals, setProfessionals] = useState(DEFAULT_PROFESSIONALS);
+  const [products, setProducts] = useState(DEFAULT_PRODUCTS);
+  const [events, setEvents] = useState(DEFAULT_EVENTS);
+  const [stats, setStats] = useState(DEFAULT_STATS);
+  const [loading, setLoading] = useState(true);
+  const [newsletterEmail, setNewsletterEmail] = useState('');
+  const [newsletterLoading, setNewsletterLoading] = useState(false);
+
+  // Charger les données au montage du composant
+  useEffect(() => {
+    loadHomepageData();
+  }, []);
+
+  const loadHomepageData = async () => {
+    try {
+      setLoading(true);
+      
+      // Charger toutes les données en parallèle
+      const [
+        professionalsResponse,
+        productsResponse,
+        eventsResponse,
+        testimonialsResponse,
+        statsResponse
+      ] = await Promise.allSettled([
+        HomepageService.getFeaturedProfessionals(),
+        HomepageService.getFeaturedProducts(),
+        HomepageService.getUpcomingEvents(),
+        HomepageService.getTestimonials(),
+        HomepageService.getPlatformStats()
+      ]);
+
+      // Traiter les réponses
+      if (professionalsResponse.status === 'fulfilled' && professionalsResponse.value.success) {
+        setProfessionals(professionalsResponse.value.professionals);
+      }
+
+      if (productsResponse.status === 'fulfilled' && productsResponse.value.success) {
+        setProducts(productsResponse.value.products);
+      }
+
+      if (eventsResponse.status === 'fulfilled' && eventsResponse.value.success) {
+        setEvents(eventsResponse.value.events);
+      }
+
+      if (testimonialsResponse.status === 'fulfilled' && testimonialsResponse.value.success) {
+        setTestimonials(testimonialsResponse.value.testimonials);
+      }
+
+      if (statsResponse.status === 'fulfilled' && statsResponse.value.success) {
+        setStats(statsResponse.value.stats);
+      }
+
+    } catch (error) {
+      console.error('Erreur lors du chargement des données:', error);
+      // Les données par défaut sont déjà définies
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleNewsletterSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (!newsletterEmail) {
+      toast.error('Veuillez saisir votre adresse email');
+      return;
+    }
+
+    try {
+      setNewsletterLoading(true);
+      const response = await HomepageService.subscribeToNewsletter(newsletterEmail);
+      
+      if (response.success) {
+        toast.success(response.message);
+        setNewsletterEmail('');
+      } else {
+        toast.error(response.message || 'Erreur lors de l\'inscription');
+      }
+    } catch (error) {
+      console.error('Erreur newsletter:', error);
+      toast.error('Erreur lors de l\'inscription à la newsletter');
+    } finally {
+      setNewsletterLoading(false);
+    }
+  };
+
+  const formatDate = (date) => {
+    return new Date(date).toLocaleDateString('fr-FR', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    });
+  };
+
+  const formatPrice = (price, currency = 'MAD') => {
+    return `${price} ${currency}`;
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <LoadingSpinner />
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white">
@@ -199,11 +355,35 @@ const HomePage = () => {
                     src={professional.image}
                     alt={professional.name}
                     className="h-full w-full object-cover transition-all hover:scale-105"
+                    onError={(e) => {
+                      e.target.src = 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=500&q=80';
+                    }}
                   />
                 </div>
                 <div className="p-6">
                   <h3 className="text-xl font-semibold text-gray-900">{professional.name}</h3>
                   <p className="mt-2 text-gray-600">{professional.description}</p>
+                  {professional.rating && (
+                    <div className="mt-3 flex items-center">
+                      <div className="flex items-center">
+                        {[...Array(5)].map((_, i) => (
+                          <StarIcon
+                            key={i}
+                            className={`h-4 w-4 ${i < Math.floor(professional.rating) ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'}`}
+                          />
+                        ))}
+                      </div>
+                      <span className="ml-2 text-sm text-gray-600">
+                        {professional.rating.toFixed(1)}
+                      </span>
+                    </div>
+                  )}
+                  {professional.location && (
+                    <p className="mt-2 text-sm text-gray-500 flex items-center">
+                      <MapPinIcon className="h-4 w-4 mr-1" />
+                      {professional.location}
+                    </p>
+                  )}
                 </div>
               </div>
             ))}
@@ -241,11 +421,29 @@ const HomePage = () => {
                     src={product.image}
                     alt={product.name}
                     className="h-full w-full object-cover transition-all hover:scale-105"
+                    onError={(e) => {
+                      e.target.src = 'https://images.unsplash.com/photo-1608571423902-eed4a5ad8108?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=500&q=80';
+                    }}
                   />
                 </div>
                 <div className="p-6">
                   <h3 className="text-xl font-semibold text-gray-900">{product.name}</h3>
                   <p className="mt-2 text-gray-600">{product.description}</p>
+                  {product.price && (
+                    <div className="mt-3 flex items-center justify-between">
+                      <span className="text-lg font-bold text-primary-600">
+                        {formatPrice(product.price, product.currency)}
+                      </span>
+                      {product.rating && (
+                        <div className="flex items-center">
+                          <StarIcon className="h-4 w-4 text-yellow-400 fill-yellow-400" />
+                          <span className="ml-1 text-sm text-gray-600">
+                            {product.rating.toFixed(1)}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
@@ -283,18 +481,33 @@ const HomePage = () => {
                     src={event.image}
                     alt={event.name}
                     className="h-full w-full object-cover transition-all hover:scale-105"
+                    onError={(e) => {
+                      e.target.src = 'https://images.unsplash.com/photo-1593811167562-9cef47bfc4d7?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=500&q=80';
+                    }}
                   />
                 </div>
                 <div className="p-6">
                   <h3 className="text-xl font-semibold text-gray-900">{event.name}</h3>
                   <div className="mt-2 flex items-center text-gray-600">
                     <CalendarIcon className="h-5 w-5 mr-2" />
-                    {event.date}
+                    {formatDate(event.date)}
                   </div>
                   <div className="mt-1 flex items-center text-gray-600">
                     <MapPinIcon className="h-5 w-5 mr-2" />
                     {event.location}
                   </div>
+                  {event.price && (
+                    <div className="mt-3 flex items-center justify-between">
+                      <span className="text-lg font-bold text-primary-600">
+                        {formatPrice(event.price, event.currency)}
+                      </span>
+                      {event.maxParticipants && (
+                        <span className="text-sm text-gray-500">
+                          {event.currentParticipants}/{event.maxParticipants} places
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
@@ -339,15 +552,15 @@ const HomePage = () => {
           <div className="mt-12 bg-white rounded-xl shadow-lotus p-8">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
               <div>
-                <div className="text-3xl font-bold text-primary-600">500+</div>
+                <div className="text-3xl font-bold text-primary-600">{stats.professionals}+</div>
                 <div className="text-gray-600">Professionnels certifiés</div>
               </div>
               <div>
-                <div className="text-3xl font-bold text-primary-600">15+</div>
+                <div className="text-3xl font-bold text-primary-600">{stats.cities}+</div>
                 <div className="text-gray-600">Villes couvertes au Maroc</div>
               </div>
               <div>
-                <div className="text-3xl font-bold text-primary-600">1000+</div>
+                <div className="text-3xl font-bold text-primary-600">{stats.clients}+</div>
                 <div className="text-gray-600">Clients satisfaits</div>
               </div>
             </div>
@@ -476,17 +689,21 @@ const HomePage = () => {
               </p>
             </div>
             <div className="mt-6 max-w-md mx-auto">
-              <form className="flex flex-col sm:flex-row gap-3">
+              <form onSubmit={handleNewsletterSubmit} className="flex flex-col sm:flex-row gap-3">
                 <input
                   type="email"
+                  value={newsletterEmail}
+                  onChange={(e) => setNewsletterEmail(e.target.value)}
                   placeholder="Votre adresse email"
                   className="flex-grow px-4 py-3 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  required
                 />
                 <button
                   type="submit"
-                  className="btn-primary py-3 px-6 rounded-lg whitespace-nowrap"
+                  disabled={newsletterLoading}
+                  className="btn-primary py-3 px-6 rounded-lg whitespace-nowrap disabled:opacity-50"
                 >
-                  S'inscrire
+                  {newsletterLoading ? 'Inscription...' : 'S\'inscrire'}
                 </button>
               </form>
             </div>

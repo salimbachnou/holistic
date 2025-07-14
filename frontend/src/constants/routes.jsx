@@ -16,7 +16,7 @@ export const LOGIN = '/login';
 export const REGISTER = '/register';
 export const REGISTER_PROFESSIONAL = '/register/professional';
 export const FORGOT_PASSWORD = '/forgot-password';
-export const RESET_PASSWORD = '/reset-password';
+export const RESET_PASSWORD = '/reset-password/:token';
 export const VERIFY_EMAIL = '/verify-email';
 export const GOOGLE_AUTH_CALLBACK = '/auth/google/callback';
 

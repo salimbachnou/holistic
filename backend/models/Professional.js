@@ -28,6 +28,11 @@ const professionalSchema = new mongoose.Schema({
   activities: [{
     type: String
   }], // e.g. ["Yoga", "Maternity"]
+  // Professional's own categories for sessions
+  categories: [{
+    type: String,
+    trim: true
+  }],
   products: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Product'
@@ -171,6 +176,10 @@ const professionalSchema = new mongoose.Schema({
   isActive: {
     type: Boolean,
     default: true
+  },
+  featured: {
+    type: Boolean,
+    default: false
   }
 }, {
   timestamps: true

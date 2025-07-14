@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 
 import { useAuth } from '../../contexts/AuthContext';
+import { useSettings } from '../../contexts/SettingsContext';
 import { handleImageError } from '../../utils/imageUtils';
 import ClientNavbar from '../client/ClientNavbar';
 import ProfessionalNavbar from '../professional/ProfessionalNavbar';
@@ -11,6 +12,7 @@ const Header = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [profileImageUrl, setProfileImageUrl] = useState(null);
   const { isAuthenticated, user, _loginWithGoogle, logout } = useAuth();
+  const { siteName, logoUrl } = useSettings();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -70,10 +72,10 @@ const Header = () => {
           <div className="flex items-center">
             <Link to="/" className="flex items-center space-x-3 group">
               <div className="h-10 w-10 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center shadow-lg group-hover:shadow-xl group-hover:bg-white/30 transition-all duration-200">
-                <img src="/logo.png" alt="Holistic.ma" className="h-10 w-10 object-contain" />
+                <img src={logoUrl} alt={siteName} className="h-10 w-10 object-contain" />
               </div>
               <span className="font-serif text-xl font-bold text-white tracking-tight drop-shadow-sm">
-                Holistic.ma
+                {siteName}
               </span>
             </Link>
           </div>

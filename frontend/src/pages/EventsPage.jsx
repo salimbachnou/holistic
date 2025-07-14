@@ -13,12 +13,14 @@ import {
   Tag,
   Grid,
   List,
+  Heart,
 } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
 import { Link } from 'react-router-dom';
 
 import LoadingSpinner from '../components/Common/LoadingSpinner';
+import { useFavorites } from '../contexts/FavoritesContext';
 
 // Create a custom icon for event markers
 const createEventIcon = (color = '#4F46E5') => {
@@ -50,6 +52,7 @@ const createEventIcon = (color = '#4F46E5') => {
 };
 
 const EventsPage = () => {
+  const { toggleEventFavorite, isFavorite } = useFavorites();
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -61,6 +64,7 @@ const EventsPage = () => {
   const [mapInstance, setMapInstance] = useState(null);
   const [mapMarkers, setMapMarkers] = useState([]);
   const [selectedDate, setSelectedDate] = useState('');
+  const [expiredFilter, setExpiredFilter] = useState('upcoming'); // 'upcoming', 'expired', 'all'
   const [stats, setStats] = useState({
     totalEvents: 0,
     totalParticipants: 0,
@@ -68,6 +72,7 @@ const EventsPage = () => {
     growth: '0%',
   });
   const [growth, setGrowth] = useState('0%');
+  const [expiredEvents, setExpiredEvents] = useState(0);
 
   // Définition de toutes les catégories disponibles
   const allCategories = {
@@ -114,6 +119,14 @@ const EventsPage = () => {
         setEvents(fetchedEvents);
         setFilteredEvents(fetchedEvents);
 
+        // Calculate expired events
+        const now = new Date();
+        const expiredCount = fetchedEvents.filter(event => {
+          const eventDate = new Date(event.date || event.endDate || event.schedule?.endDate);
+          return eventDate < now;
+        }).length;
+        setExpiredEvents(expiredCount);
+
         // Fetch stats
         const statsResponse = await _axios.get('http://localhost:5000/api/events/stats');
         setStats(statsResponse.data.stats);
@@ -135,6 +148,23 @@ const EventsPage = () => {
   // Apply filters when search term, category, location, or date changes
   useEffect(() => {
     let results = [...events];
+
+    // Apply expired events filter
+    const now = new Date();
+    results = results.filter(event => {
+      const eventDate = new Date(event.date || event.endDate || event.schedule?.endDate);
+
+      switch (expiredFilter) {
+        case 'upcoming':
+          return eventDate >= now; // Only show upcoming events
+        case 'expired':
+          return eventDate < now; // Only show expired events
+        case 'all':
+          return true; // Show all events
+        default:
+          return eventDate >= now; // Default to upcoming events
+      }
+    });
 
     // Apply search term filter
     if (searchTerm) {
@@ -173,7 +203,7 @@ const EventsPage = () => {
     }
 
     setFilteredEvents(results);
-  }, [searchTerm, selectedCategory, locationFilter, selectedDate, events]);
+  }, [searchTerm, selectedCategory, locationFilter, selectedDate, expiredFilter, events]);
 
   // Initialize map when showMap changes
   useEffect(() => {
@@ -391,6 +421,8 @@ const EventsPage = () => {
 
   // Event Card Component
   const EventCard = ({ event }) => {
+    const isEventFavorite = isFavorite('events', event._id);
+
     // Utiliser directement l'image de la carte bancaire comme image par défaut
     const defaultImageUrl = 'http://localhost:5000/uploads/events/1749834623480-860019398.jpg';
 
@@ -436,8 +468,7 @@ const EventsPage = () => {
     const professionalAvatar = event.professional?.profileImage || null;
 
     return (
-      <Link
-        to={`/events/${event._id}`}
+      <div
         className={`group relative bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 ${
           event.featured ? 'ring-2 ring-blue-500' : ''
         }`}
@@ -448,97 +479,116 @@ const EventsPage = () => {
           </div>
         )}
 
-        <div className="relative h-48 overflow-hidden">
-          <img
-            src={imageUrl}
-            alt={event.title || 'Event image'}
-            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-            onError={e => {
-              e.target.onerror = null;
-              e.target.src = defaultImageUrl;
-            }}
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
-          <div className="absolute bottom-4 right-4 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-lg">
-            <div className="flex items-center text-xs font-medium text-gray-700">
-              <Tag className="w-3 h-3 mr-1" />
-              {formatCategoryName(event.category || 'other')}
-            </div>
-          </div>
-        </div>
+        {/* Bouton favoris */}
+        <button
+          onClick={e => {
+            e.preventDefault();
+            e.stopPropagation();
+            toggleEventFavorite(event);
+          }}
+          className={`absolute top-4 right-4 z-10 p-2 rounded-full shadow-md transition-all duration-300 ${
+            isEventFavorite
+              ? 'bg-red-500 text-white hover:bg-red-600'
+              : 'bg-white/90 text-gray-600 hover:bg-white hover:text-red-500'
+          }`}
+        >
+          <Heart size={16} className={isEventFavorite ? 'fill-current' : ''} />
+        </button>
 
-        <div className="p-6">
-          <div className="flex items-center justify-between mb-2">
-            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-              {formatEventType(event.type || 'other')}
-            </span>
-            <div className="flex items-center text-sm text-gray-500">
-              <Users className="w-4 h-4 mr-1" />
-              {capacityText}
-            </div>
-          </div>
-
-          <h3 className="text-xl font-bold text-gray-900 mb-2 line-clamp-1 group-hover:text-blue-600 transition-colors">
-            {event.title}
-          </h3>
-
-          <p className="text-gray-600 text-sm mb-4 line-clamp-2 leading-relaxed">
-            {event.description}
-          </p>
-
-          <div className="space-y-2 mb-4">
-            <div className="flex items-center text-sm text-gray-500">
-              <Calendar className="w-4 h-4 mr-2 text-blue-500" />
-              <span>{eventDate}</span>
-            </div>
-            <div className="flex items-center text-sm text-gray-500">
-              <Clock className="w-4 h-4 mr-2 text-green-500" />
-              <span>{event.time || 'Heure non spécifiée'}</span>
-            </div>
-            <div className="flex items-center text-sm text-gray-500">
-              <MapPin className="w-4 h-4 mr-2 text-red-500" />
-              <span className="truncate">{locationText}</span>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-            <div className="flex items-center">
-              {professionalAvatar ? (
-                <img
-                  src={professionalAvatar}
-                  alt={professionalName}
-                  className="w-8 h-8 rounded-full object-cover mr-2"
-                  onError={e => {
-                    e.target.onerror = null;
-                    e.target.src = 'https://placehold.co/32x32/gray/white?text=P';
-                  }}
-                />
-              ) : (
-                <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center mr-2">
-                  <span className="text-xs text-gray-500">P</span>
-                </div>
-              )}
-              <div>
-                <p className="text-sm font-medium text-gray-900">{professionalName}</p>
-                {event.professional?.rating && (
-                  <div className="flex items-center">
-                    <Star className="w-3 h-3 text-yellow-400 fill-current" />
-                    <span className="text-xs text-gray-500 ml-1">
-                      {event.professional.rating.average} ({event.professional.rating.totalReviews})
-                    </span>
-                  </div>
-                )}
+        <Link to={`/events/${event._id}`}>
+          <div className="relative h-48 overflow-hidden">
+            <img
+              src={imageUrl}
+              alt={event.title || 'Event image'}
+              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+              onError={e => {
+                e.target.onerror = null;
+                e.target.src = defaultImageUrl;
+              }}
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
+            <div className="absolute bottom-4 right-4 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-lg">
+              <div className="flex items-center text-xs font-medium text-gray-700">
+                <Tag className="w-3 h-3 mr-1" />
+                {formatCategoryName(event.category || 'other')}
               </div>
             </div>
-            <div className="text-right">
-              <div className="text-lg font-bold text-gray-900">{formatPrice(event)}</div>
-              <button className="mt-1 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
-                Voir plus
-              </button>
+          </div>
+
+          <div className="p-6">
+            <div className="flex items-center justify-between mb-2">
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                {formatEventType(event.type || 'other')}
+              </span>
+              <div className="flex items-center text-sm text-gray-500">
+                <Users className="w-4 h-4 mr-1" />
+                {capacityText}
+              </div>
+            </div>
+
+            <h3 className="text-xl font-bold text-gray-900 mb-2 line-clamp-1 group-hover:text-blue-600 transition-colors">
+              {event.title}
+            </h3>
+
+            <p className="text-gray-600 text-sm mb-4 line-clamp-2 leading-relaxed">
+              {event.description}
+            </p>
+
+            <div className="space-y-2 mb-4">
+              <div className="flex items-center text-sm text-gray-500">
+                <Calendar className="w-4 h-4 mr-2 text-blue-500" />
+                <span>{eventDate}</span>
+              </div>
+              <div className="flex items-center text-sm text-gray-500">
+                <Clock className="w-4 h-4 mr-2 text-green-500" />
+                <span>{event.time || 'Heure non spécifiée'}</span>
+              </div>
+              <div className="flex items-center text-sm text-gray-500">
+                <MapPin className="w-4 h-4 mr-2 text-red-500" />
+                <span className="truncate">{locationText}</span>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+              <div className="flex items-center">
+                {professionalAvatar ? (
+                  <img
+                    src={professionalAvatar}
+                    alt={professionalName}
+                    className="w-8 h-8 rounded-full object-cover mr-2"
+                    onError={e => {
+                      e.target.onerror = null;
+                      e.target.src = 'https://placehold.co/32x32/gray/white?text=P';
+                    }}
+                  />
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center mr-2">
+                    <span className="text-xs text-gray-500">P</span>
+                  </div>
+                )}
+                <div>
+                  <p className="text-sm font-medium text-gray-900">{professionalName}</p>
+                  {event.professional?.rating && (
+                    <div className="flex items-center">
+                      <Star className="w-3 h-3 text-yellow-400 fill-current" />
+                      <span className="text-xs text-gray-500 ml-1">
+                        {event.professional.rating.average} (
+                        {event.professional.rating.totalReviews})
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="text-lg font-bold text-gray-900">{formatPrice(event)}</div>
+                <button className="mt-1 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
+                  Voir plus
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      </Link>
+        </Link>
+      </div>
     );
   };
 
@@ -564,7 +614,7 @@ const EventsPage = () => {
 
           {/* Filters Row */}
           <div className="flex flex-col md:flex-row md:items-center space-y-4 md:space-y-0 md:space-x-4">
-            <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="flex-1 grid grid-cols-1 md:grid-cols-4 gap-4">
               <div className="relative">
                 <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <select
@@ -602,6 +652,19 @@ const EventsPage = () => {
                   className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-700"
                   placeholder="Sélectionner une date"
                 />
+              </div>
+
+              <div className="relative">
+                <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <select
+                  value={expiredFilter}
+                  onChange={e => setExpiredFilter(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white text-gray-700"
+                >
+                  <option value="upcoming">Événements à venir</option>
+                  <option value="expired">Événements expirés</option>
+                  <option value="all">Tous les événements</option>
+                </select>
               </div>
             </div>
 
@@ -642,7 +705,11 @@ const EventsPage = () => {
           </div>
 
           {/* Reset Filters Button - Only show if any filter is active */}
-          {(searchTerm || selectedCategory || locationFilter || selectedDate) && (
+          {(searchTerm ||
+            selectedCategory ||
+            locationFilter ||
+            selectedDate ||
+            expiredFilter !== 'upcoming') && (
             <div className="flex justify-end">
               <button
                 onClick={() => {
@@ -650,6 +717,7 @@ const EventsPage = () => {
                   setSelectedCategory('');
                   setLocationFilter('');
                   setSelectedDate('');
+                  setExpiredFilter('upcoming');
                 }}
                 className="text-sm text-blue-600 hover:text-blue-800 flex items-center"
               >
@@ -692,6 +760,8 @@ const EventsPage = () => {
               setSearchTerm('');
               setSelectedCategory('');
               setLocationFilter('');
+              setSelectedDate('');
+              setExpiredFilter('upcoming');
             }}
             className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
           >
@@ -742,6 +812,13 @@ const EventsPage = () => {
       value: stats.totalParticipants.toString(),
       color: 'text-green-600',
       bgColor: 'bg-green-100',
+    },
+    {
+      icon: Clock,
+      label: 'Expirés',
+      value: expiredEvents.toString(),
+      color: 'text-red-600',
+      bgColor: 'bg-red-100',
     },
     {
       icon: Star,
@@ -844,6 +921,7 @@ const EventsPage = () => {
                     setSelectedCategory('');
                     setLocationFilter('');
                     setSelectedDate('');
+                    setExpiredFilter('upcoming');
                   }}
                   className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
                 >

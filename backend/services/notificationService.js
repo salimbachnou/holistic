@@ -437,17 +437,32 @@ class NotificationService {
       const statusMessage = statusMessages[newStatus] || newStatus;
       const statusTitle = statusTitles[newStatus] || `Commande ${newStatus}`;
 
+      // Pour les commandes livrées, inclure un lien vers la notation
+      let link = '/orders';
+      let additionalData = {
+        orderId: order._id,
+        orderNumber: order.orderNumber,
+        newStatus: newStatus
+      };
+
+      if (newStatus === 'delivered') {
+        link = `/orders/${order._id}/review`;
+        additionalData.canReview = true;
+        additionalData.products = order.items.map(item => ({
+          id: item.product._id || item.product,
+          title: item.product?.title || item.product?.name || 'Produit'
+        }));
+      }
+
       await this.createClientNotification(
         clientId,
         statusTitle,
-        `Votre commande #${order.orderNumber} est maintenant ${statusMessage}`,
+        newStatus === 'delivered' 
+          ? `Votre commande #${order.orderNumber} a été livrée ! N'oubliez pas de laisser votre avis sur les produits reçus.`
+          : `Votre commande #${order.orderNumber} est maintenant ${statusMessage}`,
         `order_${newStatus}`,
-        '/orders',
-        {
-          orderId: order._id,
-          orderNumber: order.orderNumber,
-          newStatus: newStatus
-        }
+        link,
+        additionalData
       );
     } catch (error) {
       console.error('Erreur lors de la notification de changement de statut client:', error);
@@ -507,6 +522,134 @@ class NotificationService {
       );
     } catch (error) {
       console.error('Erreur lors de la notification de réservation confirmée:', error);
+    }
+  }
+
+  /**
+   * Notifier un client qu'il peut laisser un avis sur une session
+   */
+  static async notifySessionReviewRequest(booking, session, professional) {
+    try {
+      if (!booking.client) {
+        console.log('Pas de client associé à cette réservation');
+        return;
+      }
+
+      // Vérifier si client est peuplé ou juste un ID
+      let clientId = booking.client;
+      if (typeof booking.client === 'object') {
+        clientId = booking.client._id;
+      }
+
+      const formattedDate = new Date(session.startTime).toLocaleDateString('fr-FR', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+
+      await this.createClientNotification(
+        clientId,
+        'Votre session est terminée !',
+        `Comment s'est passée votre session "${session.title}" du ${formattedDate} ? Partagez votre expérience avec d'autres clients.`,
+        'session_review_request',
+        `/sessions/${session._id}/review`,
+        {
+          sessionId: session._id,
+          sessionTitle: session.title,
+          sessionDate: session.startTime,
+          professionalName: professional.businessName || 'Professionnel',
+          professionalId: professional._id,
+          bookingId: booking._id,
+          canReview: true
+        }
+      );
+
+      console.log(`Review request notification sent to client ${clientId} for session ${session._id}`);
+    } catch (error) {
+      console.error('Erreur lors de la notification de demande d\'avis:', error);
+    }
+  }
+
+  /**
+   * Envoyer un rappel pour laisser un avis sur une session
+   */
+  static async notifySessionReviewReminder(booking, professional) {
+    try {
+      if (!booking.client) {
+        console.log('Pas de client associé à cette réservation');
+        return;
+      }
+
+      // Vérifier si client est peuplé ou juste un ID
+      let clientId = booking.client;
+      if (typeof booking.client === 'object') {
+        clientId = booking.client._id;
+      }
+
+      const sessionTitle = booking.service?.sessionId?.title || booking.service?.name || 'Session';
+
+      await this.createClientNotification(
+        clientId,
+        'N\'oubliez pas votre avis !',
+        `Vous avez participé à "${sessionTitle}". Votre avis peut aider d'autres clients à découvrir cette expérience.`,
+        'session_review_reminder',
+        `/sessions/${booking.service.sessionId}/review`,
+        {
+          sessionId: booking.service.sessionId,
+          sessionTitle: sessionTitle,
+          professionalName: professional.businessName || 'Professionnel',
+          professionalId: professional._id,
+          bookingId: booking._id,
+          isReminder: true
+        }
+      );
+
+      console.log(`Review reminder sent to client ${clientId} for session ${booking.service.sessionId}`);
+    } catch (error) {
+      console.error('Erreur lors du rappel d\'avis:', error);
+    }
+  }
+
+  /**
+   * Notifier un professionnel qu'il a reçu un nouvel avis
+   */
+  static async notifyProfessionalNewReview(review, session) {
+    try {
+      const formattedDate = new Date(review.createdAt).toLocaleDateString('fr-FR', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+
+      const stars = '⭐'.repeat(review.rating);
+      const clientName = review.clientId ? 
+        (typeof review.clientId === 'object' ? 
+          `${review.clientId.firstName} ${review.clientId.lastName}` : 
+          'Client') : 
+        'Client';
+
+      await this.createNotification(
+        review.professionalId,
+        'Nouvel avis reçu !',
+        `${clientName} a laissé un avis ${stars} sur "${session?.title || review.contentTitle}" - ${formattedDate}`,
+        'new_review',
+        '/dashboard/professional/reviews',
+        {
+          reviewId: review._id,
+          sessionId: session?._id,
+          sessionTitle: session?.title || review.contentTitle,
+          clientName: clientName,
+          rating: review.rating,
+          comment: review.comment?.substring(0, 100),
+          reviewDate: review.createdAt
+        }
+      );
+
+      console.log(`New review notification sent to professional ${review.professionalId}`);
+    } catch (error) {
+      console.error('Erreur lors de la notification de nouvel avis:', error);
     }
   }
 

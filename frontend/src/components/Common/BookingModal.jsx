@@ -44,7 +44,9 @@ const BookingModal = ({ session, professional, onClose, onSubmit }) => {
               </div>
               <div className="flex items-center">
                 <FaEuroSign className="text-gray-500 mr-2" />
-                <span className="text-gray-700">{session.price} MAD</span>
+                <span className="text-gray-700">
+                  {session.price?.amount || session.price} {session.price?.currency || 'MAD'}
+                </span>
               </div>
               <div className="flex items-center">
                 <FaUser className="text-gray-500 mr-2" />
@@ -95,7 +97,9 @@ const BookingModal = ({ session, professional, onClose, onSubmit }) => {
                 </div>
                 <div className="flex justify-between mt-1">
                   <span className="text-gray-600">Prix:</span>
-                  <span className="text-gray-800 font-medium">{session.price} MAD</span>
+                  <span className="text-gray-800 font-medium">
+                    {session.price?.amount || session.price} {session.price?.currency || 'MAD'}
+                  </span>
                 </div>
               </div>
 

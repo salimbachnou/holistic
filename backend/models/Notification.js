@@ -20,6 +20,7 @@ const notificationSchema = new mongoose.Schema({
     enum: [
       'message', 
       'order_placed',
+      'order_confirmed',
       'order_processing',
       'order_shipped', 
       'order_delivered', 
@@ -32,7 +33,16 @@ const notificationSchema = new mongoose.Schema({
       'new_contact',
       'new_order',
       'new_event',
+      'event_updated',
+      'event_approved',
+      'event_rejected',
+      'event_confirmed',
+      'event_cancelled',
+      'event_review_request',
       'session_cancelled',
+      'session_review_request',
+      'session_review_reminder',
+      'new_review',
       'system'
     ],
     default: 'system'

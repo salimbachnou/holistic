@@ -47,6 +47,10 @@ const sessionSchema = new mongoose.Schema({
     enum: ['individual', 'group', 'online', 'workshop', 'retreat'],
     default: 'individual'
   },
+  // Session categories (for filtering and searching)
+  sessionCategories: [{
+    type: String,
+  }],
   location: {
     type: String,
     required: function() {
@@ -110,6 +114,18 @@ const sessionSchema = new mongoose.Schema({
   notes: {
     type: String,
     maxlength: 500
+  },
+  // Review statistics
+  averageRating: {
+    type: Number,
+    default: 0,
+    min: 0,
+    max: 5
+  },
+  reviewCount: {
+    type: Number,
+    default: 0,
+    min: 0
   }
 }, {
   timestamps: true
@@ -168,4 +184,4 @@ sessionSchema.set('toJSON', {
   }
 });
 
-module.exports = mongoose.model('Session', sessionSchema); 
+module.exports = mongoose.model('Session', sessionSchema);

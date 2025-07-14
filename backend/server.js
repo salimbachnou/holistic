@@ -18,6 +18,7 @@ require('./models/Product');
 require('./models/Booking');
 require('./models/Session');
 require('./models/Review');
+require('./models/OrderReview');
 require('./models/Message');
 require('./models/Contact');
 require('./models/Event');
@@ -38,6 +39,9 @@ const productsRoutes = require('./routes/products');
 const eventsRoutes = require('./routes/events');
 const ordersRoutes = require('./routes/orders');
 const notificationsRoutes = require('./routes/notifications');
+const reviewsRoutes = require('./routes/reviews');
+const orderReviewsRoutes = require('./routes/orderReviews');
+const homepageRoutes = require('./routes/homepage');
 
 // Import passport configuration
 require('./config/passport');
@@ -46,7 +50,7 @@ const app = express();
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: {
-    origin: process.env.FRONTEND_URL || "http://localhost:3001",
+    origin: process.env.FRONTEND_URL || "http://localhost:3000",
     methods: ["GET", "POST"],
     credentials: true
   }
@@ -88,7 +92,7 @@ if (!fs.existsSync(productImagesDir)) {
 
 // Configure CORS middleware with more permissive settings
 const corsOptions = {
-  origin: process.env.FRONTEND_URL || "http://localhost:3001",
+  origin: process.env.FRONTEND_URL || "http://localhost:3000",
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
@@ -120,7 +124,7 @@ app.options('*', cors(corsOptions));
 // Serve static files from uploads directory
 app.use('/uploads', (req, res, next) => {
   // Set CORS headers specifically for static files
-  res.setHeader('Access-Control-Allow-Origin', process.env.FRONTEND_URL || 'http://localhost:3001');
+  res.setHeader('Access-Control-Allow-Origin', process.env.FRONTEND_URL || 'http://localhost:3000');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   res.setHeader('Access-Control-Allow-Credentials', 'true');
@@ -150,7 +154,7 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/holistic'
 
 // Special CORS handling for auth endpoint
 app.use('/api/auth/me/jwt', process.env.NODE_ENV === 'production' ? authJwtLimiter : (req, res, next) => next(), (req, res, next) => {
-  res.setHeader('Access-Control-Allow-Origin', process.env.FRONTEND_URL || 'http://localhost:3001');
+  res.setHeader('Access-Control-Allow-Origin', process.env.FRONTEND_URL || 'http://localhost:3000');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   res.setHeader('Access-Control-Allow-Credentials', 'true');
@@ -164,7 +168,7 @@ app.use('/api/auth/me/jwt', process.env.NODE_ENV === 'production' ? authJwtLimit
 
 // Global middleware to ensure CORS headers are always sent
 app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', process.env.FRONTEND_URL || 'http://localhost:3001');
+  res.header('Access-Control-Allow-Origin', process.env.FRONTEND_URL || 'http://localhost:3000');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
   res.header('Access-Control-Allow-Credentials', 'true');
@@ -189,6 +193,9 @@ app.use('/api/products', productsRoutes);
 app.use('/api/events', eventsRoutes);
 app.use('/api/orders', ordersRoutes);
 app.use('/api/notifications', notificationsRoutes);
+app.use('/api/reviews', reviewsRoutes);
+app.use('/api/order-reviews', orderReviewsRoutes);
+app.use('/api/homepage', homepageRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
@@ -258,4 +265,29 @@ app.use('*', (req, res) => {
 httpServer.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+  
+  // Start automatic event review notifications (check every 6 hours)
+  const EventReviewService = require('./services/eventReviewService');
+  
+  // Run immediately on startup (after 30 seconds delay)
+  setTimeout(async () => {
+    try {
+      console.log('🚀 [STARTUP] Running initial event review check...');
+      await EventReviewService.checkCompletedEvents();
+    } catch (error) {
+      console.error('❌ [STARTUP] Error in initial event review check:', error);
+    }
+  }, 30000);
+  
+  // Then run every 6 hours
+  setInterval(async () => {
+    try {
+      console.log('⏰ [CRON] Running scheduled event review check...');
+      await EventReviewService.checkCompletedEvents();
+    } catch (error) {
+      console.error('❌ [CRON] Error in scheduled event review check:', error);
+    }
+  }, 6 * 60 * 60 * 1000); // 6 hours in milliseconds
+  
+  console.log('✅ Event review notifications scheduler started (runs every 6 hours)');
 }); 

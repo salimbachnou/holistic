@@ -135,6 +135,7 @@ export const bookingAPI = {
   create: bookingData => axios.post(`${API_URL}/api/bookings`, bookingData),
   update: (id, bookingData) => axios.put(`${API_URL}/api/bookings/${id}`, bookingData),
   cancel: (id, reason) => axios.put(`${API_URL}/api/bookings/${id}/cancel`, { reason }),
+  getMyBookings: params => axios.get(`${API_URL}/api/bookings/my-bookings`, { params }),
   getAvailableSlots: (professionalId, date) =>
     axios.get(`${API_URL}/api/bookings/available-slots`, { params: { professionalId, date } }),
 };

@@ -84,13 +84,15 @@ router.post('/accept', isAuthenticated, isProfessional, async (req, res) => {
     }
 
     // Validation des informations de commande
-    if (!orderInfo.product || !orderInfo.size || !orderInfo.quantity || orderInfo.quantity <= 0) {
+    if (!orderInfo.product || !orderInfo.quantity || orderInfo.quantity <= 0) {
       console.log("Informations de commande invalides:", orderInfo);
       return res.status(400).json({
         success: false,
         message: 'Informations de commande invalides ou incomplètes'
       });
     }
+
+    // Size is optional - will be validated later based on product type
 
     // S'assurer que la quantité est un nombre
     orderInfo.quantity = parseInt(orderInfo.quantity, 10);
@@ -224,6 +226,14 @@ router.post('/accept', isAuthenticated, isProfessional, async (req, res) => {
 
     // Vérifier si le produit a un inventaire par taille
     if (product.sizeInventory && product.sizeInventory.length > 0) {
+      // Si le produit a des tailles mais qu'aucune taille n'est spécifiée ou que c'est 'N/A'
+      if (!orderInfo.size || orderInfo.size === 'N/A') {
+        return res.status(400).json({
+          success: false,
+          message: 'Ce produit nécessite une taille'
+        });
+      }
+
       // Trouver l'entrée de taille correspondante
       const sizeEntry = product.sizeInventory.find(item => 
         item.size.toLowerCase() === orderInfo.size.toLowerCase()
@@ -317,14 +327,14 @@ router.post('/accept', isAuthenticated, isProfessional, async (req, res) => {
           professional: professional._id,
           quantity: orderInfo.quantity,
           price: {
-            amount: orderInfo.price || product.price,
+            amount: orderInfo.price || (product.price?.amount || product.price || 0),
             currency: orderInfo.currency || 'MAD'
           },
-          size: orderInfo.size
+          size: orderInfo.size === 'N/A' ? undefined : orderInfo.size
         }
       ],
       totalAmount: {
-        amount: orderInfo.total || (orderInfo.price || product.price) * orderInfo.quantity,
+        amount: orderInfo.total || (orderInfo.price || (product.price?.amount || product.price || 0)) * orderInfo.quantity,
         currency: orderInfo.currency || 'MAD'
       },
       status: 'pending',
@@ -485,12 +495,13 @@ router.get('/by-product/:productId', isAuthenticated, isProfessional, async (req
     }
 
     // Rechercher les commandes qui contiennent ce produit
-    const Order = mongoose.model('Order');
     const orders = await Order.find({
       'items.product': productId,
-      professionalId: professional._id
+      'items.professional': professional._id
     })
-    .populate('clientId', 'firstName lastName email')
+    .populate('clientId', 'firstName lastName email phone')
+    .populate('items.product', 'title name images price')
+    .populate('items.professional', 'businessName')
     .sort({ createdAt: -1 });
 
     return res.json({
@@ -509,8 +520,8 @@ router.get('/by-product/:productId', isAuthenticated, isProfessional, async (req
 
 // @route   GET /api/orders/:orderId
 // @desc    Récupérer les détails d'une commande spécifique
-// @access  Private (Professional only)
-router.get('/:orderId', isAuthenticated, isProfessional, async (req, res) => {
+// @access  Private (Client or Professional)
+router.get('/:orderId', isAuthenticated, async (req, res) => {
   try {
     const { orderId } = req.params;
     
@@ -521,25 +532,42 @@ router.get('/:orderId', isAuthenticated, isProfessional, async (req, res) => {
       });
     }
 
-    // Vérifier que le professionnel a accès à cette commande
-    const professional = await Professional.findOne({ userId: req.user._id });
-    if (!professional) {
-      return res.status(404).json({
-        success: false,
-        message: 'Professionnel non trouvé'
-      });
-    }
-
     // Rechercher la commande
     const Order = mongoose.model('Order');
-    const order = await Order.findOne({
-      _id: orderId,
-      professionalId: professional._id
-    })
-    .populate('clientId', 'firstName lastName email phone')
-    .populate('items.product', 'title name images price');
+    let order;
+
+    // Vérifier si l'utilisateur est un professionnel
+    const professional = await Professional.findOne({ userId: req.user._id });
+    
+    if (professional) {
+      // Si c'est un professionnel, vérifier qu'il a accès à cette commande
+      order = await Order.findOne({
+        _id: orderId,
+        'items.professional': professional._id
+      })
+      .populate('clientId', 'firstName lastName email phone')
+      .populate('items.product', 'title name images price');
+    } else {
+      // Si c'est un client, vérifier que c'est sa commande
+      order = await Order.findOne({
+        _id: orderId,
+        clientId: req.user._id
+      })
+      .populate('clientId', 'firstName lastName email phone')
+      .populate('items.product', 'title name images price')
+      .populate('items.professional', 'businessName name');
+    }
+
+    console.log('Order lookup result:', {
+      orderId,
+      userId: req.user._id,
+      isProfessional: !!professional,
+      orderFound: !!order,
+      orderStatus: order?.status
+    });
 
     if (!order) {
+      console.log('Order not found:', { orderId, userId: req.user._id, isProfessional: !!professional });
       return res.status(404).json({
         success: false,
         message: 'Commande non trouvée'
@@ -568,7 +596,16 @@ router.put('/:orderId/status', isAuthenticated, isProfessional, async (req, res)
     const { orderId } = req.params;
     const { status, returnToStock, cancellationMessage } = req.body;
     
+    console.log('Received update status request:', {
+      orderId,
+      status,
+      returnToStock,
+      cancellationMessage,
+      userId: req.user._id
+    });
+    
     if (!orderId || !status) {
+      console.log('Missing required fields:', { orderId, status });
       return res.status(400).json({
         success: false,
         message: 'ID de commande et statut requis'
@@ -576,13 +613,16 @@ router.put('/:orderId/status', isAuthenticated, isProfessional, async (req, res)
     }
 
     // Vérifier que le statut est valide
-    const validStatuses = ['pending', 'shipped', 'delivered', 'cancelled'];
+    const validStatuses = ['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded'];
     if (!validStatuses.includes(status)) {
+      console.log('Invalid status:', { status, validStatuses });
       return res.status(400).json({
         success: false,
         message: 'Statut invalide'
       });
     }
+
+    console.log('Status validation passed:', { status, validStatuses });
 
     // Vérifier que le professionnel a accès à cette commande
     const professional = await Professional.findOne({ userId: req.user._id });
@@ -594,13 +634,20 @@ router.put('/:orderId/status', isAuthenticated, isProfessional, async (req, res)
     }
 
     // Rechercher la commande
-    const Order = mongoose.model('Order');
     const order = await Order.findOne({
       _id: orderId,
-      professionalId: professional._id
+      'items.professional': professional._id
     }).populate('items.product clientId');
 
+    console.log('Order lookup result:', {
+      orderId,
+      professionalId: professional._id,
+      orderFound: !!order,
+      orderStatus: order?.status
+    });
+
     if (!order) {
+      console.log('Order not found:', { orderId, professionalId: professional._id });
       return res.status(404).json({
         success: false,
         message: 'Commande non trouvée'
@@ -661,6 +708,16 @@ router.put('/:orderId/status', isAuthenticated, isProfessional, async (req, res)
       order.deliveredAt = new Date();
     } else if (status === 'shipped') {
       order.shippedAt = new Date();
+    } else if (status === 'confirmed') {
+      // Ajouter à la timeline si ce n'est pas déjà fait
+      if (!order.timeline.some(entry => entry.status === 'confirmed')) {
+        order.timeline.push({
+          status: 'confirmed',
+          note: 'Commande confirmée par le professionnel',
+          updatedBy: req.user._id,
+          timestamp: new Date()
+        });
+      }
     } else if (status === 'cancelled') {
       order.cancelledAt = new Date();
       
@@ -704,4 +761,98 @@ router.put('/:orderId/status', isAuthenticated, isProfessional, async (req, res)
   }
 });
 
-module.exports = router; 
+// @route   PUT /api/orders/:orderId/deliver
+// @desc    Marquer une commande comme livrée
+// @access  Private (Professional only)
+router.put('/:orderId/deliver', isAuthenticated, isProfessional, async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { deliveryNote } = req.body;
+    
+    if (!orderId) {
+      return res.status(400).json({
+        success: false,
+        message: 'ID de commande requis'
+      });
+    }
+
+    // Vérifier que le professionnel a accès à cette commande
+    const professional = await Professional.findOne({ userId: req.user._id });
+    if (!professional) {
+      return res.status(404).json({
+        success: false,
+        message: 'Professionnel non trouvé'
+      });
+    }
+
+    // Rechercher la commande
+    const order = await Order.findOne({
+      _id: orderId,
+      'items.professional': professional._id
+    }).populate('items.product clientId');
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: 'Commande non trouvée'
+      });
+    }
+
+    // Vérifier que la commande peut être marquée comme livrée
+    if (order.status !== 'shipped') {
+      return res.status(400).json({
+        success: false,
+        message: 'La commande doit être expédiée avant d\'être marquée comme livrée'
+      });
+    }
+
+    // Mettre à jour le statut
+    order.status = 'delivered';
+    order.deliveredAt = new Date();
+    
+    // Ajouter une note de livraison si fournie
+    if (deliveryNote) {
+      order.notes = order.notes 
+        ? `${order.notes}\n\nNote de livraison: ${deliveryNote}` 
+        : `Note de livraison: ${deliveryNote}`;
+    }
+
+    // Ajouter à la timeline
+    order.timeline.push({
+      status: 'delivered',
+      note: deliveryNote || 'Commande livrée',
+      updatedBy: req.user._id,
+      timestamp: new Date()
+    });
+
+    await order.save();
+
+    // Envoyer les notifications
+    try {
+      const NotificationService = require('../services/notificationService');
+      
+      // Notification pour le client
+      await NotificationService.notifyClientOrderStatusChange(order, 'delivered');
+      
+      // Notification pour le professionnel
+      await NotificationService.notifyOrderStatusChange(order, 'delivered', professional._id);
+    } catch (error) {
+      console.error('Erreur lors des notifications de livraison:', error);
+    }
+
+    return res.json({
+      success: true,
+      message: 'Commande marquée comme livrée',
+      order
+    });
+  } catch (error) {
+    console.error('Erreur lors de la confirmation de livraison:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur lors de la confirmation de livraison',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+module.exports = router;

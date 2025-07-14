@@ -11,6 +11,8 @@ const RegisterPage = () => {
     email: '',
     password: '',
     confirmPassword: '',
+    birthDate: '',
+    gender: '',
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -59,7 +61,9 @@ const RegisterPage = () => {
       await register(
         `${formData.firstName} ${formData.lastName}`,
         formData.email,
-        formData.password
+        formData.password,
+        formData.birthDate,
+        formData.gender
       );
       navigate('/login', {
         state: { message: 'Inscription réussie. Veuillez vous connecter.' },
@@ -233,6 +237,43 @@ const RegisterPage = () => {
                   value={formData.email}
                   onChange={handleChange}
                 />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label
+                    htmlFor="birthDate"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
+                    Date de naissance
+                  </label>
+                  <input
+                    id="birthDate"
+                    name="birthDate"
+                    type="date"
+                    autoComplete="bday"
+                    className="auth-input appearance-none relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm transition-colors duration-200"
+                    value={formData.birthDate}
+                    onChange={handleChange}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="gender" className="block text-sm font-medium text-gray-700 mb-2">
+                    Genre
+                  </label>
+                  <select
+                    id="gender"
+                    name="gender"
+                    className="auth-input appearance-none relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm transition-colors duration-200"
+                    value={formData.gender}
+                    onChange={handleChange}
+                  >
+                    <option value="">Sélectionnez...</option>
+                    <option value="male">Homme</option>
+                    <option value="female">Femme</option>
+                    <option value="other">Autre</option>
+                    <option value="prefer_not_to_say">Préfère ne pas dire</option>
+                  </select>
+                </div>
               </div>
               <div>
                 <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">

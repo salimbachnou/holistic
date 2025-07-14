@@ -34,6 +34,18 @@ const EventSchema = new Schema(
       type: String,
       required: true,
     },
+    category: {
+      type: String,
+      enum: [
+        'yoga', 'meditation', 'aromatherapy', 'nutrition', 'massage', 'naturopathy',
+        'psychology', 'coaching', 'workshop', 'retreat', 'fitness', 'dance', 'pilates',
+        'mindfulness', 'acupuncture', 'homeopathy', 'physiotherapy', 'osteopathy',
+        'art_therapy', 'music_therapy', 'hypnotherapy', 'reflexology', 'reiki',
+        'ayurveda', 'chinese_medicine', 'herbal_medicine', 'sound_therapy',
+        'energy_healing', 'other'
+      ],
+      default: 'other'
+    },
     date: {
       type: Date,
       required: true,
@@ -42,13 +54,38 @@ const EventSchema = new Schema(
       type: Date,
       required: true,
     },
+    time: {
+      type: String,
+      trim: true
+    },
+    featured: {
+      type: Boolean,
+      default: false
+    },
+    images: [{
+      url: String
+    }],
     address: {
       type: String,
-      required: true,
+      required: function() {
+        return this.eventType === 'in_person';
+      },
     },
     locationCoordinates: {
       lat: Number,
       lng: Number,
+    },
+    eventType: {
+      type: String,
+      enum: ['in_person', 'online'],
+      default: 'in_person',
+      required: true,
+    },
+    onlineLink: {
+      type: String,
+      required: function() {
+        return this.eventType === 'online';
+      },
     },
     price: {
       type: Number,

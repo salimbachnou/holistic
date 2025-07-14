@@ -439,7 +439,8 @@ const AdminProductsPage = () => {
                   </div>
                   <div className="flex items-center text-sm font-semibold text-gray-900">
                     <CurrencyDollarIcon className="h-4 w-4 mr-1" />
-                    {product.price} {product.currency}
+                    {product.price?.amount || product.price}{' '}
+                    {product.price?.currency || product.currency || 'MAD'}
                   </div>
                 </div>
 
@@ -802,7 +803,8 @@ const AdminProductsPage = () => {
                       <div>
                         <p className="text-sm text-gray-600">Prix</p>
                         <p className="font-medium">
-                          {selectedProduct.price} {selectedProduct.currency}
+                          {selectedProduct.price?.amount || selectedProduct.price}{' '}
+                          {selectedProduct.price?.currency || selectedProduct.currency || 'MAD'}
                         </p>
                       </div>
                       <div>

@@ -8,7 +8,7 @@ module.exports = function(req, res, next) {
   const Professional = mongoose.model('Professional');
   
   // Vérifier si l'utilisateur est un professionnel
-  Professional.findOne({ userId: req.user.id })
+  Professional.findOne({ userId: req.user._id })
     .then(professional => {
       if (!professional) {
         return res.status(403).json({

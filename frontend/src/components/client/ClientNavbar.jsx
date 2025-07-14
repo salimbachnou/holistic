@@ -80,28 +80,10 @@ const ClientNavbar = () => {
       current: location.pathname === '/products',
     },
     {
-      name: 'Mes réservations',
-      href: '/bookings',
-      icon: CalendarDays,
-      current: location.pathname === '/bookings',
-    },
-    {
-      name: 'Mes sessions',
+      name: 'Sessions',
       href: '/sessions',
       icon: GraduationCap,
       current: location.pathname === '/sessions',
-    },
-    {
-      name: 'Favoris',
-      href: '/favorites',
-      icon: Heart,
-      current: location.pathname === '/favorites',
-    },
-    {
-      name: 'Messages',
-      href: '/messages',
-      icon: MessageCircle,
-      current: location.pathname.includes('/messages'),
     },
   ];
 
@@ -124,7 +106,7 @@ const ClientNavbar = () => {
           </div>
 
           {/* Desktop navigation */}
-          <div className="hidden lg:flex lg:items-center lg:space-x-2">
+          <div className="hidden lg:flex lg:items-center lg:space-x-20">
             <nav className="flex space-x-1">
               {navigation.slice(0, 5).map(item => (
                 <Link

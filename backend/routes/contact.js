@@ -272,8 +272,11 @@ router.get('/plans', (req, res) => {
   });
 });
 
-// General contact form (for authenticated users)
+// General contact form
 router.post('/', [
+  body('firstName').notEmpty().withMessage('First name is required'),
+  body('lastName').notEmpty().withMessage('Last name is required'),
+  body('email').isEmail().withMessage('Valid email is required'),
   body('subject').notEmpty().withMessage('Subject is required'),
   body('message').isLength({ min: 10, max: 1000 }).withMessage('Message must be between 10 and 1000 characters')
 ], async (req, res) => {
@@ -287,18 +290,59 @@ router.post('/', [
       });
     }
 
-    const { subject, message } = req.body;
+    const {
+      firstName,
+      lastName,
+      email,
+      subject,
+      message,
+      phone
+    } = req.body;
 
     // Create new contact request
     const contactRequest = new Contact({
-      type: 'general',
+      type: 'general_contact',
+      firstName,
+      lastName,
+      email: email.toLowerCase(),
       subject,
       message,
+      phone,
       ipAddress: req.ip,
       userAgent: req.get('User-Agent')
     });
 
     await contactRequest.save();
+
+    // Send confirmation email to user if SMTP is configured
+    try {
+      if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+        const transporter = createEmailTransporter();
+        const mailOptions = {
+          from: process.env.EMAIL_USER,
+          to: email,
+          subject: 'Message reçu - Holistic.ma',
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <h2 style="color: #2d5a87;">Merci pour votre message !</h2>
+              <p>Bonjour ${firstName},</p>
+              <p>Nous avons bien reçu votre message concernant "${subject}".</p>
+              <p><strong>Votre message :</strong></p>
+              <blockquote style="background: #f5f5f5; padding: 15px; border-left: 4px solid #2d5a87; margin: 15px 0;">
+                ${message}
+              </blockquote>
+              <p>Notre équipe va examiner votre message et vous contacter sous 24 heures.</p>
+              <p>Cordialement,<br/>L'équipe Holistic.ma</p>
+            </div>
+          `
+        };
+        
+        await transporter.sendMail(mailOptions);
+      }
+    } catch (emailError) {
+      console.error('Error sending confirmation email:', emailError);
+      // Continue execution even if email fails
+    }
 
     res.status(201).json({
       success: true,
@@ -307,7 +351,7 @@ router.post('/', [
     });
 
   } catch (error) {
-    console.error('Error creating contact request:', error);
+    console.error('Error submitting contact form:', error);
     res.status(500).json({
       success: false,
       message: 'Server error'

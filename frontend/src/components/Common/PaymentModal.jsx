@@ -111,7 +111,9 @@ const PaymentModal = ({ session, onClose, onSubmit }) => {
             </div>
             <div className="flex justify-between items-center mt-2">
               <p className="text-gray-600">Prix</p>
-              <p className="text-gray-800 font-semibold">{session.price} MAD</p>
+              <p className="text-gray-800 font-semibold">
+                {session.price?.amount || session.price} {session.price?.currency || 'MAD'}
+              </p>
             </div>
           </div>
 

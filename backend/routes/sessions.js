@@ -1,10 +1,18 @@
 const express = require('express');
 const passport = require('passport');
-const { body, validationResult } = require('express-validator');
+const { validationResult } = require('express-validator');
 const Session = require('../models/Session');
 const Professional = require('../models/Professional');
 const User = require('../models/User');
 const Booking = require('../models/Booking');
+const { 
+  createSessionValidation, 
+  updateSessionValidation, 
+  getSessionsValidation,
+  sessionIdValidation,
+  bookingIdValidation 
+} = require('../validators/sessionValidators');
+
 // VideoCallAccessLog removed - using external links only
 const router = express.Router();
 // JWT removed - no longer needed for video tokens
@@ -113,7 +121,6 @@ router.get('/professional', requireAuth, requireProfessional, async (req, res) =
       endDate, 
       status, 
       page = 1, 
-      limit = 10, 
       sortBy = 'startTime', 
       sortOrder = 'asc' 
     } = req.query;
@@ -139,21 +146,51 @@ router.get('/professional', requireAuth, requireProfessional, async (req, res) =
     const sort = {};
     sort[sortBy] = sortOrder === 'desc' ? -1 : 1;
 
+    // Get sessions without reviews first
     const sessions = await Session.find(query)
-      .sort(sort)
-      .limit(parseInt(limit))
-      .skip((parseInt(page) - 1) * parseInt(limit));
+      .sort(sort);
+
+    // Import Review model to get reviews for each session
+    const Review = require('../models/Review');
+
+    // Add reviews to each session
+    const sessionsWithReviews = await Promise.all(
+      sessions.map(async (session) => {
+        // Get reviews for this session
+        const reviews = await Review.find({
+          contentId: session._id,
+          contentType: 'session',
+          status: 'approved' // Only get approved reviews
+        })
+        .populate('clientId', 'firstName lastName')
+        .sort({ createdAt: -1 });
+
+        // Convert session to object and add reviews
+        const sessionObj = session.toObject();
+        sessionObj.reviews = reviews.map(review => ({
+          _id: review._id,
+          rating: review.rating,
+          comment: review.comment,
+          createdAt: review.createdAt,
+          clientName: review.clientId ? `${review.clientId.firstName} ${review.clientId.lastName}` : 'Client anonyme',
+          professionalResponse: review.professionalResponse,
+          respondedAt: review.respondedAt
+        }));
+
+        return sessionObj;
+      })
+    );
 
     const total = await Session.countDocuments(query);
 
     res.json({
       success: true,
-      sessions,
+      sessions: sessionsWithReviews,
       pagination: {
         page: parseInt(page),
-        limit: parseInt(limit),
+        limit: sessionsWithReviews.length,
         total,
-        pages: Math.ceil(total / parseInt(limit))
+        pages: 1
       }
     });
   } catch (error) {
@@ -227,7 +264,7 @@ router.get('/my-sessions', requireAuth, async (req, res) => {
   }
 });
 
-// Get a specific session by ID
+// Get a specific session by ID (with participation check for reviews)
 router.get('/:id', requireAuth, async (req, res) => {
   try {
     const session = await Session.findById(req.params.id)
@@ -251,18 +288,42 @@ router.get('/:id', requireAuth, async (req, res) => {
       participant => participant._id.equals(req.user._id)
     );
 
-    // Only allow the professional who created the session, participants, or admins to view it
-    if (!isProfessionalOwner && !isParticipant && req.user.role !== 'admin') {
+    // Check if user has a confirmed booking for this session (for review purposes)
+    const Booking = require('../models/Booking');
+    const hasBooking = await Booking.findOne({
+      'service.sessionId': session._id,
+      client: req.user._id,
+      status: { $in: ['confirmed', 'completed'] }
+    });
+
+    // Only allow the professional who created the session, participants, users with bookings, or admins to view it
+    if (!isProfessionalOwner && !isParticipant && !hasBooking && req.user.role !== 'admin') {
       return res.status(403).json({
         success: false,
         message: 'Access denied'
       });
     }
 
-    res.json({
+    // Add participation info for review purposes
+    const responseData = {
       success: true,
-      session
-    });
+      session: {
+        ...session.toObject(),
+        userParticipated: !!(isParticipant || hasBooking),
+        canReview: !!(hasBooking && session.status === 'completed')
+      }
+    };
+
+    // If user participated, also populate professional info for reviews
+    if (hasBooking) {
+      responseData.session.professional = {
+        _id: session.professionalId._id,
+        businessName: session.professionalId.businessName,
+        userId: session.professionalId.userId
+      };
+    }
+
+    res.json(responseData);
   } catch (error) {
     console.error('Error fetching session:', error);
     res.status(500).json({
@@ -272,18 +333,17 @@ router.get('/:id', requireAuth, async (req, res) => {
   }
 });
 
-// Create a new session
-router.post('/', requireAuth, requireProfessional, [
-  body('title').notEmpty().withMessage('Title is required'),
-  body('description').notEmpty().withMessage('Description is required'),
-  body('startTime').notEmpty().withMessage('Start time is required'),
-  body('duration').isNumeric().withMessage('Duration must be a number'),
-  body('maxParticipants').isNumeric().withMessage('Max participants must be a number'),
-  body('price').isNumeric().withMessage('Price must be a number')
-], async (req, res) => {
+// Create a new session using SessionService with improved validation
+router.post('/', requireAuth, requireProfessional, createSessionValidation, async (req, res) => {
   try {
+    console.log('=== BACKEND SESSION CREATION DEBUG ===');
+    console.log('Request body:', JSON.stringify(req.body, null, 2));
+    console.log('User:', req.user.email);
+
+    // Check for validation errors
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      console.log('Validation errors:', errors.array());
       return res.status(400).json({
         success: false,
         message: 'Validation errors',
@@ -291,33 +351,85 @@ router.post('/', requireAuth, requireProfessional, [
       });
     }
 
-    const professional = await Professional.findOne({ userId: req.user._id });
-    if (!professional) {
-      return res.status(404).json({
+    // Import SessionService
+    const SessionService = require('../services/sessionService');
+    
+    // Create session using service
+    const result = await SessionService.createSession(req.body, req.user);
+    
+    if (!result.success) {
+      return res.status(400).json({
         success: false,
-        message: 'Professional profile not found'
+        message: result.message,
+        errors: result.errors || []
       });
     }
 
-    const sessionData = {
-      ...req.body,
-      professionalId: professional._id
-    };
-
-    const session = new Session(sessionData);
-    await session.save();
-
-    // Add session reference to professional's sessions array
-    professional.sessions.push(session._id);
-    await professional.save();
+    console.log('Session created successfully:', result.session._id);
 
     res.status(201).json({
       success: true,
-      message: 'Session created successfully',
-      session
+      message: result.message,
+      session: result.session
     });
   } catch (error) {
+    console.error('=== BACKEND SESSION CREATION ERROR ===');
     console.error('Error creating session:', error);
+    
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+// Update a session using SessionService with improved validation
+router.put('/:id', requireAuth, requireProfessional, sessionIdValidation, updateSessionValidation, async (req, res) => {
+  try {
+    console.log('=== BACKEND SESSION UPDATE DEBUG ===');
+    console.log('Session ID:', req.params.id);
+    console.log('Request body:', JSON.stringify(req.body, null, 2));
+    console.log('User:', req.user.email);
+
+    // Check for validation errors
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      console.log('Validation errors:', errors.array());
+      return res.status(400).json({
+        success: false,
+        message: 'Validation errors',
+        errors: errors.array()
+      });
+    }
+
+    // Import SessionService
+    const SessionService = require('../services/sessionService');
+    
+    // Update session using service
+    const result = await SessionService.updateSession(req.params.id, req.body, req.user);
+    
+    if (!result.success) {
+      console.log('SessionService update failed:', result.message);
+      console.log('Errors:', result.errors);
+      return res.status(400).json({
+        success: false,
+        message: result.message,
+        errors: result.errors || []
+      });
+    }
+
+    console.log('Session updated successfully:', result.session._id);
+    console.log('Updated session data:', JSON.stringify(result.session, null, 2));
+
+    res.json({
+      success: true,
+      message: result.message,
+      session: result.session
+    });
+  } catch (error) {
+    console.error('=== BACKEND SESSION UPDATE ERROR ===');
+    console.error('Error updating session:', error);
     res.status(500).json({
       success: false,
       message: 'Server error'
@@ -325,68 +437,103 @@ router.post('/', requireAuth, requireProfessional, [
   }
 });
 
-// Update a session
-router.put('/:id', requireAuth, requireProfessional, async (req, res) => {
+// Complete a session and send review requests
+router.put('/:id/complete', requireAuth, requireProfessional, async (req, res) => {
   try {
-    const session = await Session.findById(req.params.id);
-    if (!session) {
-      return res.status(404).json({
-        success: false,
-        message: 'Session not found'
-      });
-    }
+    console.log('=== COMPLETING SESSION ===');
+    console.log('Session ID:', req.params.id);
+    console.log('User:', req.user.email);
 
-    const professional = await Professional.findOne({ userId: req.user._id });
-    if (!professional || !session.professionalId.equals(professional._id)) {
-      return res.status(403).json({
-        success: false,
-        message: 'Access denied. You are not the owner of this session.'
-      });
-    }
-
-    // Don't allow updating if the session is already in progress or completed
-    if (session.status === 'in_progress' || session.status === 'completed') {
-      return res.status(400).json({
-        success: false,
-        message: 'Cannot update a session that is in progress or completed'
-      });
-    }
-
-    const allowedFields = [
-      'title', 'description', 'startTime', 'duration', 
-      'maxParticipants', 'price', 'category', 'location', 
-      'meetingLink', 'requirements', 'materials', 'notes'
-    ];
-
-    const updateData = {};
-    Object.keys(req.body).forEach(key => {
-      if (allowedFields.includes(key)) {
-        updateData[key] = req.body[key];
-      }
-    });
-
-    const updatedSession = await Session.findByIdAndUpdate(
-      req.params.id,
-      updateData,
-      { new: true }
-    );
-
-    // If the session time was updated, notify all participants
-    if (req.body.startTime && req.body.startTime !== session.startTime.toISOString()) {
-      // TODO: Implement notification logic here
-      console.log('Session time updated, should notify participants');
-    }
-
+    const SessionReviewService = require('../services/sessionReviewService');
+    
+    const result = await SessionReviewService.completeSession(req.params.id, req.user._id);
+    
     res.json({
       success: true,
-      message: 'Session updated successfully',
-      session: updatedSession
+      message: result.message,
+      session: result.session,
+      reviewRequests: result.reviewRequests,
+      totalParticipants: result.totalParticipants
     });
+
   } catch (error) {
-    console.error('Error updating session:', error);
+    console.error('Error completing session:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error'
+      message: error.message || 'Server error'
+    });
+  }
+});
+
+// Get review statistics for professional
+router.get('/review-stats', requireAuth, requireProfessional, async (req, res) => {
+  try {
+    const SessionReviewService = require('../services/sessionReviewService');
+    
+    const stats = await SessionReviewService.getReviewStats(req.user._id);
+    
+    res.json({
+      success: true,
+      stats: stats
+    });
+
+  } catch (error) {
+    console.error('Error getting review stats:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Server error'
+    });
+  }
+});
+
+// Send review reminders
+router.post('/send-review-reminders', requireAuth, requireProfessional, async (req, res) => {
+  try {
+    const SessionReviewService = require('../services/sessionReviewService');
+    
+    const result = await SessionReviewService.sendReviewReminders(req.user._id);
+    
+    res.json({
+      success: true,
+      message: result.message,
+      reminders: result.reminders
+    });
+
+  } catch (error) {
+    console.error('Error sending review reminders:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Server error'
+    });
+  }
+});
+
+// Auto-complete expired sessions (admin/cron job)
+router.post('/auto-complete-expired', requireAuth, async (req, res) => {
+  try {
+    // Only allow admin or system calls
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. Admin role required.'
+      });
+    }
+
+    const SessionReviewService = require('../services/sessionReviewService');
+    
+    const result = await SessionReviewService.autoCompleteExpiredSessions();
+    
+    res.json({
+      success: true,
+      message: result.message,
+      results: result.results
+    });
+
+  } catch (error) {
+    console.error('Error auto-completing expired sessions:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Server error'
     });
   }
 });
@@ -443,8 +590,13 @@ router.put('/:id/cancel', requireAuth, requireProfessional, async (req, res) => 
 // Get session booking requests
 router.get('/:id/bookings', requireAuth, requireProfessional, async (req, res) => {
   try {
+    console.log('=== FETCHING SESSION BOOKINGS ===');
+    console.log('Session ID:', req.params.id);
+    console.log('User ID:', req.user._id);
+
     const session = await Session.findById(req.params.id);
     if (!session) {
+      console.log('Session not found');
       return res.status(404).json({
         success: false,
         message: 'Session not found'
@@ -453,20 +605,40 @@ router.get('/:id/bookings', requireAuth, requireProfessional, async (req, res) =
 
     const professional = await Professional.findOne({ userId: req.user._id });
     if (!professional || !session.professionalId.equals(professional._id)) {
+      console.log('Access denied - not the owner of this session');
       return res.status(403).json({
         success: false,
         message: 'Access denied. You are not the owner of this session.'
       });
     }
 
-    // Get all bookings for this session
+    // Get all bookings for this session with more detailed query
     const bookings = await Booking.find({
       'service.sessionId': session._id
-    }).populate('client', 'firstName lastName email');
+    })
+    .populate('client', 'firstName lastName email')
+    .sort({ createdAt: -1 }); // Trier par date de création, les plus récentes en premier
+
+    console.log(`Found ${bookings.length} bookings for session ${session._id}`);
+    bookings.forEach((booking, index) => {
+      console.log(`Booking ${index + 1}:`, {
+        id: booking._id,
+        status: booking.status,
+        client: booking.client ? `${booking.client.firstName} ${booking.client.lastName}` : 'Unknown',
+        createdAt: booking.createdAt,
+        sessionId: booking.service?.sessionId
+      });
+    });
 
     res.json({
       success: true,
-      bookings
+      bookings,
+      sessionInfo: {
+        id: session._id,
+        title: session.title,
+        participantsCount: session.participants?.length || 0,
+        maxParticipants: session.maxParticipants
+      }
     });
   } catch (error) {
     console.error('Error fetching session bookings:', error);
@@ -478,12 +650,12 @@ router.get('/:id/bookings', requireAuth, requireProfessional, async (req, res) =
 });
 
 // Accept or decline a booking request
-router.put('/bookings/:bookingId', requireAuth, requireProfessional, [
-  body('status').isIn(['confirmed', 'cancelled']).withMessage('Status must be either confirmed or cancelled'),
-], async (req, res) => {
+router.put('/bookings/:bookingId', requireAuth, requireProfessional, bookingIdValidation, async (req, res) => {
   try {
+    // Check for validation errors
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      console.log('Validation errors:', errors.array());
       return res.status(400).json({
         success: false,
         message: 'Validation errors',
@@ -648,4 +820,4 @@ router.get('/professional/:id', async (req, res) => {
 
 // Video call routes removed - using external links only
 
-module.exports = router; 
+module.exports = router;

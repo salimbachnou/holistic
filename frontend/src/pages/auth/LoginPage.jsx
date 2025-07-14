@@ -114,7 +114,7 @@ const LoginPage = () => {
           </div>
         )}
 
-        <div className="bg-white rounded-xl shadow-lotus p-8 border border-gray-100 auth-form-container">
+        <div className="bg-white rounded-xl shadow-lotus p-8 border border-gray-100">
           <form className="space-y-6" onSubmit={handleSubmit}>
             <div className="space-y-4">
               <div>
@@ -130,7 +130,7 @@ const LoginPage = () => {
                   type="email"
                   autoComplete="email"
                   required
-                  className="auth-input appearance-none relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm transition-colors duration-200"
+                  className="appearance-none relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm transition-colors duration-200"
                   placeholder="votre@email.com"
                   value={email}
                   onChange={e => setEmail(e.target.value)}
@@ -146,7 +146,7 @@ const LoginPage = () => {
                   type="password"
                   autoComplete="current-password"
                   required
-                  className="auth-input appearance-none relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm transition-colors duration-200"
+                  className="appearance-none relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm transition-colors duration-200"
                   placeholder="Mot de passe"
                   value={password}
                   onChange={e => setPassword(e.target.value)}
@@ -183,7 +183,7 @@ const LoginPage = () => {
               <button
                 type="submit"
                 disabled={loading}
-                className="auth-button group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-gradient-lotus hover:shadow-lotus-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+                className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-gradient-lotus hover:shadow-lotus-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
               >
                 {loading ? <LoadingSpinner size="small" /> : 'Se connecter'}
               </button>

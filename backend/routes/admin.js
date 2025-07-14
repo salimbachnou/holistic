@@ -13,6 +13,10 @@ const Order = require('../models/Order');
 const Booking = require('../models/Booking');
 const Event = require('../models/Event');
 const Notification = require('../models/Notification');
+const Settings = require('../models/Settings');
+
+// Import middleware
+const { isAuthenticated } = require('../middleware/auth');
 
 // Middleware to check if user is admin
 const requireAdmin = async (req, res, next) => {
@@ -75,6 +79,8 @@ router.post('/create-default', async (req, res) => {
 
 router.get('/dashboard/stats', requireAdmin, async (req, res) => {
   try {
+    const now = new Date();
+    
     const [
       totalUsers,
       totalProfessionals,
@@ -89,7 +95,13 @@ router.get('/dashboard/stats', requireAdmin, async (req, res) => {
       Professional.countDocuments({ isActive: true }),
       Order.countDocuments(),
       Booking.countDocuments(),
-      Event.countDocuments(),
+      Event.countDocuments({
+        $or: [
+          { date: { $gte: now } },
+          { endDate: { $gte: now } },
+          { 'schedule.endDate': { $gte: now } }
+        ]
+      }),
       Contact.countDocuments({ status: 'pending' }),
       Order.aggregate([
         {
@@ -211,11 +223,16 @@ router.get('/analytics', requireAdmin, async (req, res) => {
       { $sort: { _id: 1 } }
     ]);
     
-    // Get event data
+    // Get event data (only future events)
     const eventData = await Event.aggregate([
       {
         $match: {
-          createdAt: { $gte: startDate, $lte: endDate }
+          createdAt: { $gte: startDate, $lte: endDate },
+          $or: [
+            { date: { $gte: new Date() } },
+            { endDate: { $gte: new Date() } },
+            { 'schedule.endDate': { $gte: new Date() } }
+          ]
         }
       },
       {
@@ -404,7 +421,13 @@ router.get('/analytics', requireAdmin, async (req, res) => {
       Professional.countDocuments({ isActive: true }),
       Order.countDocuments(),
       Booking.countDocuments(),
-      Event.countDocuments(),
+      Event.countDocuments({
+        $or: [
+          { date: { $gte: new Date() } },
+          { endDate: { $gte: new Date() } },
+          { 'schedule.endDate': { $gte: new Date() } }
+        ]
+      }),
       Order.aggregate([
         {
           $match: {
@@ -1236,6 +1259,129 @@ router.get('/events', requireAdmin, async (req, res) => {
   }
 });
 
+// ===================== SESSION MANAGEMENT =====================
+
+// Fetch sessions for admin
+router.get('/sessions', requireAdmin, async (req, res) => {
+  try {
+    const { page = 1, limit = 12, search = '', status = '', category = '' } = req.query;
+
+    // Build query
+    const query = {};
+    if (search) {
+      query.$or = [
+        { title: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } },
+      ];
+    }
+    if (status) {
+      query.status = status;
+    }
+    if (category) {
+      query.category = category;
+    }
+
+    // Import Session model
+    const Session = require('../models/Session');
+
+    // Populate professional details
+    const sessions = await Session.find(query)
+      .populate('professionalId', 'businessName firstName lastName email userId')
+      .populate('participants', 'firstName lastName email')
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(Number(limit));
+
+    // Count total sessions for pagination
+    const total = await Session.countDocuments(query);
+
+    // Get stats
+    const [scheduled, completed, cancelled, inProgress] = await Promise.all([
+      Session.countDocuments({ status: 'scheduled' }),
+      Session.countDocuments({ status: 'completed' }),
+      Session.countDocuments({ status: 'cancelled' }),
+      Session.countDocuments({ status: 'in_progress' })
+    ]);
+
+    res.json({
+      sessions,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(total / limit),
+        totalSessions: total,
+      },
+      stats: {
+        total,
+        scheduled,
+        completed,
+        cancelled,
+        inProgress
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching admin sessions:', error);
+    res.status(500).json({ message: 'Erreur lors de la récupération des sessions' });
+  }
+});
+
+// Update session status
+router.put('/sessions/:id/status', requireAdmin, async (req, res) => {
+  try {
+    const { status } = req.body;
+    const Session = require('../models/Session');
+    
+    const session = await Session.findById(req.params.id);
+    if (!session) {
+      return res.status(404).json({ message: 'Session not found' });
+    }
+    
+    session.status = status;
+    await session.save();
+    
+    await session.populate('professionalId', 'businessName firstName lastName email');
+    
+    res.json({
+      success: true,
+      message: `Session ${status} successfully`,
+      session
+    });
+  } catch (error) {
+    console.error('Update session status error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Delete session
+router.delete('/sessions/:id', requireAdmin, async (req, res) => {
+  try {
+    const Session = require('../models/Session');
+    const Booking = require('../models/Booking');
+    
+    const session = await Session.findById(req.params.id);
+    if (!session) {
+      return res.status(404).json({ message: 'Session not found' });
+    }
+    
+    // Check if there are any bookings for this session
+    const bookings = await Booking.find({ 'service.sessionId': session._id });
+    if (bookings.length > 0) {
+      return res.status(400).json({ 
+        message: 'Cannot delete session with existing bookings' 
+      });
+    }
+    
+    await Session.findByIdAndDelete(req.params.id);
+    
+    res.json({
+      success: true,
+      message: 'Session deleted successfully'
+    });
+  } catch (error) {
+    console.error('Delete session error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // Approve an event
 router.put('/events/:id/approve', requireAdmin, async (req, res) => {
   try {
@@ -1364,6 +1510,54 @@ router.get('/unverified-clients', requireAdmin, async (req, res) => {
     res.status(500).json({ 
       success: false,
       message: 'Server error fetching unverified clients' 
+    });
+  }
+});
+
+// ===================== SETTINGS MANAGEMENT =====================
+
+// Get admin settings
+router.get('/settings', requireAdmin, async (req, res) => {
+  try {
+    const settingsDoc = await Settings.getSettings();
+    
+    res.json({
+      success: true,
+      settings: settingsDoc.settings
+    });
+  } catch (error) {
+    console.error('Error fetching admin settings:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+});
+
+// Update admin settings
+router.put('/settings', requireAdmin, async (req, res) => {
+  try {
+    const { settings } = req.body;
+    
+    if (!settings) {
+      return res.status(400).json({
+        success: false,
+        message: 'Settings data is required'
+      });
+    }
+    
+    const updatedSettings = await Settings.updateSettings(settings);
+    
+    res.json({
+      success: true,
+      message: 'Settings updated successfully',
+      settings: updatedSettings.settings
+    });
+  } catch (error) {
+    console.error('Error updating admin settings:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
     });
   }
 });
@@ -1695,6 +1889,58 @@ const notifyNewProfessional = async (professional) => {
     console.error('Error creating new professional notification:', error);
   }
 };
+
+// Route pour déclencher manuellement la vérification des événements terminés
+router.post('/check-completed-events', isAuthenticated, requireAdmin, async (req, res) => {
+  try {
+    console.log('🔍 [ADMIN] Manual check for completed events triggered by:', req.user.email);
+    
+    const EventReviewService = require('../services/eventReviewService');
+    const result = await EventReviewService.checkCompletedEvents();
+    
+    if (result.error) {
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la vérification des événements terminés',
+        error: result.error
+      });
+    }
+    
+    res.json({
+      success: true,
+      message: 'Vérification des événements terminés effectuée avec succès',
+      data: {
+        eventsChecked: result.eventsChecked,
+        notificationsSent: result.notificationsSent
+      }
+    });
+  } catch (error) {
+    console.error('Error in manual completed events check:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur du serveur lors de la vérification'
+    });
+  }
+});
+
+// Route pour obtenir les statistiques d'avis d'un événement
+router.get('/events/:eventId/review-stats', isAuthenticated, requireAdmin, async (req, res) => {
+  try {
+    const EventReviewService = require('../services/eventReviewService');
+    const stats = await EventReviewService.getEventReviewStats(req.params.eventId);
+    
+    res.json({
+      success: true,
+      data: stats
+    });
+  } catch (error) {
+    console.error('Error getting event review stats:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
 
 module.exports = router;
 module.exports.createAdminNotification = createAdminNotification;

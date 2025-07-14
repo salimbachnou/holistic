@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import LoadingSpinner from '../../components/Common/LoadingSpinner';
 import { useAuth } from '../../contexts/AuthContext';
@@ -11,26 +11,17 @@ const ResetPasswordPage = () => {
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [token, setToken] = useState('');
-  const [email, setEmail] = useState('');
 
   const { resetPassword } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
+  const { token: tokenParam } = useParams();
 
   useEffect(() => {
-    // Get token and email from URL query parameters
-    const searchParams = new URLSearchParams(location.search);
-    const tokenParam = searchParams.get('token');
-    const emailParam = searchParams.get('email');
-
+    // Get token from URL parameters
     if (tokenParam) {
       setToken(tokenParam);
     }
-
-    if (emailParam) {
-      setEmail(emailParam);
-    }
-  }, [location]);
+  }, [tokenParam]);
 
   const handleSubmit = async e => {
     e.preventDefault();
@@ -41,12 +32,12 @@ const ResetPasswordPage = () => {
       return;
     }
 
-    if (password.length < 8) {
-      setError('Le mot de passe doit contenir au moins 8 caractères.');
+    if (password.length < 6) {
+      setError('Le mot de passe doit contenir au moins 6 caractères.');
       return;
     }
 
-    if (!token || !email) {
+    if (!token) {
       setError('Lien de réinitialisation invalide. Veuillez demander un nouveau lien.');
       return;
     }
@@ -55,13 +46,13 @@ const ResetPasswordPage = () => {
     setError('');
 
     try {
-      await resetPassword(email, token, password);
+      await resetPassword(token, password);
       setSuccessMessage('Votre mot de passe a été réinitialisé avec succès.');
 
       // Redirect to login after 3 seconds
       setTimeout(() => {
         navigate('/login');
-      }, 3001);
+      }, 3000);
     } catch (err) {
       setError(err.message || 'Échec de la réinitialisation du mot de passe. Veuillez réessayer.');
     } finally {
@@ -69,7 +60,7 @@ const ResetPasswordPage = () => {
     }
   };
 
-  if (!token || !email) {
+  if (!token) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-md w-full space-y-8 text-center">

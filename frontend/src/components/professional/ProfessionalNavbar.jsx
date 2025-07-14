@@ -15,6 +15,7 @@ import {
   X,
   ChevronDown,
   MoreHorizontal,
+  Star,
 } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
@@ -50,10 +51,10 @@ const ProfessionalNavbar = () => {
       current: location.pathname === '/dashboard/professional',
     },
     {
-      name: 'Services',
+      name: 'Sessions',
       href: '/dashboard/professional/sessions',
       icon: Calendar,
-      current: location.pathname.includes('/dashboard/professional/sessions'),
+      current: location.pathname === '/dashboard/professional/sessions',
     },
     {
       name: 'Produits',
@@ -69,16 +70,22 @@ const ProfessionalNavbar = () => {
       badge: 0, // This should be updated dynamically with unread message count
     },
     {
-      name: 'Notifications',
-      href: '/dashboard/professional/notifications',
-      icon: Bell,
-      current: location.pathname.includes('/dashboard/professional/notifications'),
-    },
-    {
       name: 'Événements',
       href: '/dashboard/professional/events',
       icon: ClipboardList,
-      current: location.pathname.includes('/dashboard/professional/events'),
+      current: location.pathname === '/dashboard/professional/events',
+    },
+    {
+      name: 'Réservations Sessions',
+      href: '/dashboard/professional/session-bookings',
+      icon: Calendar,
+      current: location.pathname.includes('/dashboard/professional/session-bookings'),
+    },
+    {
+      name: 'Réservations Événements',
+      href: '/dashboard/professional/event-bookings',
+      icon: Calendar,
+      current: location.pathname.includes('/dashboard/professional/event-bookings'),
     },
     {
       name: 'Clients',
@@ -91,6 +98,12 @@ const ProfessionalNavbar = () => {
       href: '/dashboard/professional/analytics',
       icon: BarChart3,
       current: location.pathname.includes('/dashboard/professional/analytics'),
+    },
+    {
+      name: 'Avis',
+      href: '/dashboard/professional/reviews',
+      icon: Star,
+      current: location.pathname.includes('/dashboard/professional/reviews'),
     },
     {
       name: 'Paramètres',

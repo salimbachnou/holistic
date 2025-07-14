@@ -262,6 +262,100 @@ export const apiService = {
       throw error;
     }
   },
+
+  // ===================== BUSINESS HOURS MANAGEMENT =====================
+
+  // Récupérer les horaires d'ouverture
+  async getBusinessHours() {
+    try {
+      const response = await api.get('/professionals/me/business-hours');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching business hours:', error);
+      throw error;
+    }
+  },
+
+  // Mettre à jour les horaires d'ouverture
+  async updateBusinessHours(businessHours) {
+    try {
+      const response = await api.put('/professionals/me/business-hours', {
+        businessHours,
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error updating business hours:', error);
+      throw error;
+    }
+  },
+
+  // ===================== COVER IMAGES MANAGEMENT =====================
+
+  // Uploader une image de couverture
+  async uploadCoverImage(formData) {
+    try {
+      const response = await api.post('/uploads/cover-image', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error uploading cover image:', error);
+      throw error;
+    }
+  },
+
+  // Ajouter une image de couverture au profil professionnel
+  async addCoverImage(imageUrl) {
+    try {
+      const response = await api.post('/professionals/me/cover-images', {
+        imageUrl: imageUrl,
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error adding cover image to profile:', error);
+      throw error;
+    }
+  },
+
+  // Supprimer une image de couverture du profil professionnel
+  async removeCoverImage(imageUrl) {
+    try {
+      const response = await api.delete('/professionals/me/cover-images', {
+        params: { imageUrl: imageUrl },
+        data: { imageUrl: imageUrl }, // Aussi dans le body pour compatibilité
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error removing cover image from profile:', error);
+      throw error;
+    }
+  },
+
+  // Récupérer les images de couverture du profil professionnel
+  async getCoverImages() {
+    try {
+      const response = await api.get('/professionals/me/cover-images');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching cover images:', error);
+      throw error;
+    }
+  },
+
+  // Remplacer l'image de couverture (plus efficace qu'ajouter puis supprimer)
+  async replaceCoverImage(newImageUrl) {
+    try {
+      const response = await api.put('/professionals/me/cover-images/replace', {
+        newImageUrl: newImageUrl,
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error replacing cover image:', error);
+      throw error;
+    }
+  },
 };
 
 export default api;

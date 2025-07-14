@@ -2,6 +2,7 @@ const express = require('express');
 const passport = require('passport');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 const { body, validationResult } = require('express-validator');
 const User = require('../models/User');
 const router = express.Router();
@@ -9,13 +10,14 @@ const nodemailer = require('nodemailer');
 
 // Configuration de Nodemailer
 const transporter = nodemailer.createTransport({
-  host: process.env.EMAIL_HOST,
-  port: process.env.EMAIL_PORT || 587,
-  secure: process.env.EMAIL_SECURE === 'true',
+  service: 'gmail',
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS,
   },
+  tls: {
+    rejectUnauthorized: false
+  }
 });
 
 // Utility function to convert relative image paths to absolute URLs
@@ -41,7 +43,8 @@ const formatUserData = (user) => {
     provider: user.provider,
     phone: user.phone,
     address: user.address,
-    birthDate: user.birthDate
+    birthDate: user.birthDate,
+    gender: user.gender
   };
 };
 
@@ -121,15 +124,20 @@ router.post('/register', [
   body('email').isEmail().normalizeEmail(),
   body('password').isLength({ min: 6 }),
   body('firstName').notEmpty().trim(),
-  body('lastName').notEmpty().trim()
+  body('lastName').notEmpty().trim(),
+  body('birthDate').optional().isISO8601().toDate(),
+  body('gender').optional().isIn(['male', 'female', 'other', 'prefer_not_to_say'])
 ], async (req, res) => {
   try {
+    console.log('Registration request body:', req.body);
+    
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      console.log('Validation errors:', errors.array());
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { email, password, firstName, lastName, phone } = req.body;
+    const { email, password, firstName, lastName, phone, birthDate, gender } = req.body;
     
     // Check if user already exists
     const existingUser = await User.findOne({ email });
@@ -145,6 +153,8 @@ router.post('/register', [
       lastName,
       name: `${firstName} ${lastName}`,
       phone,
+      birthDate,
+      gender,
       role: 'client', // Default role
       provider: 'local',
       isVerified: true // Définir l'utilisateur comme vérifié
@@ -292,7 +302,7 @@ router.get('/google',
 );
 
 router.get('/google/callback',
-  passport.authenticate('google', { failureRedirect: `${process.env.FRONTEND_URL || 'http://localhost:3001'}/login?error=auth_failed` }),
+  passport.authenticate('google', { failureRedirect: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/login?error=auth_failed` }),
   async (req, res) => {
     try {
       // Log user info for debugging
@@ -342,10 +352,10 @@ router.get('/google/callback',
       );
       
       // Redirect to frontend with token
-      res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3001'}/auth/callback?token=${token}`);
+      res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/auth/callback?token=${token}`);
     } catch (error) {
       console.error('Error in Google callback:', error);
-      res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3001'}/login?error=server_error`);
+      res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/login?error=server_error`);
     }
   }
 );
@@ -501,6 +511,162 @@ router.put('/change-password', passport.authenticate('jwt', { session: false }),
     res.status(500).json({
       success: false,
       message: 'Server error'
+    });
+  }
+});
+
+// Forgot password - send reset email
+router.post('/forgot-password', [
+  body('email').isEmail().normalizeEmail()
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email valide requis',
+        errors: errors.array()
+      });
+    }
+
+    const { email } = req.body;
+
+    // Find user by email
+    const user = await User.findOne({ email });
+    if (!user) {
+      // Don't reveal if user exists or not for security
+      return res.json({
+        success: true,
+        message: 'Si cette adresse email existe dans notre système, vous recevrez un lien de réinitialisation.'
+      });
+    }
+
+    // Generate reset token
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const resetTokenExpiry = new Date(Date.now() + 3600000); // 1 hour from now
+
+    // Save reset token to user
+    await User.findByIdAndUpdate(user._id, {
+      resetPasswordToken: resetToken,
+      resetPasswordExpiry: resetTokenExpiry
+    });
+
+    // Send reset email
+    const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password/${resetToken}`;
+    
+    try {
+      const mailOptions = {
+        from: `${process.env.EMAIL_FROM_NAME || 'Holistic.ma'} <${process.env.EMAIL_USER}>`,
+        to: email,
+        subject: 'Réinitialisation de votre mot de passe - Holistic.ma',
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <h2 style="color: #2d5a87; text-align: center;">Réinitialisation de mot de passe</h2>
+            
+            <p>Bonjour ${user.firstName || user.name || 'Utilisateur'},</p>
+            
+            <p>Vous avez demandé la réinitialisation de votre mot de passe sur Holistic.ma.</p>
+            
+            <p>Pour créer un nouveau mot de passe, cliquez sur le lien ci-dessous :</p>
+            
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${resetUrl}" 
+                 style="background-color: #4F46E5; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">
+                Réinitialiser mon mot de passe
+              </a>
+            </div>
+            
+            <p>Si le bouton ne fonctionne pas, vous pouvez copier et coller ce lien dans votre navigateur :</p>
+            <p style="word-break: break-all; color: #666; font-size: 14px;">${resetUrl}</p>
+            
+            <p><strong>Important :</strong> Ce lien expirera dans 1 heure pour des raisons de sécurité.</p>
+            
+            <p>Si vous n'avez pas demandé cette réinitialisation, vous pouvez ignorer cet email en toute sécurité.</p>
+            
+            <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+            
+            <p style="color: #666; font-size: 12px; text-align: center;">
+              Cet email a été envoyé par Holistic.ma<br>
+              Si vous avez des questions, contactez-nous à ${process.env.EMAIL_USER || 'support@holistic.ma'}
+            </p>
+          </div>
+        `
+      };
+
+      await transporter.sendMail(mailOptions);
+      console.log(`Password reset email sent to: ${email}`);
+      
+    } catch (emailError) {
+      console.error('Error sending password reset email:', emailError);
+      // Don't fail the request if email fails, just log it
+    }
+
+    res.json({
+      success: true,
+      message: 'Si cette adresse email existe dans notre système, vous recevrez un lien de réinitialisation.'
+    });
+
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur du serveur'
+    });
+  }
+});
+
+// Reset password with token
+router.post('/reset-password/:token', [
+  body('password').isLength({ min: 6 }).withMessage('Le mot de passe doit contenir au moins 6 caractères')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation errors',
+        errors: errors.array()
+      });
+    }
+
+    const { token } = req.params;
+    const { password } = req.body;
+
+    // Find user with valid reset token
+    const user = await User.findOne({
+      resetPasswordToken: token,
+      resetPasswordExpiry: { $gt: new Date() }
+    });
+
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: 'Token de réinitialisation invalide ou expiré'
+      });
+    }
+
+    // Update password and clear reset token
+    // Hash the password manually since we're using findByIdAndUpdate
+    const bcrypt = require('bcryptjs');
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+    
+    await User.findByIdAndUpdate(user._id, {
+      password: hashedPassword,
+      resetPasswordToken: undefined,
+      resetPasswordExpiry: undefined
+    });
+
+    res.json({
+      success: true,
+      message: 'Mot de passe réinitialisé avec succès'
+    });
+
+  } catch (error) {
+    console.error('Reset password error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur du serveur'
     });
   }
 });

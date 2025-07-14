@@ -2,6 +2,7 @@ const express = require('express');
 const passport = require('passport');
 const { body, validationResult } = require('express-validator');
 const User = require('../models/User');
+const Settings = require('../models/Settings');
 const router = express.Router();
 const multer = require('multer');
 const path = require('path');
@@ -95,6 +96,8 @@ router.put('/profile', requireAuth, upload.single('profileImage'), [
   body('firstName').optional().notEmpty().withMessage('First name cannot be empty'),
   body('lastName').optional().notEmpty().withMessage('Last name cannot be empty'),
   body('email').optional().isEmail().withMessage('Valid email is required'),
+  body('birthDate').optional().isISO8601().toDate().withMessage('Valid birth date is required'),
+  body('gender').optional().isIn(['male', 'female', 'other', 'prefer_not_to_say']).withMessage('Invalid gender'),
   body('preferences.language').optional().isIn(['fr', 'en', 'ar']).withMessage('Invalid language'),
   body('location.city').optional().isString(),
   body('location.country').optional().isString()
@@ -118,7 +121,7 @@ router.put('/profile', requireAuth, upload.single('profileImage'), [
 
     const updateData = {};
     const allowedFields = [
-      'firstName', 'lastName', 'email', 'preferences', 'location', 'phone', 'address', 'birthDate', 'profileImage'
+      'firstName', 'lastName', 'email', 'preferences', 'location', 'phone', 'address', 'birthDate', 'gender', 'profileImage'
     ];
 
     // Only update fields that are provided
@@ -534,6 +537,54 @@ router.get('/favorites/check/:professionalId', requireAuth, async (req, res) => 
 
   } catch (error) {
     console.error('Error checking favorite status:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+});
+
+// Get public settings (no authentication required)
+router.get('/settings/public', async (req, res) => {
+  try {
+    const settingsDoc = await Settings.getSettings();
+    
+    // Return only public settings that clients/professionals need
+    const publicSettings = {
+      general: {
+        siteName: settingsDoc.settings.general.siteName,
+        siteDescription: settingsDoc.settings.general.siteDescription,
+        contactEmail: settingsDoc.settings.general.contactEmail,
+        phoneNumber: settingsDoc.settings.general.phoneNumber,
+        currency: settingsDoc.settings.general.currency,
+        timezone: settingsDoc.settings.general.timezone,
+        language: settingsDoc.settings.general.language
+      },
+      appearance: {
+        primaryColor: settingsDoc.settings.appearance.primaryColor,
+        secondaryColor: settingsDoc.settings.appearance.secondaryColor,
+        logoUrl: settingsDoc.settings.appearance.logoUrl,
+        faviconUrl: settingsDoc.settings.appearance.faviconUrl,
+        enableDarkMode: settingsDoc.settings.appearance.enableDarkMode
+      },
+      payments: {
+        enablePayments: settingsDoc.settings.payments.enablePayments,
+        currency: settingsDoc.settings.payments.currency,
+        taxRate: settingsDoc.settings.payments.taxRate,
+        paymentMethods: settingsDoc.settings.payments.paymentMethods
+      },
+      notifications: {
+        emailNotifications: settingsDoc.settings.notifications.emailNotifications,
+        pushNotifications: settingsDoc.settings.notifications.pushNotifications
+      }
+    };
+
+    res.json({
+      success: true,
+      settings: publicSettings
+    });
+  } catch (error) {
+    console.error('Error fetching public settings:', error);
     res.status(500).json({
       success: false,
       message: 'Server error'

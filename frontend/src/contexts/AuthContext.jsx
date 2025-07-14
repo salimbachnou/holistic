@@ -28,7 +28,6 @@ export const AuthProvider = ({ children }) => {
   const checkAuthStatus = async () => {
     try {
       const token = localStorage.getItem('token');
-      console.log('AuthContext: checking auth status, token exists:', !!token);
 
       if (!token) {
         setLoading(false);
@@ -39,13 +38,11 @@ export const AuthProvider = ({ children }) => {
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
 
       const response = await authAPI.getCurrentUser();
-      console.log('AuthContext: getCurrentUser response:', response.data);
 
       if (response.data.success) {
         setUser(response.data.user);
         setIsAuthenticated(true);
         setAuthError(null);
-        console.log('AuthContext: user authenticated:', response.data.user);
       }
     } catch (error) {
       console.error('Auth check failed:', error);
@@ -72,7 +69,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Register new user
-  const register = async (name, email, password) => {
+  const register = async (name, email, password, birthDate, gender) => {
     try {
       setLoading(true);
       // Split name into first and last name
@@ -89,6 +86,8 @@ export const AuthProvider = ({ children }) => {
           name: `${firstName} ${lastName}`,
           email,
           password,
+          birthDate,
+          gender,
         }
       );
 
@@ -299,6 +298,53 @@ export const AuthProvider = ({ children }) => {
     return user && user.role === 'admin';
   };
 
+  // Send password reset email
+  const sendPasswordResetEmail = async email => {
+    try {
+      setLoading(true);
+      const response = await axios.post(
+        `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/auth/forgot-password`,
+        { email }
+      );
+
+      if (response.data && response.data.success) {
+        return response.data;
+      } else {
+        throw new Error(response.data.message || "Erreur lors de l'envoi de l'email");
+      }
+    } catch (error) {
+      console.error('Send password reset email error:', error);
+      const errorInfo = handleAPIError(error);
+      throw new Error(errorInfo.message || "Erreur lors de l'envoi de l'email de réinitialisation");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Reset password with token
+  const resetPassword = async (token, password) => {
+    try {
+      setLoading(true);
+      const response = await axios.post(
+        `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/auth/reset-password/${token}`,
+        { password }
+      );
+
+      if (response.data && response.data.success) {
+        toast.success('Mot de passe réinitialisé avec succès');
+        return response.data;
+      } else {
+        throw new Error(response.data.message || 'Erreur lors de la réinitialisation');
+      }
+    } catch (error) {
+      console.error('Reset password error:', error);
+      const errorInfo = handleAPIError(error);
+      throw new Error(errorInfo.message || 'Erreur lors de la réinitialisation du mot de passe');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -317,6 +363,8 @@ export const AuthProvider = ({ children }) => {
         handleAuthCallback,
         isProfessional,
         isAdmin,
+        sendPasswordResetEmail,
+        resetPassword,
       }}
     >
       {children}

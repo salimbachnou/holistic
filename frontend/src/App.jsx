@@ -9,6 +9,8 @@ import LoadingSpinner from './components/Common/LoadingSpinner';
 import Layout from './components/Layout/Layout';
 import ProfessionalLayout from './components/professional/ProfessionalLayout';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { FavoritesProvider } from './contexts/FavoritesContext';
+import { SettingsProvider } from './contexts/SettingsContext';
 import AboutPage from './pages/AboutPage';
 import AdminAnalyticsPage from './pages/admin/AdminAnalyticsPage';
 import AdminBookingsPage from './pages/admin/AdminBookingsPage';
@@ -20,6 +22,8 @@ import AdminNotificationsPage from './pages/admin/AdminNotificationsPage';
 import AdminOrdersPage from './pages/admin/AdminOrdersPage';
 import AdminProductsPage from './pages/admin/AdminProductsPage';
 import AdminProfessionalsPage from './pages/admin/AdminProfessionalsPage';
+import AdminSessionsPage from './pages/admin/AdminSessionsPage';
+import AdminSettingsPage from './pages/admin/AdminSettingsPage';
 import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
 import GoogleAuthCallbackPage from './pages/auth/GoogleAuthCallbackPage';
 import LoginPage from './pages/auth/LoginPage';
@@ -36,27 +40,35 @@ import ConversationsPage from './pages/ConversationsPage';
 import EventDetailPage from './pages/EventDetailPage';
 import EventsPage from './pages/EventsPage';
 import FavoritesPage from './pages/FavoritesPage';
-import ForYouPage from './pages/ForYouPage';
 import HomePage from './pages/HomePage';
 import MessagesPage from './pages/MessagesPage';
 import NotFoundPage from './pages/NotFoundPage';
 import NotificationsPage from './pages/NotificationsPage';
+import OrderReviewPage from './pages/OrderReviewPage';
+import OrdersPage from './pages/OrdersPage';
+import ProductDetailPage from './pages/ProductDetailPage';
+import ProductReviewsPage from './pages/ProductReviewsPage';
 import ProductsPage from './pages/ProductsPage';
 import ProfessionalAnalyticsPage from './pages/professional/ProfessionalAnalyticsPage';
 import ProfessionalClientsPage from './pages/professional/ProfessionalClientsPage';
 import ProfessionalDashboardPage from './pages/professional/ProfessionalDashboardPage';
+import ProfessionalEventBookingsPage from './pages/professional/ProfessionalEventBookingsPage';
 import ProfessionalEventsPage from './pages/professional/ProfessionalEventsPage';
 import ProfessionalMessagesPage from './pages/professional/ProfessionalMessagesPage';
 import ProfessionalNotificationsPage from './pages/professional/ProfessionalNotificationsPage';
+import ProfessionalOrdersPage from './pages/professional/ProfessionalOrdersPage';
 import ProfessionalProductsPage from './pages/professional/ProfessionalProductsPage';
+import ProfessionalReviewsPage from './pages/professional/ProfessionalReviewsPage';
+import ProfessionalSessionBookingsPage from './pages/professional/ProfessionalSessionBookingsPage';
 import ProfessionalSessionsPage from './pages/professional/ProfessionalSessionsPage';
 import ProfessionalSettingsPage from './pages/professional/ProfessionalSettingsPage';
-import ProfessionalDetailEnhanced from './pages/ProfessionalDetailEnhanced';
 import ProfessionalDetailPage from './pages/ProfessionalDetailPage';
-import ProfessionalDetailsPage from './pages/ProfessionalDetailsPage';
+import ProfessionalPublicEventsPage from './pages/ProfessionalEventsPage';
+import ProfessionalPublicProductsPage from './pages/ProfessionalProductsPage';
 import ProfessionalProfilePage from './pages/ProfessionalProfilePage';
 import ProfessionalsPage from './pages/ProfessionalsPage';
 import ProfilePage from './pages/ProfilePage';
+import SessionReviewPage from './pages/SessionReviewPage';
 // VideoCallPage removed - using external links only
 
 // Protected Route Component
@@ -188,18 +200,18 @@ const AppContent = () => {
             }
           />
           <Route
-            path="/for-you"
+            path="/professionals/:id/events"
             element={
               <Layout>
-                <ForYouPage />
+                <ProfessionalPublicEventsPage />
               </Layout>
             }
           />
           <Route
-            path="/professionals/enhanced/:id"
+            path="/professionals/:id/products"
             element={
               <Layout>
-                <ProfessionalDetailEnhanced />
+                <ProfessionalPublicProductsPage />
               </Layout>
             }
           />
@@ -222,6 +234,16 @@ const AppContent = () => {
             }
           />
 
+          {/* Products Routes */}
+          <Route
+            path="/products/:id"
+            element={
+              <Layout>
+                <ProductDetailPage />
+              </Layout>
+            }
+          />
+
           {/* Auth Routes */}
           <Route
             path="/login"
@@ -236,7 +258,7 @@ const AppContent = () => {
           <Route path="/auth/google/callback" element={<GoogleAuthCallbackPage />} />
           <Route path="/auth/callback" element={<GoogleAuthCallbackPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-          <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
 
           {/* Protected Routes */}
           <Route
@@ -313,6 +335,50 @@ const AppContent = () => {
             }
           />
           <Route
+            path="/orders/:orderId/review"
+            element={
+              <ProtectedRoute>
+                <AuthChecker>
+                  <Layout>
+                    <OrderReviewPage />
+                  </Layout>
+                </AuthChecker>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/sessions/:sessionId/review"
+            element={
+              <ProtectedRoute>
+                <AuthChecker>
+                  <Layout>
+                    <SessionReviewPage />
+                  </Layout>
+                </AuthChecker>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/products/:productId/reviews"
+            element={
+              <Layout>
+                <ProductReviewsPage />
+              </Layout>
+            }
+          />
+          <Route
+            path="/orders"
+            element={
+              <ProtectedRoute>
+                <AuthChecker>
+                  <Layout>
+                    <OrdersPage />
+                  </Layout>
+                </AuthChecker>
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/messages"
             element={
               <ProtectedRoute>
@@ -348,14 +414,18 @@ const AppContent = () => {
           >
             <Route index element={<ProfessionalDashboardPage />} />
             <Route path="sessions" element={<ProfessionalSessionsPage />} />
+            <Route path="session-bookings" element={<ProfessionalSessionBookingsPage />} />
             <Route path="products" element={<ProfessionalProductsPage />} />
             <Route path="events" element={<ProfessionalEventsPage />} />
+            <Route path="event-bookings" element={<ProfessionalEventBookingsPage />} />
             <Route path="messages" element={<ProfessionalMessagesPage />} />
+            <Route path="orders" element={<ProfessionalOrdersPage />} />
             <Route path="profile" element={<ProfessionalProfilePage />} />
             <Route path="settings" element={<ProfessionalSettingsPage />} />
             <Route path="clients" element={<ProfessionalClientsPage />} />
             <Route path="analytics" element={<ProfessionalAnalyticsPage />} />
             <Route path="notifications" element={<ProfessionalNotificationsPage />} />
+            <Route path="reviews" element={<ProfessionalReviewsPage />} />
           </Route>
 
           {/* Admin Routes */}
@@ -376,17 +446,10 @@ const AppContent = () => {
             <Route path="orders" element={<AdminOrdersPage />} />
             <Route path="bookings" element={<AdminBookingsPage />} />
             <Route path="events" element={<AdminEventsPage />} />
+            <Route path="sessions" element={<AdminSessionsPage />} />
             <Route path="analytics" element={<AdminAnalyticsPage />} />
             <Route path="notifications" element={<AdminNotificationsPage />} />
-            <Route
-              path="settings"
-              element={
-                <div className="p-6">
-                  <h1 className="text-2xl font-bold">Paramètres</h1>
-                  <p className="text-gray-600 mt-2">Page en construction...</p>
-                </div>
-              }
-            />
+            <Route path="settings" element={<AdminSettingsPage />} />
           </Route>
 
           <Route
@@ -413,7 +476,7 @@ const AppContent = () => {
         <Toaster
           position="top-right"
           toastOptions={{
-            duration: 3001,
+            duration: 3000,
             style: {
               background: '#fff',
               color: '#333',
@@ -443,7 +506,11 @@ const AppContent = () => {
 const App = () => {
   return (
     <AuthProvider>
-      <AppContent />
+      <SettingsProvider>
+        <FavoritesProvider>
+          <AppContent />
+        </FavoritesProvider>
+      </SettingsProvider>
     </AuthProvider>
   );
 };

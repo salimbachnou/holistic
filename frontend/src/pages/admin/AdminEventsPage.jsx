@@ -34,7 +34,7 @@ const AdminEventsPage = () => {
         headers: { Authorization: `Bearer ${token}` },
         params: {
           page: currentPage,
-          limit: 10,
+          limit: 12,
           search: searchTerm,
           status: statusFilter,
         },
@@ -191,100 +191,132 @@ const AdminEventsPage = () => {
         </div>
       </div>
 
-      {/* Liste des événements */}
+      {/* Liste des événements en cartes */}
       {loading ? (
         <div className="flex justify-center my-12">
           <div className="w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
         </div>
       ) : (
-        <div className="bg-white rounded-lg shadow-md overflow-hidden">
+        <div>
           {events.length > 0 ? (
             <div>
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Titre
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Date
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Professionnel
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Statut
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {events.map(event => (
-                      <tr key={event._id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">{event.title}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">{formatDate(event.date)}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">
-                            {event.professional?.firstName} {event.professional?.lastName}
-                          </div>
-                          <div className="text-sm text-gray-500">{event.professional?.email}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span
-                            className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusClass(
-                              event.status
-                            )}`}
-                          >
-                            {getStatusLabel(event.status)}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {events.map(event => (
+                  <div
+                    key={event._id}
+                    className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow"
+                  >
+                    {/* Image de l'événement */}
+                    <div className="h-48 bg-gray-200 relative">
+                      {event.coverImages && event.coverImages.length > 0 ? (
+                        <img
+                          src={event.coverImages[0]}
+                          alt={event.title}
+                          className="w-full h-full object-cover"
+                          onError={e => {
+                            e.target.src = '/placeholder-image.jpg';
+                          }}
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-gray-100">
+                          <CalendarDaysIcon className="h-16 w-16 text-gray-400" />
+                        </div>
+                      )}
+
+                      {/* Badge de statut */}
+                      <div className="absolute top-3 right-3">
+                        <span
+                          className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusClass(
+                            event.status
+                          )}`}
+                        >
+                          {getStatusLabel(event.status)}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Contenu de la carte */}
+                    <div className="p-4">
+                      <div className="flex justify-between items-start mb-2">
+                        <h3 className="text-lg font-semibold text-gray-900 truncate">
+                          {event.title}
+                        </h3>
+                      </div>
+
+                      <div className="space-y-2 mb-4">
+                        <div className="flex items-center text-sm text-gray-600">
+                          <CalendarDaysIcon className="h-4 w-4 mr-2" />
+                          <span>{formatDate(event.date)}</span>
+                        </div>
+
+                        <div className="text-sm text-gray-600">
+                          <strong>Professionnel:</strong> {event.professional?.firstName}{' '}
+                          {event.professional?.lastName}
+                        </div>
+
+                        <div className="text-sm text-gray-500">{event.professional?.email}</div>
+
+                        <div className="text-sm text-gray-600">
+                          <strong>Prix:</strong> {event.price?.amount || event.price}{' '}
+                          {event.price?.currency || 'MAD'}
+                        </div>
+
+                        <div className="text-sm text-gray-600">
+                          <strong>Participants max:</strong> {event.maxParticipants}
+                        </div>
+                      </div>
+
+                      {/* Description tronquée */}
+                      {event.description && (
+                        <p className="text-sm text-gray-700 mb-4 line-clamp-2">
+                          {event.description.length > 100
+                            ? `${event.description.substring(0, 100)}...`
+                            : event.description}
+                        </p>
+                      )}
+
+                      {/* Actions */}
+                      <div className="flex justify-between items-center">
+                        <button
+                          onClick={() => openDetailsModal(event)}
+                          className="flex items-center text-blue-600 hover:text-blue-900 text-sm font-medium"
+                        >
+                          <EyeIcon className="h-4 w-4 mr-1" />
+                          Voir détails
+                        </button>
+
+                        {event.status === 'pending' && (
                           <div className="flex space-x-2">
                             <button
-                              onClick={() => openDetailsModal(event)}
-                              className="text-blue-600 hover:text-blue-900"
+                              onClick={() => handleApproveEvent(event._id)}
+                              className="flex items-center text-green-600 hover:text-green-900 text-sm font-medium"
+                              title="Approuver"
                             >
-                              <EyeIcon className="h-5 w-5" />
+                              <CheckIcon className="h-4 w-4" />
                             </button>
-                            {event.status === 'pending' && (
-                              <>
-                                <button
-                                  onClick={() => handleApproveEvent(event._id)}
-                                  className="text-green-600 hover:text-green-900"
-                                >
-                                  <CheckIcon className="h-5 w-5" />
-                                </button>
-                                <button
-                                  onClick={() => handleRejectEvent(event._id)}
-                                  className="text-red-600 hover:text-red-900"
-                                >
-                                  <XMarkIcon className="h-5 w-5" />
-                                </button>
-                              </>
-                            )}
+                            <button
+                              onClick={() => handleRejectEvent(event._id)}
+                              className="flex items-center text-red-600 hover:text-red-900 text-sm font-medium"
+                              title="Rejeter"
+                            >
+                              <XMarkIcon className="h-4 w-4" />
+                            </button>
                           </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
 
               {/* Pagination */}
               {totalPages > 1 && (
-                <div className="flex justify-center p-4 border-t">
+                <div className="flex justify-center mt-8">
                   <div className="flex items-center space-x-2">
                     <button
                       onClick={handlePrevPage}
                       disabled={currentPage === 1}
-                      className={`px-3 py-1 rounded ${
+                      className={`px-4 py-2 rounded-md ${
                         currentPage === 1
                           ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                           : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
@@ -292,13 +324,13 @@ const AdminEventsPage = () => {
                     >
                       Précédent
                     </button>
-                    <span className="text-gray-700">
+                    <span className="text-gray-700 px-4">
                       Page {currentPage} sur {totalPages}
                     </span>
                     <button
                       onClick={handleNextPage}
                       disabled={currentPage === totalPages}
-                      className={`px-3 py-1 rounded ${
+                      className={`px-4 py-2 rounded-md ${
                         currentPage === totalPages
                           ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                           : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
@@ -353,7 +385,8 @@ const AdminEventsPage = () => {
                       <strong>Adresse:</strong> {selectedEvent.address}
                     </p>
                     <p>
-                      <strong>Prix:</strong> {selectedEvent.price} MAD
+                      <strong>Prix:</strong> {selectedEvent.price?.amount || selectedEvent.price}{' '}
+                      {selectedEvent.price?.currency || 'MAD'}
                     </p>
                     <p>
                       <strong>Participants max:</strong> {selectedEvent.maxParticipants}

@@ -1,15 +1,17 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { toast } from 'react-hot-toast';
-import { FaMapMarkerAlt, FaStar, FaSearch } from 'react-icons/fa';
+import { FaMapMarkerAlt, FaStar, FaSearch, FaHeart } from 'react-icons/fa';
 import { Link, useNavigate } from 'react-router-dom';
 
 import LoadingSpinner from '../components/Common/LoadingSpinner';
 import MapView from '../components/Common/MapView';
+import { useFavorites } from '../contexts/FavoritesContext';
 import { mockProfessionals, filterProfessionals } from '../mocks/professionals';
 import { apiService } from '../services/axiosConfig';
 
 const ProfessionalsPage = () => {
   const navigate = useNavigate();
+  const { toggleProfessionalFavorite, isFavorite } = useFavorites();
   const [professionals, setProfessionals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -204,118 +206,143 @@ const ProfessionalsPage = () => {
         {/* Professionals Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {professionals.length > 0 ? (
-            professionals.map(professional => (
-              <Link
-                to={`/professionals/${professional._id}`}
-                key={professional._id || professional.userId}
-                className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300"
-              >
-                <div className="h-48 bg-gray-200 relative">
-                  {(() => {
-                    // Helper function to construct image URL
-                    const getImageUrl = imagePath => {
-                      if (!imagePath) return null;
-                      if (imagePath.startsWith('http') || imagePath.startsWith('data:')) {
-                        return imagePath;
-                      }
-                      const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
-                      return `${apiUrl}${imagePath}`;
-                    };
+            professionals.map(professional => {
+              const isProfessionalFavorite = isFavorite('professionals', professional._id);
 
-                    // Determine which image to use
-                    let imageUrl = null;
-                    const altText = professional.businessName || 'Professional';
+              return (
+                <div
+                  key={professional._id || professional.userId}
+                  className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300 relative"
+                >
+                  {/* Bouton favoris */}
+                  <button
+                    onClick={e => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      toggleProfessionalFavorite(professional);
+                    }}
+                    className={`absolute top-3 right-3 z-10 p-2 rounded-full shadow-md transition-all duration-300 ${
+                      isProfessionalFavorite
+                        ? 'bg-red-500 text-white hover:bg-red-600'
+                        : 'bg-white text-gray-600 hover:bg-red-50 hover:text-red-500'
+                    }`}
+                  >
+                    <FaHeart size={16} className={isProfessionalFavorite ? 'fill-current' : ''} />
+                  </button>
 
-                    if (professional.profilePhoto) {
-                      imageUrl = getImageUrl(professional.profilePhoto);
-                    } else if (professional.coverImages && professional.coverImages.length > 0) {
-                      imageUrl = getImageUrl(professional.coverImages[0]);
-                    } else if (professional.userId?.profileImage) {
-                      imageUrl = getImageUrl(professional.userId.profileImage);
-                    }
+                  <Link to={`/professionals/${professional._id}`}>
+                    <div className="h-48 bg-gray-200 relative">
+                      {(() => {
+                        // Helper function to construct image URL
+                        const getImageUrl = imagePath => {
+                          if (!imagePath) return null;
+                          if (imagePath.startsWith('http') || imagePath.startsWith('data:')) {
+                            return imagePath;
+                          }
+                          const apiUrl =
+                            process.env.REACT_APP_API_URL || 'http://localhost:5000';
+                          return `${apiUrl}${imagePath}`;
+                        };
 
-                    return imageUrl ? (
-                      <img
-                        src={imageUrl}
-                        alt={altText}
-                        className="w-full h-full object-cover"
-                        onError={e => {
-                          e.target.onerror = null;
-                          e.target.src =
-                            'https://images.unsplash.com/photo-1506126613408-eca07ce68773?q=80&w=1000';
-                        }}
-                      />
-                    ) : (
-                      <img
-                        src="https://images.unsplash.com/photo-1506126613408-eca07ce68773?q=80&w=1000"
-                        alt={altText}
-                        className="w-full h-full object-cover"
-                      />
-                    );
-                  })()}
-                </div>
-                <div className="p-4">
-                  <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                    {professional.businessName}
-                  </h3>
-                  <p className="text-sm text-gray-500 mb-2">{professional.businessType}</p>
+                        // Determine which image to use
+                        let imageUrl = null;
+                        const altText = professional.businessName || 'Professional';
 
-                  {/* Rating */}
-                  <div className="flex items-center mb-3">
-                    {[...Array(5)].map((_, i) => (
-                      <FaStar
-                        key={i}
-                        className={`${
-                          i < Math.floor(professional.rating?.average || 0)
-                            ? 'text-yellow-400'
-                            : 'text-gray-300'
-                        }`}
-                      />
-                    ))}
-                    <span className="ml-2 text-sm text-gray-600">
-                      {professional.rating?.totalReviews || 0} avis
-                    </span>
-                  </div>
+                        if (professional.profilePhoto) {
+                          imageUrl = getImageUrl(professional.profilePhoto);
+                        } else if (
+                          professional.coverImages &&
+                          professional.coverImages.length > 0
+                        ) {
+                          imageUrl = getImageUrl(professional.coverImages[0]);
+                        } else if (professional.userId?.profileImage) {
+                          imageUrl = getImageUrl(professional.userId.profileImage);
+                        }
 
-                  {/* Location */}
-                  {professional.businessAddress && (
-                    <div className="flex items-center text-gray-600 text-sm mb-3">
-                      <FaMapMarkerAlt className="mr-1" />
-                      <span>
-                        {professional.address ||
-                          (professional.businessAddress.street
-                            ? `${professional.businessAddress.street}, ${professional.businessAddress.city}, ${professional.businessAddress.country}`
-                            : `${professional.businessAddress.city}, ${professional.businessAddress.country}`)}
-                      </span>
+                        return imageUrl ? (
+                          <img
+                            src={imageUrl}
+                            alt={altText}
+                            className="w-full h-full object-cover"
+                            onError={e => {
+                              e.target.onerror = null;
+                              e.target.src =
+                                'https://images.unsplash.com/photo-1506126613408-eca07ce68773?q=80&w=1000';
+                            }}
+                          />
+                        ) : (
+                          <img
+                            src="https://images.unsplash.com/photo-1506126613408-eca07ce68773?q=80&w=1000"
+                            alt={altText}
+                            className="w-full h-full object-cover"
+                          />
+                        );
+                      })()}
                     </div>
-                  )}
+                    <div className="p-4">
+                      <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                        {professional.businessName}
+                      </h3>
+                      <p className="text-sm text-gray-500 mb-2">{professional.businessType}</p>
 
-                  {/* Short description */}
-                  <p className="text-gray-600 line-clamp-2 mb-3">
-                    {professional.description || 'Aucune description disponible.'}
-                  </p>
+                      {/* Rating */}
+                      <div className="flex items-center mb-3">
+                        {[...Array(5)].map((_, i) => (
+                          <FaStar
+                            key={i}
+                            className={`${
+                              i < Math.floor(professional.rating?.average || 0)
+                                ? 'text-yellow-400'
+                                : 'text-gray-300'
+                            }`}
+                          />
+                        ))}
+                        <span className="ml-2 text-sm text-gray-600">
+                          {professional.rating?.totalReviews || 0} avis
+                        </span>
+                      </div>
 
-                  {/* Activities/Tags */}
-                  {professional.activities && professional.activities.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mt-2">
-                      {professional.activities.slice(0, 3).map((activity, index) => (
-                        <span
-                          key={index}
-                          className="bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded"
-                        >
-                          {activity}
-                        </span>
-                      ))}
-                      {professional.activities.length > 3 && (
-                        <span className="text-xs text-gray-500">
-                          +{professional.activities.length - 3}
-                        </span>
+                      {/* Location */}
+                      {professional.businessAddress && (
+                        <div className="flex items-center text-gray-600 text-sm mb-3">
+                          <FaMapMarkerAlt className="mr-1" />
+                          <span>
+                            {professional.address ||
+                              (professional.businessAddress.street
+                                ? `${professional.businessAddress.street}, ${professional.businessAddress.city}, ${professional.businessAddress.country}`
+                                : `${professional.businessAddress.city}, ${professional.businessAddress.country}`)}
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Short description */}
+                      <p className="text-gray-600 line-clamp-2 mb-3">
+                        {professional.description || 'Aucune description disponible.'}
+                      </p>
+
+                      {/* Activities/Tags */}
+                      {professional.activities && professional.activities.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          {professional.activities.slice(0, 3).map((activity, index) => (
+                            <span
+                              key={index}
+                              className="bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded"
+                            >
+                              {activity}
+                            </span>
+                          ))}
+                          {professional.activities.length > 3 && (
+                            <span className="text-xs text-gray-500">
+                              +{professional.activities.length - 3}
+                            </span>
+                          )}
+                        </div>
                       )}
                     </div>
-                  )}
+                  </Link>
                 </div>
-              </Link>
-            ))
+              );
+            })
           ) : (
             <div className="col-span-full text-center py-12">
               <p className="text-gray-500">

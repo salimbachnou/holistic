@@ -1,4 +1,5 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const passport = require('passport');
 const { body, validationResult } = require('express-validator');
 const Professional = require('../models/Professional');
@@ -9,13 +10,13 @@ const Session = require('../models/Session');
 const Booking = require('../models/Booking');
 const Message = require('../models/Message');
 const Notification = require('../models/Notification');
+const Review = require('../models/Review');
+const Event = require('../models/Event');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const router = express.Router();
-
-// Middleware to require authentication
-const requireAuth = passport.authenticate('jwt', { session: false });
+const { isAuthenticated, isProfessional } = require('../middleware/auth');
 
 // Middleware to check if user is a professional
 const requireProfessional = async (req, res, next) => {
@@ -163,7 +164,7 @@ router.get('/', async (req, res) => {
 // ===================== PRODUCTS MANAGEMENT =====================
 
 // Get all products for the current professional
-router.get('/products', requireAuth, requireProfessional, async (req, res) => {
+router.get('/products', isAuthenticated, isProfessional, async (req, res) => {
   try {
     
     
@@ -268,7 +269,7 @@ router.get('/products', requireAuth, requireProfessional, async (req, res) => {
 });
 
 // Get product details
-router.get('/products/:id', requireAuth, requireProfessional, async (req, res) => {
+router.get('/products/:id', isAuthenticated, isProfessional, async (req, res) => {
   try {
     // Find the professional ID for the current user
     const professional = await Professional.findOne({ userId: req.user._id });
@@ -306,13 +307,12 @@ router.get('/products/:id', requireAuth, requireProfessional, async (req, res) =
 });
 
 // Create a new product request
-router.post('/products', requireAuth, requireProfessional, [
+router.post('/products', isAuthenticated, isProfessional, [
   body('title').not().isEmpty().withMessage('Title is required'),
   body('name').not().isEmpty().withMessage('Name is required'),
   body('description').not().isEmpty().withMessage('Description is required'),
   body('price').isNumeric().withMessage('Price must be a number'),
-  body('category').isIn(['supplements', 'equipment', 'books', 'accessories', 'skincare', 'aromatherapy', 'other'])
-    .withMessage('Invalid category'),
+  body('category').not().isEmpty().trim().withMessage('Category is required'),
   body('stock').isInt({ min: 0 }).withMessage('Stock must be a positive number')
 ], async (req, res) => {
   // Validate request
@@ -358,7 +358,7 @@ router.post('/products', requireAuth, requireProfessional, [
 });
 
 // Update a product request
-router.put('/products/:id', requireAuth, requireProfessional, async (req, res) => {
+router.put('/products/:id', isAuthenticated, isProfessional, async (req, res) => {
   try {
     // Find the professional ID for the current user
     const professional = await Professional.findOne({ userId: req.user._id });
@@ -415,7 +415,7 @@ router.put('/products/:id', requireAuth, requireProfessional, async (req, res) =
 });
 
 // Delete/deactivate a product
-router.delete('/products/:id', requireAuth, requireProfessional, async (req, res) => {
+router.delete('/products/:id', isAuthenticated, isProfessional, async (req, res) => {
   try {
     // Find the professional ID for the current user
     const professional = await Professional.findOne({ userId: req.user._id });
@@ -458,7 +458,7 @@ router.delete('/products/:id', requireAuth, requireProfessional, async (req, res
 });
 
 // Get orders for a professional's products
-router.get('/orders', requireAuth, requireProfessional, async (req, res) => {
+router.get('/orders', isAuthenticated, isProfessional, async (req, res) => {
   try {
     const {
       page = 1,
@@ -537,7 +537,7 @@ router.get('/orders', requireAuth, requireProfessional, async (req, res) => {
 });
 
 // Get order details
-router.get('/orders/:id', requireAuth, requireProfessional, async (req, res) => {
+router.get('/orders/:id', isAuthenticated, isProfessional, async (req, res) => {
   try {
     // Find the professional ID for the current user
     const professional = await Professional.findOne({ userId: req.user._id });
@@ -592,7 +592,7 @@ router.get('/orders/:id', requireAuth, requireProfessional, async (req, res) => 
 });
 
 // Update order status (only for the professional's items)
-router.patch('/orders/:id/status', requireAuth, requireProfessional, async (req, res) => {
+router.patch('/orders/:id/status', isAuthenticated, isProfessional, async (req, res) => {
   try {
     const { status, note } = req.body;
     
@@ -674,7 +674,7 @@ router.patch('/orders/:id/status', requireAuth, requireProfessional, async (req,
 });
 
 // Get current professional profile
-router.get('/me/profile', requireAuth, requireProfessional, async (req, res) => {
+router.get('/me/profile', isAuthenticated, isProfessional, async (req, res) => {
   try {
     const professional = await Professional.findOne({ userId: req.user._id })
       .populate('userId', 'firstName lastName email profileImage');
@@ -701,7 +701,7 @@ router.get('/me/profile', requireAuth, requireProfessional, async (req, res) => 
 });
 
 // Get professional statistics
-router.get('/me/stats', requireAuth, requireProfessional, async (req, res) => {
+router.get('/me/stats', isAuthenticated, isProfessional, async (req, res) => {
   try {
     const professional = await Professional.findOne({ userId: req.user._id });
     if (!professional) {
@@ -737,7 +737,7 @@ router.get('/me/stats', requireAuth, requireProfessional, async (req, res) => {
 });
 
 // Get dashboard statistics
-router.get('/dashboard-stats', requireAuth, requireProfessional, async (req, res) => {
+router.get('/dashboard-stats', isAuthenticated, isProfessional, async (req, res) => {
   try {
     // Find the professional profile for the current user
     const professional = await Professional.findOne({ userId: req.user._id });
@@ -781,23 +781,23 @@ router.get('/dashboard-stats', requireAuth, requireProfessional, async (req, res
     
     // Get unique clients who booked sessions this month
     const currentMonthBookings = await Booking.find({
-      professionalId: professional._id,
+      professional: professional._id,
       createdAt: { $gte: firstDayOfMonth, $lte: lastDayOfMonth }
     });
     
     const currentMonthClientIds = [...new Set(currentMonthBookings.map(booking => 
-      booking.clientId.toString()
-    ))];
+      booking.client ? booking.client.toString() : null
+    ).filter(id => id !== null))];
     
     // Get unique clients who booked sessions last month
     const prevMonthBookings = await Booking.find({
-      professionalId: professional._id,
+      professional: professional._id,
       createdAt: { $gte: firstDayOfPrevMonth, $lte: lastDayOfPrevMonth }
     });
     
     const prevMonthClientIds = [...new Set(prevMonthBookings.map(booking => 
-      booking.clientId.toString()
-    ))];
+      booking.client ? booking.client.toString() : null
+    ).filter(id => id !== null))];
     
     // Calculate new clients (clients this month who weren't present last month)
     const newClients = currentMonthClientIds.filter(id => !prevMonthClientIds.includes(id));
@@ -807,27 +807,57 @@ router.get('/dashboard-stats', requireAuth, requireProfessional, async (req, res
       ? Math.round(((currentMonthClientIds.length - prevMonthClientIds.length) / prevMonthClientIds.length) * 100)
       : 0;
     
-    // Calculate revenue for current month
-    const currentMonthOrders = await Order.find({
-      professionalId: professional._id,
-      status: 'completed',
-      createdAt: { $gte: firstDayOfMonth, $lte: lastDayOfMonth }
-    });
+    // Calculate revenue from bookings for current month
+    const currentMonthBookingRevenue = currentMonthBookings.reduce((total, booking) => {
+      const amount = booking.totalAmount && booking.totalAmount.amount ? booking.totalAmount.amount : 0;
+      return total + amount;
+    }, 0);
     
-    const currentMonthRevenue = currentMonthOrders.reduce((total, order) => 
-      total + order.totalAmount, 0
-    );
+    // Calculate revenue from bookings for previous month
+    const prevMonthBookingRevenue = prevMonthBookings.reduce((total, booking) => {
+      const amount = booking.totalAmount && booking.totalAmount.amount ? booking.totalAmount.amount : 0;
+      return total + amount;
+    }, 0);
     
-    // Calculate revenue for previous month
-    const prevMonthOrders = await Order.find({
-      professionalId: professional._id,
-      status: 'completed',
-      createdAt: { $gte: firstDayOfPrevMonth, $lte: lastDayOfPrevMonth }
-    });
+    // Calculate revenue from sessions for current month
+    const currentMonthSessionRevenue = await Session.aggregate([
+      { 
+        $match: { 
+          professionalId: professional._id,
+          startTime: { $gte: firstDayOfMonth, $lte: lastDayOfMonth }
+        } 
+      },
+      { 
+        $group: { 
+          _id: null, 
+          total: { $sum: '$price' }
+        } 
+      }
+    ]);
     
-    const prevMonthRevenue = prevMonthOrders.reduce((total, order) => 
-      total + order.totalAmount, 0
-    );
+    const sessionRevenueCurrent = currentMonthSessionRevenue[0]?.total || 0;
+    
+    // Calculate revenue from sessions for previous month
+    const prevMonthSessionRevenue = await Session.aggregate([
+      { 
+        $match: { 
+          professionalId: professional._id,
+          startTime: { $gte: firstDayOfPrevMonth, $lte: lastDayOfPrevMonth }
+        } 
+      },
+      { 
+        $group: { 
+          _id: null, 
+          total: { $sum: '$price' }
+        } 
+      }
+    ]);
+    
+    const sessionRevenuePrev = prevMonthSessionRevenue[0]?.total || 0;
+    
+    // Total revenue calculation
+    const currentMonthRevenue = currentMonthBookingRevenue + sessionRevenueCurrent;
+    const prevMonthRevenue = prevMonthBookingRevenue + sessionRevenuePrev;
     
     // Calculate revenue trend
     const revenueTrend = prevMonthRevenue > 0
@@ -853,18 +883,20 @@ router.get('/dashboard-stats', requireAuth, requireProfessional, async (req, res
       return {
         id: session._id,
         time,
+        date: session.startTime,
         title: session.title,
-        participants: session.maxParticipants
+        participants: session.maxParticipants || 0
       };
     });
     
-    // Get recent messages
+    // Get recent messages (messages received by the professional)
     const recentMessages = await Message.find({
-      receiverId: req.user._id
+      receiverId: req.user._id,
+      isDeleted: { $ne: true }
     })
     .sort({ timestamp: -1 })
     .limit(3)
-    .populate('senderId', 'firstName lastName')
+    .populate('senderId', 'firstName lastName profileImage')
     .lean();
     
     // Format recent messages
@@ -882,12 +914,18 @@ router.get('/dashboard-stats', requireAuth, requireProfessional, async (req, res
       
       return {
         id: message._id,
-        name: `${message.senderId.firstName} ${message.senderId.lastName.charAt(0)}.`,
-        message: message.text.length > 30 ? message.text.substring(0, 30) + '...' : message.text,
-        time: timeDisplay
+        senderName: message.senderId ? `${message.senderId.firstName} ${message.senderId.lastName}` : 'Utilisateur inconnu',
+        content: message.text && message.text.length > 30 ? message.text.substring(0, 30) + '...' : message.text || 'Message sans contenu',
+        timeAgo: timeDisplay,
+        avatar: message.senderId?.profileImage || null,
+        senderId: message.senderId?._id
       };
     });
     
+    // Calculate real average rating from all sources using RatingService
+    const RatingService = require('../services/ratingService');
+    const ratingStats = await RatingService.getDashboardRatingStats(professional._id, req.user._id);
+
     // Prepare response data
     const dashboardStats = {
       sessions: {
@@ -905,11 +943,7 @@ router.get('/dashboard-stats', requireAuth, requireProfessional, async (req, res
         trend: revenueTrend >= 0 ? 'up' : 'down',
         trendValue: `${revenueTrend >= 0 ? '+' : ''}${revenueTrend}%`
       },
-      rating: {
-        total: professional.rating.average.toFixed(1),
-        trend: 'up', // Placeholder - would need historical data for actual trend
-        trendValue: '+0.1' // Placeholder
-      },
+      rating: ratingStats,
       upcomingSessions: formattedUpcomingSessions,
       recentMessages: formattedRecentMessages
     };
@@ -931,7 +965,7 @@ router.get('/dashboard-stats', requireAuth, requireProfessional, async (req, res
 // ===================== CLIENTS MANAGEMENT =====================
 
 // Get all clients for the current professional
-router.get('/clients', requireAuth, requireProfessional, async (req, res) => {
+router.get('/clients', isAuthenticated, isProfessional, async (req, res) => {
   try {
     const {
       page = 1,
@@ -1234,7 +1268,7 @@ router.get('/clients', requireAuth, requireProfessional, async (req, res) => {
 });
 
 // Get client details
-router.get('/clients/:id', requireAuth, requireProfessional, async (req, res) => {
+router.get('/clients/:id', isAuthenticated, isProfessional, async (req, res) => {
   try {
     const clientId = req.params.id;
     
@@ -1432,10 +1466,694 @@ router.get('/clients/:id', requireAuth, requireProfessional, async (req, res) =>
   }
 });
 
+// Get professional analytics data
+router.get('/analytics', isAuthenticated, isProfessional, async (req, res) => {
+  try {
+    const { period = 'month' } = req.query;
+    
+    // Find the professional profile first
+    const professional = await Professional.findOne({ userId: req.user._id });
+    if (!professional) {
+      return res.status(404).json({
+        success: false,
+        message: 'Professional profile not found'
+      });
+    }
+
+    const professionalId = professional._id;
+    console.log('Fetching analytics for professional:', professionalId);
+
+    // Calculate date ranges for period comparison
+    const now = new Date();
+    let currentPeriodStart, previousPeriodStart, previousPeriodEnd;
+    
+    switch (period) {
+      case 'week':
+        currentPeriodStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        previousPeriodStart = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+        previousPeriodEnd = currentPeriodStart;
+        break;
+      case 'quarter':
+        currentPeriodStart = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+        previousPeriodStart = new Date(now.getTime() - 180 * 24 * 60 * 60 * 1000);
+        previousPeriodEnd = currentPeriodStart;
+        break;
+      case 'year':
+        currentPeriodStart = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+        previousPeriodStart = new Date(now.getTime() - 730 * 24 * 60 * 60 * 1000);
+        previousPeriodEnd = currentPeriodStart;
+        break;
+      default: // month
+        currentPeriodStart = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        previousPeriodStart = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
+        previousPeriodEnd = currentPeriodStart;
+    }
+
+    // Get sessions data for current period
+    const sessionsData = await Session.aggregate([
+      { 
+        $match: { 
+          professionalId: professionalId,
+          createdAt: { $gte: currentPeriodStart }
+        } 
+      },
+      { 
+        $group: { 
+          _id: null, 
+          total: { $sum: 1 },
+          totalRevenue: { $sum: '$price' },
+          avgDuration: { $avg: '$duration' }
+        } 
+      }
+    ]);
+
+    // Get sessions data for previous period
+    const previousSessionsData = await Session.aggregate([
+      { 
+        $match: { 
+          professionalId: professionalId,
+          createdAt: { $gte: previousPeriodStart, $lt: previousPeriodEnd }
+        } 
+      },
+      { $group: { _id: null, total: { $sum: 1 } } }
+    ]);
+
+    // Get unique clients from sessions
+    const clientsFromSessions = await Session.aggregate([
+      { 
+        $match: { 
+          professionalId: professionalId,
+          createdAt: { $gte: currentPeriodStart }
+        } 
+      },
+      { $unwind: '$participants' },
+      { $group: { _id: '$participants' } },
+      { $group: { _id: null, total: { $sum: 1 } } }
+    ]);
+
+    // Get unique clients from bookings
+    const clientsFromBookings = await Booking.aggregate([
+      { 
+        $match: { 
+          professional: professionalId,
+          createdAt: { $gte: currentPeriodStart }
+        } 
+      },
+      { $group: { _id: '$client' } },
+      { $group: { _id: null, total: { $sum: 1 } } }
+    ]);
+
+    // Get products data - count orders with this professional's products
+    const products = await Product.find({ professionalId: professionalId });
+    const productIds = products.map(p => p._id);
+    
+    const productsData = await Order.aggregate([
+      { 
+        $match: { 
+          'items.product': { $in: productIds },
+          createdAt: { $gte: currentPeriodStart }
+        } 
+      },
+      { $unwind: '$items' },
+      { $match: { 'items.product': { $in: productIds } } },
+      { 
+        $group: { 
+          _id: null, 
+          total: { $sum: '$items.quantity' },
+          revenue: { $sum: { $multiply: ['$items.price.amount', '$items.quantity'] } }
+        } 
+      }
+    ]);
+
+    // Get bookings revenue
+    const bookingsRevenue = await Booking.aggregate([
+      { 
+        $match: { 
+          professional: professionalId,
+          status: 'completed',
+          createdAt: { $gte: currentPeriodStart }
+        } 
+      },
+      { 
+        $group: { 
+          _id: null, 
+          total: { $sum: '$totalAmount.amount' }
+        } 
+      }
+    ]);
+
+    // Get reviews/ratings
+    const reviewsData = await Review.aggregate([
+      { 
+        $match: { 
+          targetId: professionalId,
+          targetType: 'Professional'
+        } 
+      },
+      { 
+        $group: { 
+          _id: null, 
+          avgRating: { $avg: '$rating' },
+          totalReviews: { $sum: 1 }
+        } 
+      }
+    ]);
+
+    // Calculate return rate
+    const returnClientsData = await Session.aggregate([
+      { $match: { professionalId: professionalId } },
+      { $unwind: '$participants' },
+      { $group: { _id: '$participants', sessionCount: { $sum: 1 } } },
+      { $match: { sessionCount: { $gt: 1 } } },
+      { $group: { _id: null, returnClients: { $sum: 1 } } }
+    ]);
+
+    const totalClientsData = await Session.aggregate([
+      { $match: { professionalId: professionalId } },
+      { $unwind: '$participants' },
+      { $group: { _id: '$participants' } },
+      { $group: { _id: null, totalClients: { $sum: 1 } } }
+    ]);
+
+    // Get top services
+    const topServices = await Session.aggregate([
+      { $match: { professionalId: professionalId } },
+      { 
+        $group: { 
+          _id: '$title',
+          sessions: { $sum: 1 },
+          revenue: { $sum: '$price' }
+        } 
+      },
+      { $sort: { sessions: -1 } },
+      { $limit: 5 }
+    ]);
+
+    // Get top products
+    const topProducts = await Order.aggregate([
+      { $match: { 'items.product': { $in: productIds } } },
+      { $unwind: '$items' },
+      { $match: { 'items.product': { $in: productIds } } },
+      { 
+        $lookup: {
+          from: 'products',
+          localField: 'items.product',
+          foreignField: '_id',
+          as: 'productInfo'
+        }
+      },
+      { $unwind: '$productInfo' },
+      { 
+        $group: { 
+          _id: '$items.product',
+          name: { $first: '$productInfo.title' },
+          sales: { $sum: '$items.quantity' },
+          revenue: { $sum: { $multiply: ['$items.price.amount', '$items.quantity'] } }
+        } 
+      },
+      { $sort: { sales: -1 } },
+      { $limit: 5 }
+    ]);
+
+    // Get client demographics from all clients who have interacted with this professional
+    // First, get all unique client IDs from sessions, bookings, and orders
+    const allClientIds = new Set();
+
+    // Add clients from sessions
+    const sessionClients = await Session.find({ professionalId: professionalId }).distinct('participants');
+    sessionClients.forEach(clientId => allClientIds.add(clientId.toString()));
+
+    // Add clients from bookings
+    const bookingClients = await Booking.find({ professional: professionalId }).distinct('client');
+    bookingClients.forEach(clientId => allClientIds.add(clientId.toString()));
+
+    // Add clients from orders
+    const orderClients = await Order.find({ 'items.product': { $in: productIds } }).distinct('clientId');
+    orderClients.forEach(clientId => allClientIds.add(clientId.toString()));
+
+    // Convert Set to Array and get client details
+    const clientIdsArray = Array.from(allClientIds).map(id => new mongoose.Types.ObjectId(id));
+    
+    // Get age demographics
+    const ageDemographics = await User.aggregate([
+      { $match: { _id: { $in: clientIdsArray } } },
+      {
+        $addFields: {
+          age: {
+            $cond: {
+              if: { $ne: ['$birthDate', null] },
+              then: {
+                $floor: {
+                  $divide: [
+                    { $subtract: [new Date(), '$birthDate'] },
+                    365.25 * 24 * 60 * 60 * 1000
+                  ]
+                }
+              },
+              else: null
+            }
+          }
+        }
+      },
+      {
+        $addFields: {
+          ageGroup: {
+            $cond: {
+              if: { $ne: ['$age', null] },
+              then: {
+                $switch: {
+                  branches: [
+                    { case: { $and: [{ $gte: ['$age', 18] }, { $lt: ['$age', 26] }] }, then: '18-25' },
+                    { case: { $and: [{ $gte: ['$age', 26] }, { $lt: ['$age', 36] }] }, then: '26-35' },
+                    { case: { $and: [{ $gte: ['$age', 36] }, { $lt: ['$age', 46] }] }, then: '36-45' },
+                    { case: { $and: [{ $gte: ['$age', 46] }, { $lt: ['$age', 56] }] }, then: '46-55' },
+                    { case: { $gte: ['$age', 56] }, then: '55+' }
+                  ],
+                  default: 'Non spécifié'
+                }
+              },
+              else: 'Non spécifié'
+            }
+          }
+        }
+      },
+      { $group: { _id: '$ageGroup', count: { $sum: 1 } } },
+      { $sort: { _id: 1 } }
+    ]);
+
+    // Get gender demographics
+    const genderDemographics = await User.aggregate([
+      { $match: { _id: { $in: clientIdsArray } } },
+      {
+        $addFields: {
+          genderGroup: {
+            $cond: {
+              if: { $ne: ['$gender', null] },
+              then: {
+                $switch: {
+                  branches: [
+                    { case: { $eq: ['$gender', 'female'] }, then: 'Femmes' },
+                    { case: { $eq: ['$gender', 'male'] }, then: 'Hommes' },
+                    { case: { $eq: ['$gender', 'other'] }, then: 'Autre' },
+                    { case: { $eq: ['$gender', 'prefer_not_to_say'] }, then: 'Autre' }
+                  ],
+                  default: 'Non spécifié'
+                }
+              },
+              else: 'Non spécifié'
+            }
+          }
+        }
+      },
+      { $group: { _id: '$genderGroup', count: { $sum: 1 } } },
+      { $sort: { _id: 1 } }
+    ]);
+
+    // Calculate total clients for percentage calculation
+    const totalClientsForDemo = clientIdsArray.length;
+
+    // Convert demographics to percentages
+    const ageGroups = ageDemographics.map(group => ({
+      group: group._id,
+      percentage: totalClientsForDemo > 0 ? Math.round((group.count / totalClientsForDemo) * 100) : 0
+    }));
+
+    const genderGroups = genderDemographics.map(group => ({
+      group: group._id,
+      percentage: totalClientsForDemo > 0 ? Math.round((group.count / totalClientsForDemo) * 100) : 0
+    }));
+
+    // Ensure all age groups are represented
+    const allAgeGroups = ['18-25', '26-35', '36-45', '46-55', '55+'];
+    const completeAgeGroups = allAgeGroups.map(group => {
+      const found = ageGroups.find(ag => ag.group === group);
+      return found || { group, percentage: 0 };
+    });
+
+    // Ensure all gender groups are represented
+    const allGenderGroups = ['Femmes', 'Hommes', 'Autre'];
+    const completeGenderGroups = allGenderGroups.map(group => {
+      const found = genderGroups.find(gg => gg.group === group);
+      return found || { group, percentage: 0 };
+    });
+
+    // If no clients found, provide default demographics
+    if (totalClientsForDemo === 0) {
+      completeAgeGroups.forEach(group => group.percentage = 0);
+      completeGenderGroups.forEach(group => group.percentage = 0);
+      // Add a message for "Non spécifié" if no data
+      completeAgeGroups.push({ group: 'Données insuffisantes', percentage: 100 });
+      completeGenderGroups.push({ group: 'Données insuffisantes', percentage: 100 });
+    }
+
+    // Calculate totals
+    const totalSessions = sessionsData[0]?.total || 0;
+    const previousTotalSessions = previousSessionsData[0]?.total || 0;
+    const totalClients = Math.max(
+      clientsFromSessions[0]?.total || 0,
+      clientsFromBookings[0]?.total || 0
+    );
+    const totalSessionRevenue = sessionsData[0]?.totalRevenue || 0;
+    const totalBookingRevenue = bookingsRevenue[0]?.total || 0;
+    const totalProductRevenue = productsData[0]?.revenue || 0;
+    const totalRevenue = totalSessionRevenue + totalBookingRevenue + totalProductRevenue;
+    const totalProducts = productsData[0]?.total || 0;
+    const avgSessionLength = Math.round(sessionsData[0]?.avgDuration || 60); // Default 60 minutes
+    const returnRate = totalClientsData[0]?.totalClients > 0 
+      ? Math.round((returnClientsData[0]?.returnClients || 0) / totalClientsData[0].totalClients * 100)
+      : 0;
+
+    const analyticsData = {
+      overview: {
+        sessions: {
+          total: totalSessions,
+          previousTotal: previousTotalSessions,
+          percentChange: calculatePercentChange(totalSessions, previousTotalSessions),
+          trend: calculateTrend(totalSessions, previousTotalSessions)
+        },
+        clients: {
+          total: totalClients,
+          previousTotal: 0, // Would need similar calculation for previous period
+          percentChange: 15, // Placeholder
+          trend: 'up'
+        },
+        revenue: {
+          total: Math.round(totalRevenue),
+          previousTotal: 0, // Would need similar calculation
+          percentChange: 12, // Placeholder
+          trend: 'up'
+        },
+        products: {
+          total: totalProducts,
+          previousTotal: 0, // Would need similar calculation
+          percentChange: 8, // Placeholder
+          trend: 'up'
+        }
+      },
+      performance: {
+        avgRating: Math.round((reviewsData[0]?.avgRating || 0) * 10) / 10,
+        totalReviews: reviewsData[0]?.totalReviews || 0,
+        avgSessionLength: avgSessionLength,
+        returnRate: returnRate
+      },
+      topServices: topServices.map(service => ({
+        name: service._id || 'Service sans nom',
+        sessions: service.sessions || 0,
+        revenue: Math.round(service.revenue || 0)
+      })),
+      topProducts: topProducts.map(product => ({
+        name: product.name || 'Produit sans nom',
+        sales: product.sales || 0,
+        revenue: Math.round(product.revenue || 0)
+      })),
+      clientDemographics: {
+        ageGroups: completeAgeGroups,
+        gender: completeGenderGroups
+      },
+      monthlySessions: [
+        { month: 'Jan', sessions: 12 },
+        { month: 'Fév', sessions: 18 },
+        { month: 'Mar', sessions: 15 },
+        { month: 'Avr', sessions: 22 },
+        { month: 'Mai', sessions: 28 },
+        { month: 'Juin', sessions: 25 }
+      ],
+      monthlyRevenue: [
+        { month: 'Jan', revenue: 2400 },
+        { month: 'Fév', revenue: 3600 },
+        { month: 'Mar', revenue: 3000 },
+        { month: 'Avr', revenue: 4400 },
+        { month: 'Mai', revenue: 5600 },
+        { month: 'Juin', revenue: 5000 }
+      ]
+    };
+
+    // Get monthly sessions data from sessions
+    const monthlySessionsData = await Session.aggregate([
+      { 
+        $match: { 
+          professionalId: professionalId,
+          createdAt: { $gte: new Date(now.getTime() - 6 * 30 * 24 * 60 * 60 * 1000) }
+        } 
+      },
+      { 
+        $group: { 
+          _id: {
+            year: { $year: '$createdAt' },
+            month: { $month: '$createdAt' }
+          },
+          sessions: { $sum: 1 }
+        } 
+      },
+      { $sort: { '_id.year': 1, '_id.month': 1 } }
+    ]);
+
+    // Get monthly sessions data from bookings
+    const monthlyBookingsData = await Booking.aggregate([
+      { 
+        $match: { 
+          professional: professionalId,
+          createdAt: { $gte: new Date(now.getTime() - 6 * 30 * 24 * 60 * 60 * 1000) }
+        } 
+      },
+      { 
+        $group: { 
+          _id: {
+            year: { $year: '$createdAt' },
+            month: { $month: '$createdAt' }
+          },
+          sessions: { $sum: 1 }
+        } 
+      },
+      { $sort: { '_id.year': 1, '_id.month': 1 } }
+    ]);
+
+    // Combine sessions and bookings
+    const monthlySessionsMap = new Map();
+    
+    // Add sessions
+    monthlySessionsData.forEach(data => {
+      const key = `${data._id.year}-${data._id.month}`;
+      monthlySessionsMap.set(key, (monthlySessionsMap.get(key) || 0) + (data.sessions || 0));
+    });
+    
+    // Add bookings
+    monthlyBookingsData.forEach(data => {
+      const key = `${data._id.year}-${data._id.month}`;
+      monthlySessionsMap.set(key, (monthlySessionsMap.get(key) || 0) + (data.sessions || 0));
+    });
+
+    // Convert to array and sort
+    const monthlySessionsDataCombined = Array.from(monthlySessionsMap.entries())
+      .map(([key, sessions]) => {
+        const [year, month] = key.split('-');
+        return {
+          _id: { year: parseInt(year), month: parseInt(month) },
+          sessions: sessions
+        };
+      })
+      .sort((a, b) => {
+        if (a._id.year !== b._id.year) return a._id.year - b._id.year;
+        return a._id.month - b._id.month;
+      })
+      .slice(-6); // Get last 6 months
+
+    // Get monthly revenue data from sessions
+    const monthlySessionRevenueData = await Session.aggregate([
+      { 
+        $match: { 
+          professionalId: professionalId,
+          createdAt: { $gte: new Date(now.getTime() - 6 * 30 * 24 * 60 * 60 * 1000) }
+        } 
+      },
+      { 
+        $group: { 
+          _id: {
+            year: { $year: '$createdAt' },
+            month: { $month: '$createdAt' }
+          },
+          revenue: { $sum: '$price' }
+        } 
+      },
+      { $sort: { '_id.year': 1, '_id.month': 1 } }
+    ]);
+
+    // Get monthly revenue data from orders (products)
+    const monthlyOrderRevenueData = await Order.aggregate([
+      { 
+        $match: { 
+          'items.product': { $in: productIds },
+          createdAt: { $gte: new Date(now.getTime() - 6 * 30 * 24 * 60 * 60 * 1000) },
+          status: { $in: ['completed', 'delivered'] }
+        } 
+      },
+      { $unwind: '$items' },
+      { $match: { 'items.product': { $in: productIds } } },
+      { 
+        $group: { 
+          _id: {
+            year: { $year: '$createdAt' },
+            month: { $month: '$createdAt' }
+          },
+          revenue: { $sum: { $multiply: ['$items.price.amount', '$items.quantity'] } }
+        } 
+      },
+      { $sort: { '_id.year': 1, '_id.month': 1 } }
+    ]);
+
+    // Get monthly revenue data from bookings
+    const monthlyBookingRevenueData = await Booking.aggregate([
+      { 
+        $match: { 
+          professional: professionalId,
+          status: 'completed',
+          createdAt: { $gte: new Date(now.getTime() - 6 * 30 * 24 * 60 * 60 * 1000) }
+        } 
+      },
+      { 
+        $group: { 
+          _id: {
+            year: { $year: '$createdAt' },
+            month: { $month: '$createdAt' }
+          },
+          revenue: { $sum: '$totalAmount.amount' }
+        } 
+      },
+      { $sort: { '_id.year': 1, '_id.month': 1 } }
+    ]);
+
+    // Combine all revenue sources
+    const monthlyRevenueMap = new Map();
+    
+    // Add session revenue
+    monthlySessionRevenueData.forEach(data => {
+      const key = `${data._id.year}-${data._id.month}`;
+      monthlyRevenueMap.set(key, (monthlyRevenueMap.get(key) || 0) + (data.revenue || 0));
+    });
+    
+    // Add order revenue
+    monthlyOrderRevenueData.forEach(data => {
+      const key = `${data._id.year}-${data._id.month}`;
+      monthlyRevenueMap.set(key, (monthlyRevenueMap.get(key) || 0) + (data.revenue || 0));
+    });
+    
+    // Add booking revenue
+    monthlyBookingRevenueData.forEach(data => {
+      const key = `${data._id.year}-${data._id.month}`;
+      monthlyRevenueMap.set(key, (monthlyRevenueMap.get(key) || 0) + (data.revenue || 0));
+    });
+
+    // Convert to array and sort
+    const monthlyRevenueData = Array.from(monthlyRevenueMap.entries())
+      .map(([key, revenue]) => {
+        const [year, month] = key.split('-');
+        return {
+          _id: { year: parseInt(year), month: parseInt(month) },
+          revenue: revenue
+        };
+      })
+      .sort((a, b) => {
+        if (a._id.year !== b._id.year) return a._id.year - b._id.year;
+        return a._id.month - b._id.month;
+      })
+      .slice(-6); // Get last 6 months
+
+    // Format monthly data
+    const monthNames = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sep', 'Oct', 'Nov', 'Déc'];
+    const monthlySessions = monthlySessionsDataCombined.map(data => ({
+      month: monthNames[data._id.month - 1],
+      sessions: data.sessions
+    }));
+
+    const monthlyRevenue = monthlyRevenueData.map(data => ({
+      month: monthNames[data._id.month - 1],
+      revenue: Math.round(data.revenue || 0)
+    }));
+
+    // Fill empty months with 0 if needed
+    const fillEmptyMonths = (data, monthsCount = 6) => {
+      const currentMonth = now.getMonth();
+      const filledData = [];
+      
+      // Create a map of existing months
+      const existingMonths = new Map();
+      data.forEach(item => {
+        existingMonths.set(item.month, item);
+      });
+      
+      // Fill missing months
+      for (let i = monthsCount - 1; i >= 0; i--) {
+        const targetMonth = (currentMonth - i + 12) % 12;
+        const monthName = monthNames[targetMonth];
+        
+        if (existingMonths.has(monthName)) {
+          filledData.push(existingMonths.get(monthName));
+        } else {
+          // Determine if this is sessions or revenue data
+          const isSessionsData = data.length > 0 && 'sessions' in data[0];
+          filledData.push({
+            month: monthName,
+            ...(isSessionsData ? { sessions: 0 } : { revenue: 0 })
+          });
+        }
+      }
+      
+      return filledData;
+    };
+
+    const monthlySessionsFilled = fillEmptyMonths(monthlySessions);
+    const monthlyRevenueFilled = fillEmptyMonths(monthlyRevenue);
+
+    // Update the analytics data with real monthly data
+    analyticsData.monthlySessions = monthlySessionsFilled.length > 0 ? monthlySessionsFilled : [
+      { month: 'Jan', sessions: 0 },
+      { month: 'Fév', sessions: 0 },
+      { month: 'Mar', sessions: 0 },
+      { month: 'Avr', sessions: 0 },
+      { month: 'Mai', sessions: 0 },
+      { month: 'Juin', sessions: 0 }
+    ];
+    analyticsData.monthlyRevenue = monthlyRevenueFilled.length > 0 ? monthlyRevenueFilled : [
+      { month: 'Jan', revenue: 0 },
+      { month: 'Fév', revenue: 0 },
+      { month: 'Mar', revenue: 0 },
+      { month: 'Avr', revenue: 0 },
+      { month: 'Mai', revenue: 0 },
+      { month: 'Juin', revenue: 0 }
+    ];
+
+    // Ensure topServices and topProducts have at least empty arrays
+    if (!analyticsData.topServices || analyticsData.topServices.length === 0) {
+      analyticsData.topServices = [
+        { name: 'Aucun service', sessions: 0, revenue: 0 }
+      ];
+    }
+
+    if (!analyticsData.topProducts || analyticsData.topProducts.length === 0) {
+      analyticsData.topProducts = [
+        { name: 'Aucun produit', sales: 0, revenue: 0 }
+      ];
+    }
+
+    console.log('Final analytics data:', analyticsData);
+
+    res.json(analyticsData);
+  } catch (error) {
+    console.error('Error fetching professional analytics:', error);
+    console.error('Error stack:', error.stack);
+    res.status(500).json({ 
+      success: false,
+      message: 'Error fetching analytics data',
+      error: error.message 
+    });
+  }
+});
+
 // Get professional by ID (public)
 router.get('/:id', async (req, res) => {
   try {
     // First try to find by professional ID
+
     let professional = await Professional.findById(req.params.id)
       .populate('userId', 'firstName lastName email profileImage');
     
@@ -1477,6 +2195,52 @@ router.get('/:id', async (req, res) => {
       };
     }
 
+    // Calculate statistics for this professional
+    const professionalId = professional._id;
+    
+    // Get total sessions count
+    const totalSessions = await Session.countDocuments({
+      professionalId: professionalId
+    });
+
+    // Get unique clients count from sessions and bookings
+    const sessionClients = await Session.distinct('participants', {
+      professionalId: professionalId
+    });
+    
+    const bookingClients = await Booking.distinct('client', {
+      professional: professionalId
+    });
+    
+    // Combine and count unique clients
+    const allClientIds = new Set([
+      ...sessionClients.map(id => id.toString()),
+      ...bookingClients.map(id => id.toString())
+    ]);
+    const totalClients = allClientIds.size;
+
+    // Get products count
+    const productsCount = await Product.countDocuments({
+      professionalId: professionalId,
+      status: 'approved'
+    });
+
+    // Get upcoming events count
+    const upcomingEvents = await Event.countDocuments({
+      professional: professional.userId,
+      eventDate: { $gte: new Date() },
+      status: 'active'
+    });
+
+    // Add calculated stats to professional object
+    professional = professional.toObject();
+    professional.stats = {
+      totalSessions,
+      totalClients,
+      productsCount,
+      upcomingEvents
+    };
+
     res.json({
       success: true,
       professional
@@ -1491,8 +2255,126 @@ router.get('/:id', async (req, res) => {
   }
 });
 
+// Get professional statistics by ID (public)
+router.get('/:id/stats', async (req, res) => {
+  try {
+    // First try to find by professional ID
+    let professional = await Professional.findById(req.params.id);
+    
+    // If not found, try to find by user ID
+    if (!professional) {
+      professional = await Professional.findOne({ userId: req.params.id });
+    }
+
+    if (!professional || !professional.isActive || !professional.isVerified) {
+      return res.status(404).json({
+        success: false,
+        message: 'Professional not found'
+      });
+    }
+
+    const professionalId = professional._id;
+    
+    // Get total sessions count
+    const totalSessions = await Session.countDocuments({
+      professionalId: professionalId
+    });
+
+    // Get unique clients count from sessions and bookings
+    const sessionClients = await Session.distinct('participants', {
+      professionalId: professionalId
+    });
+    
+    const bookingClients = await Booking.distinct('client', {
+      professional: professionalId
+    });
+    
+    // Combine and count unique clients
+    const allClientIds = new Set([
+      ...sessionClients.map(id => id.toString()),
+      ...bookingClients.map(id => id.toString())
+    ]);
+    const totalClients = allClientIds.size;
+
+    // Get products count
+    const productsCount = await Product.countDocuments({
+      professionalId: professionalId,
+      status: 'approved'
+    });
+
+    // Get upcoming events count
+    const upcomingEvents = await Event.countDocuments({
+      professional: professional.userId,
+      eventDate: { $gte: new Date() },
+      status: 'active'
+    });
+
+    // Get completed sessions count (for more detailed stats)
+    const completedSessions = await Session.countDocuments({
+      professionalId: professionalId,
+      status: 'completed'
+    });
+
+    // Get total revenue from sessions
+    const sessionRevenue = await Session.aggregate([
+      { 
+        $match: { 
+          professionalId: professionalId,
+          status: 'completed'
+        } 
+      },
+      { 
+        $group: { 
+          _id: null, 
+          total: { $sum: '$price' }
+        } 
+      }
+    ]);
+
+    // Get total revenue from bookings
+    const bookingRevenue = await Booking.aggregate([
+      { 
+        $match: { 
+          professional: professionalId,
+          status: 'completed'
+        } 
+      },
+      { 
+        $group: { 
+          _id: null, 
+          total: { $sum: '$totalAmount.amount' }
+        } 
+      }
+    ]);
+
+    const stats = {
+      totalSessions,
+      completedSessions,
+      totalClients,
+      productsCount,
+      upcomingEvents,
+      totalRevenue: (sessionRevenue[0]?.total || 0) + (bookingRevenue[0]?.total || 0),
+      sessionRevenue: sessionRevenue[0]?.total || 0,
+      bookingRevenue: bookingRevenue[0]?.total || 0,
+      rating: professional.rating || { average: 0, totalReviews: 0 }
+    };
+
+    res.json({
+      success: true,
+      stats
+    });
+
+  } catch (error) {
+    console.error('Error fetching professional stats:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+});
+
 // Create professional profile
-router.post('/profile', requireAuth, [
+router.post('/profile', isAuthenticated, [
   body('businessName').notEmpty().withMessage('Business name is required'),
   body('businessType').isIn([
     'yoga', 'meditation', 'naturopathy', 'massage', 'acupuncture',
@@ -1553,7 +2435,7 @@ router.post('/profile', requireAuth, [
 });
 
 // Update professional profile
-router.put('/profile', requireAuth, requireProfessional, async (req, res) => {
+router.put('/profile', isAuthenticated, isProfessional, async (req, res) => {
   try {
     const professional = await Professional.findOne({ userId: req.user._id });
     if (!professional) {
@@ -1565,7 +2447,8 @@ router.put('/profile', requireAuth, requireProfessional, async (req, res) => {
 
     const allowedFields = [
       'businessName', 'businessType', 'description', 'certifications',
-      'businessAddress', 'contactInfo', 'businessHours', 'address', 'title', 'activities'
+      'businessAddress', 'contactInfo', 'businessHours', 'address', 'title', 'activities',
+      'coverImages', 'categories'
     ];
 
     const updateData = {};
@@ -1574,6 +2457,31 @@ router.put('/profile', requireAuth, requireProfessional, async (req, res) => {
         updateData[key] = req.body[key];
       }
     });
+
+    // Handle business hours update
+    if (updateData.businessHours) {
+      // Validate business hours format
+      const validDays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+      const validatedHours = updateData.businessHours.filter(schedule => {
+        return validDays.includes(schedule.day) && 
+               typeof schedule.isOpen === 'boolean' &&
+               (schedule.isOpen === false || (schedule.openTime && schedule.closeTime));
+      });
+      
+      updateData.businessHours = validatedHours;
+    }
+
+    // Handle cover images update
+    if (updateData.coverImages) {
+      // Validate cover images (should be array of URLs)
+      if (Array.isArray(updateData.coverImages)) {
+        updateData.coverImages = updateData.coverImages.filter(img => 
+          typeof img === 'string' && img.length > 0
+        );
+      } else {
+        delete updateData.coverImages; // Remove invalid data
+      }
+    }
 
     // Ensure businessAddress has all required fields
     if (updateData.businessAddress) {
@@ -1594,10 +2502,23 @@ router.put('/profile', requireAuth, requireProfessional, async (req, res) => {
       };
     }
 
+    // Handle categories update
+    if (updateData.categories) {
+      if (Array.isArray(updateData.categories)) {
+        // Clean and validate categories
+        updateData.categories = updateData.categories
+          .filter(cat => typeof cat === 'string' && cat.trim().length > 0)
+          .map(cat => cat.trim())
+          .filter((cat, index, arr) => arr.indexOf(cat) === index); // Remove duplicates
+      } else {
+        delete updateData.categories; // Remove invalid data
+      }
+    }
+
     const updatedProfessional = await Professional.findByIdAndUpdate(
       professional._id,
       updateData,
-      { new: true }
+      { new: true, runValidators: true }
     ).populate('userId', 'firstName lastName email profileImage');
 
     res.json({
@@ -1610,13 +2531,375 @@ router.put('/profile', requireAuth, requireProfessional, async (req, res) => {
     console.error('Error updating professional profile:', error);
     res.status(500).json({
       success: false,
+      message: 'Server error',
+      error: error.message
+    });
+  }
+});
+
+// ===================== BUSINESS HOURS MANAGEMENT =====================
+
+// Get business hours
+router.get('/me/business-hours', isAuthenticated, isProfessional, async (req, res) => {
+  try {
+    const professional = await Professional.findOne({ userId: req.user._id });
+    if (!professional) {
+      return res.status(404).json({
+        success: false,
+        message: 'Professional profile not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      businessHours: professional.businessHours || []
+    });
+
+  } catch (error) {
+    console.error('Error fetching business hours:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+});
+
+// Update business hours
+router.put('/me/business-hours', isAuthenticated, isProfessional, [
+  body('businessHours').isArray().withMessage('Business hours must be an array'),
+  body('businessHours.*.day').isIn(['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']).withMessage('Invalid day'),
+  body('businessHours.*.isOpen').isBoolean().withMessage('isOpen must be a boolean'),
+  body('businessHours.*.openTime').optional().matches(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/).withMessage('Invalid open time format (HH:MM)'),
+  body('businessHours.*.closeTime').optional().matches(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/).withMessage('Invalid close time format (HH:MM)')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation errors',
+        errors: errors.array()
+      });
+    }
+
+    const professional = await Professional.findOne({ userId: req.user._id });
+    if (!professional) {
+      return res.status(404).json({
+        success: false,
+        message: 'Professional profile not found'
+      });
+    }
+
+    const { businessHours } = req.body;
+
+    // Validate that open hours have both openTime and closeTime
+    for (const schedule of businessHours) {
+      if (schedule.isOpen && (!schedule.openTime || !schedule.closeTime)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Open days must have both openTime and closeTime'
+        });
+      }
+    }
+
+    // Update business hours
+    professional.businessHours = businessHours;
+    await professional.save();
+
+    res.json({
+      success: true,
+      message: 'Business hours updated successfully',
+      businessHours: professional.businessHours
+    });
+
+  } catch (error) {
+    console.error('Error updating business hours:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+});
+
+// ===================== COVER IMAGES MANAGEMENT =====================
+
+// Get cover images
+router.get('/me/cover-images', isAuthenticated, isProfessional, async (req, res) => {
+  try {
+    const professional = await Professional.findOne({ userId: req.user._id });
+    if (!professional) {
+      return res.status(404).json({
+        success: false,
+        message: 'Professional profile not found'
+      });
+    }
+
+    // Convert relative URLs to absolute URLs
+    const baseUrl = process.env.BASE_URL || `${req.protocol}://${req.get('host')}`;
+    const coverImages = (professional.coverImages || []).map(img => 
+      img.startsWith('http') ? img : `${baseUrl}${img}`
+    );
+
+    res.json({
+      success: true,
+      coverImages
+    });
+
+  } catch (error) {
+    console.error('Error fetching cover images:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+});
+
+// Add cover image
+router.post('/me/cover-images', isAuthenticated, isProfessional, [
+  body('imageUrl').notEmpty().withMessage('Image URL is required').custom((value) => {
+    console.log('Validating imageUrl:', value);
+    // Accept both absolute URLs and relative paths starting with /uploads/
+    if (value.startsWith('http') || value.startsWith('/uploads/')) {
+      console.log('Validation passed for imageUrl:', value);
+      return true;
+    }
+    console.log('Validation failed for imageUrl:', value);
+    throw new Error('Image URL must be a valid URL or relative path starting with /uploads/');
+  })
+], async (req, res) => {
+  try {
+    console.log('Add cover image request body:', req.body);
+    
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      console.log('Validation errors:', errors.array());
+      return res.status(400).json({
+        success: false,
+        message: 'Validation errors',
+        errors: errors.array()
+      });
+    }
+
+    const professional = await Professional.findOne({ userId: req.user._id });
+    if (!professional) {
+      return res.status(404).json({
+        success: false,
+        message: 'Professional profile not found'
+      });
+    }
+
+    const { imageUrl } = req.body;
+
+    // Check if image already exists
+    if (professional.coverImages && professional.coverImages.includes(imageUrl)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Image already exists'
+      });
+    }
+
+    // Add image to cover images
+    if (!professional.coverImages) {
+      professional.coverImages = [];
+    }
+    professional.coverImages.push(imageUrl);
+    await professional.save();
+
+    console.log('Cover image added successfully:', imageUrl);
+    console.log('Updated cover images:', professional.coverImages);
+
+    res.json({
+      success: true,
+      message: 'Cover image added successfully',
+      coverImages: professional.coverImages
+    });
+
+  } catch (error) {
+    console.error('Error adding cover image:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+});
+
+// Remove cover image
+router.delete('/me/cover-images', isAuthenticated, isProfessional, async (req, res) => {
+  try {
+    const professional = await Professional.findOne({ userId: req.user._id });
+    if (!professional) {
+      return res.status(404).json({
+        success: false,
+        message: 'Professional profile not found'
+      });
+    }
+
+    // Get imageUrl from query params or body
+    const imageUrl = req.query.imageUrl || req.body.imageUrl;
+    
+    if (!imageUrl) {
+      return res.status(400).json({
+        success: false,
+        message: 'Image URL is required'
+      });
+    }
+
+    console.log('Attempting to remove cover image:', imageUrl);
+    console.log('Current cover images:', professional.coverImages);
+
+    // Check if image exists (check both exact match and relative path)
+    const imageExists = professional.coverImages && (
+      professional.coverImages.includes(imageUrl) ||
+      professional.coverImages.some(img => img.endsWith(imageUrl.replace(/^.*\/uploads/, '/uploads')))
+    );
+
+    if (!imageExists) {
+      console.log('Image not found in cover images:', {
+        searchingFor: imageUrl,
+        availableImages: professional.coverImages
+      });
+      return res.status(404).json({
+        success: false,
+        message: 'Image not found'
+      });
+    }
+
+    // Remove image from cover images (handle both exact match and relative path)
+    professional.coverImages = professional.coverImages.filter(img => 
+      img !== imageUrl && !img.endsWith(imageUrl.replace(/^.*\/uploads/, '/uploads'))
+    );
+    await professional.save();
+
+    // Try to delete the physical file if it's a local upload
+    if (imageUrl.startsWith('/uploads/')) {
+      const fs = require('fs');
+      const filePath = path.join(__dirname, '..', imageUrl);
+      
+      fs.unlink(filePath, (err) => {
+        if (err) {
+          console.error('Error deleting file:', err);
+        } else {
+          console.log('File deleted successfully:', filePath);
+        }
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Cover image removed successfully',
+      coverImages: professional.coverImages
+    });
+
+  } catch (error) {
+    console.error('Error removing cover image:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+});
+
+// Replace cover image (remove old, add new)
+router.put('/me/cover-images/replace', isAuthenticated, isProfessional, [
+  body('newImageUrl').notEmpty().withMessage('New image URL is required')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation errors',
+        errors: errors.array()
+      });
+    }
+
+    const professional = await Professional.findOne({ userId: req.user._id });
+    if (!professional) {
+      return res.status(404).json({
+        success: false,
+        message: 'Professional profile not found'
+      });
+    }
+
+    const { newImageUrl } = req.body;
+
+    // Replace all cover images with the new one (for single cover image)
+    professional.coverImages = [newImageUrl];
+    await professional.save();
+
+    console.log('Cover image replaced successfully:', {
+      oldImages: professional.coverImages,
+      newImage: newImageUrl
+    });
+
+    res.json({
+      success: true,
+      message: 'Cover image replaced successfully',
+      coverImages: professional.coverImages
+    });
+
+  } catch (error) {
+    console.error('Error replacing cover image:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+});
+
+// Update all cover images
+router.put('/me/cover-images', isAuthenticated, isProfessional, [
+  body('coverImages').isArray().withMessage('Cover images must be an array'),
+  body('coverImages.*').isString().withMessage('Each cover image must be a string')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation errors',
+        errors: errors.array()
+      });
+    }
+
+    const professional = await Professional.findOne({ userId: req.user._id });
+    if (!professional) {
+      return res.status(404).json({
+        success: false,
+        message: 'Professional profile not found'
+      });
+    }
+
+    const { coverImages } = req.body;
+
+    // Validate and clean cover images
+    const validImages = coverImages.filter(img => 
+      typeof img === 'string' && img.trim().length > 0
+    );
+
+    // Remove duplicates
+    const uniqueImages = [...new Set(validImages)];
+
+    professional.coverImages = uniqueImages;
+    await professional.save();
+
+    res.json({
+      success: true,
+      message: 'Cover images updated successfully',
+      coverImages: professional.coverImages
+    });
+
+  } catch (error) {
+    console.error('Error updating cover images:', error);
+    res.status(500).json({
+      success: false,
       message: 'Server error'
     });
   }
 });
 
 // Add/Update service
-router.post('/services', requireAuth, requireProfessional, [
+router.post('/services', isAuthenticated, isProfessional, [
   body('name').notEmpty().withMessage('Service name is required'),
   body('category').isIn(['individual', 'group', 'online', 'workshop', 'retreat']).withMessage('Valid category is required'),
   body('price.amount').isNumeric().withMessage('Valid price is required')
@@ -1663,7 +2946,7 @@ router.post('/services', requireAuth, requireProfessional, [
 });
 
 // Update service
-router.put('/services/:serviceId', requireAuth, requireProfessional, async (req, res) => {
+router.put('/services/:serviceId', isAuthenticated, isProfessional, async (req, res) => {
   try {
     const professional = await Professional.findOne({ userId: req.user._id });
     if (!professional) {
@@ -1706,7 +2989,7 @@ router.put('/services/:serviceId', requireAuth, requireProfessional, async (req,
 });
 
 // Delete service
-router.delete('/services/:serviceId', requireAuth, requireProfessional, async (req, res) => {
+router.delete('/services/:serviceId', isAuthenticated, isProfessional, async (req, res) => {
   try {
     const professional = await Professional.findOne({ userId: req.user._id });
     if (!professional) {
@@ -1734,7 +3017,7 @@ router.delete('/services/:serviceId', requireAuth, requireProfessional, async (r
 });
 
 // Upload profile photo
-router.post('/profile/photo', requireAuth, requireProfessional, profilePhotoUpload.single('profilePhoto'), async (req, res) => {
+router.post('/profile/photo', isAuthenticated, isProfessional, profilePhotoUpload.single('profilePhoto'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({
@@ -1786,7 +3069,7 @@ router.post('/profile/photo', requireAuth, requireProfessional, profilePhotoUplo
 });
 
 // Get professional by user ID
-router.get('/user/:userId', requireAuth, async (req, res) => {
+router.get('/user/:userId', isAuthenticated, async (req, res) => {
   try {
     const professional = await Professional.findOne({ userId: req.params.userId })
       .populate('userId', 'firstName lastName email profileImage');
@@ -1821,7 +3104,7 @@ router.get('/user/:userId', requireAuth, async (req, res) => {
 });
 
 // Update notification settings
-router.put('/me/notifications', requireAuth, requireProfessional, async (req, res) => {
+router.put('/me/notifications', isAuthenticated, isProfessional, async (req, res) => {
   try {
     const professional = await Professional.findOne({ userId: req.user._id });
     if (!professional) {
@@ -1862,7 +3145,7 @@ router.put('/me/notifications', requireAuth, requireProfessional, async (req, re
 });
 
 // Get notification settings
-router.get('/me/notifications', requireAuth, requireProfessional, async (req, res) => {
+router.get('/me/notifications', isAuthenticated, isProfessional, async (req, res) => {
   try {
     const professional = await Professional.findOne({ userId: req.user._id });
     if (!professional) {
@@ -1893,6 +3176,463 @@ router.get('/me/notifications', requireAuth, requireProfessional, async (req, re
     res.status(500).json({
       success: false,
       message: 'Server error'
+    });
+  }
+});
+
+// Helper functions for analytics calculations
+function calculatePercentChange(current, previous) {
+  if (previous === 0) return 0;
+  return ((current - previous) / previous) * 100;
+}
+
+function calculateTrend(current, previous) {
+  return current >= previous ? 'up' : 'down';
+}
+
+// ===================== CATEGORIES MANAGEMENT =====================
+
+// Get professional's categories
+router.get('/me/categories', isAuthenticated, isProfessional, async (req, res) => {
+  try {
+    const professional = await Professional.findOne({ userId: req.user._id });
+    if (!professional) {
+      return res.status(404).json({
+        success: false,
+        message: 'Professional profile not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      categories: professional.categories || []
+    });
+
+  } catch (error) {
+    console.error('Error fetching professional categories:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+});
+
+// Add a new category
+router.post('/me/categories', isAuthenticated, isProfessional, [
+  body('category').notEmpty().trim().withMessage('Category name is required')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation errors',
+        errors: errors.array()
+      });
+    }
+
+    const professional = await Professional.findOne({ userId: req.user._id });
+    if (!professional) {
+      return res.status(404).json({
+        success: false,
+        message: 'Professional profile not found'
+      });
+    }
+
+    const { category } = req.body;
+    const trimmedCategory = category.trim();
+
+    // Check if category already exists
+    if (professional.categories && professional.categories.includes(trimmedCategory)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Category already exists'
+      });
+    }
+
+    // Add category
+    if (!professional.categories) {
+      professional.categories = [];
+    }
+    professional.categories.push(trimmedCategory);
+    await professional.save();
+
+    res.json({
+      success: true,
+      message: 'Category added successfully',
+      categories: professional.categories
+    });
+
+  } catch (error) {
+    console.error('Error adding category:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+});
+
+// Delete a category
+router.delete('/me/categories/:category', isAuthenticated, isProfessional, async (req, res) => {
+  try {
+    const professional = await Professional.findOne({ userId: req.user._id });
+    if (!professional) {
+      return res.status(404).json({
+        success: false,
+        message: 'Professional profile not found'
+      });
+    }
+
+    const categoryToDelete = req.params.category;
+
+    // Check if category exists
+    if (!professional.categories || !professional.categories.includes(categoryToDelete)) {
+      return res.status(404).json({
+        success: false,
+        message: 'Category not found'
+      });
+    }
+
+    // Remove category
+    professional.categories = professional.categories.filter(cat => cat !== categoryToDelete);
+    await professional.save();
+
+    res.json({
+      success: true,
+      message: 'Category deleted successfully',
+      categories: professional.categories
+    });
+
+  } catch (error) {
+    console.error('Error deleting category:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+});
+
+// Update all categories
+router.put('/me/categories', isAuthenticated, isProfessional, [
+  body('categories').isArray().withMessage('Categories must be an array')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation errors',
+        errors: errors.array()
+      });
+    }
+
+    const professional = await Professional.findOne({ userId: req.user._id });
+    if (!professional) {
+      return res.status(404).json({
+        success: false,
+        message: 'Professional profile not found'
+      });
+    }
+
+    const { categories } = req.body;
+    
+    // Trim and validate categories
+    const trimmedCategories = categories
+      .map(cat => cat.trim())
+      .filter(cat => cat.length > 0);
+
+    // Remove duplicates
+    const uniqueCategories = [...new Set(trimmedCategories)];
+
+    professional.categories = uniqueCategories;
+    await professional.save();
+
+    res.json({
+      success: true,
+      message: 'Categories updated successfully',
+      categories: professional.categories
+    });
+
+  } catch (error) {
+    console.error('Error updating categories:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+});
+
+// ===================== PUBLIC PROFESSIONAL EVENTS & PRODUCTS =====================
+
+// GET /api/professionals/:id/events?filter=upcoming|expired|all&search=&category=&page=&limit=
+router.get('/:id/events', async (req, res) => {
+  try {
+    const { 
+      filter = 'upcoming', 
+      search = '', 
+      category = '', 
+      page = 1, 
+      limit = 20,
+      sortBy = 'date',
+      sortOrder = 'asc'
+    } = req.query;
+
+    // Vérifier la validité de l'ObjectId
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'ID professionnel invalide' 
+      });
+    }
+
+    // Vérifier que le professionnel existe
+    const professional = await Professional.findById(req.params.id);
+    console.log('Professional lookup result:', professional ? 'Found' : 'Not found', 'for ID:', req.params.id);
+    
+    if (!professional) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Professionnel non trouvé' 
+      });
+    }
+
+    const now = new Date();
+    const query = { professional: professional.userId, status: 'approved' };
+
+    // Filtrer par statut (upcoming/expired/all)
+    if (filter === 'upcoming') {
+      query.$or = [
+        { date: { $gte: now } },
+        { endDate: { $gte: now } }
+      ];
+    } else if (filter === 'expired') {
+      query.date = { $lt: now };
+      query.endDate = { $lt: now };
+    }
+
+    // Filtrer par recherche
+    if (search) {
+      query.$and = query.$and || [];
+      query.$and.push({
+        $or: [
+          { title: { $regex: search, $options: 'i' } },
+          { description: { $regex: search, $options: 'i' } }
+        ]
+      });
+    }
+
+    // Filtrer par catégorie
+    if (category) {
+      query.category = category;
+    }
+
+    // Options de tri
+    const sortOptions = {};
+    sortOptions[sortBy] = sortOrder === 'desc' ? -1 : 1;
+
+    // Exécuter la requête avec pagination
+    const events = await Event.find(query)
+      .sort(sortOptions)
+      .limit(parseInt(limit))
+      .skip((parseInt(page) - 1) * parseInt(limit))
+      .populate('professional', 'businessName title')
+      .lean();
+
+    // Compter le total pour la pagination
+    const total = await Event.countDocuments(query);
+
+    // Enrichir les données
+    const enrichedEvents = events.map(event => ({
+      ...event,
+      // Ajouter des champs calculés
+      isExpired: new Date(event.date || event.endDate) < now,
+      availableSpots: event.maxParticipants - (event.participants?.length || 0),
+      // Formater les images
+      images: event.coverImages?.map(img => ({
+        url: img.startsWith('http') ? img : `${req.protocol}://${req.get('host')}/uploads/events/${img}`
+      })) || [],
+      // Informations de localisation formatées
+      location: {
+        type: event.eventType,
+        venue: event.eventType === 'in_person' ? {
+          address: { city: event.address },
+          name: event.address
+        } : null
+      },
+      // Informations de prix formatées
+      pricing: {
+        type: event.price === 0 ? 'free' : 'paid',
+        amount: event.price,
+        currency: event.currency || 'MAD'
+      },
+      // Capacité formatée
+      capacity: {
+        current: event.participants?.length || 0,
+        maximum: event.maxParticipants
+      }
+    }));
+
+    res.json({
+      success: true,
+      events: enrichedEvents,
+      pagination: {
+        total,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        pages: Math.ceil(total / parseInt(limit))
+      },
+      filters: {
+        search,
+        category,
+        filter
+      }
+    });
+  } catch (err) {
+    console.error('Error fetching professional events:', err);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Erreur serveur lors de la récupération des événements' 
+    });
+  }
+});
+
+// GET /api/professionals/:id/products?search=&category=&page=&limit=&sortBy=&sortOrder=
+router.get('/:id/products', async (req, res) => {
+  try {
+    const { 
+      search = '', 
+      category = '', 
+      page = 1, 
+      limit = 20,
+      sortBy = 'createdAt',
+      sortOrder = 'desc',
+      minPrice,
+      maxPrice
+    } = req.query;
+
+    // Vérifier la validité de l'ObjectId
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'ID professionnel invalide' 
+      });
+    }
+
+    // Vérifier que le professionnel existe
+    const professional = await Professional.findById(req.params.id);
+    console.log('Professional lookup result for products:', professional ? 'Found' : 'Not found', 'for ID:', req.params.id);
+    
+    if (!professional) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Professionnel non trouvé' 
+      });
+    }
+
+    const query = { 
+      professionalId: req.params.id, 
+      status: 'approved',
+      isActive: true 
+    };
+
+    // Filtrer par recherche
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { title: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } },
+        { tags: { $in: [new RegExp(search, 'i')] } }
+      ];
+    }
+
+    // Filtrer par catégorie
+    if (category) {
+      query.category = category;
+    }
+
+    // Filtrer par prix
+    if (minPrice || maxPrice) {
+      query.price = {};
+      if (minPrice) query.price.$gte = parseFloat(minPrice);
+      if (maxPrice) query.price.$lte = parseFloat(maxPrice);
+    }
+
+    // Options de tri
+    const sortOptions = {};
+    sortOptions[sortBy] = sortOrder === 'desc' ? -1 : 1;
+
+    // Exécuter la requête avec pagination
+    const products = await Product.find(query)
+      .sort(sortOptions)
+      .limit(parseInt(limit))
+      .skip((parseInt(page) - 1) * parseInt(limit))
+      .populate('professionalId', 'businessName title')
+      .lean();
+
+    // Compter le total pour la pagination
+    const total = await Product.countDocuments(query);
+
+    // Enrichir les données
+    const enrichedProducts = products.map(product => ({
+      ...product,
+      // Formater les images
+      images: product.images?.map(img => ({
+        url: img.startsWith('http') ? img : `${req.protocol}://${req.get('host')}/uploads/products/${img}`
+      })) || [],
+      // Informations de stock formatées
+      isInStock: product.stock > 0,
+      isLowStock: product.stock <= (product.lowStockThreshold || 5),
+      // Informations de prix formatées
+      isFree: product.price === 0,
+      // Nom unifié (utilise name ou title)
+      name: product.name || product.title,
+      // Marquer comme populaire si featured
+      isFeatured: product.featured || false
+    }));
+
+    res.json({
+      success: true,
+      products: enrichedProducts,
+      pagination: {
+        total,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        pages: Math.ceil(total / parseInt(limit))
+      },
+      filters: {
+        search,
+        category,
+        minPrice,
+        maxPrice
+      }
+    });
+  } catch (err) {
+    console.error('Error fetching professional products:', err);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Erreur serveur lors de la récupération des produits' 
+    });
+  }
+});
+
+// Route de debug pour lister les professionnels
+router.get('/debug/list', async (req, res) => {
+  try {
+    const professionals = await Professional.find({}).populate('userId', 'firstName lastName email');
+    res.json({
+      success: true,
+      count: professionals.length,
+      professionals: professionals.map(p => ({
+        id: p._id,
+        businessName: p.businessName,
+        userId: p.userId?._id,
+        userEmail: p.userId?.email
+      }))
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
     });
   }
 });

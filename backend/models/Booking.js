@@ -23,6 +23,10 @@ const bookingSchema = new mongoose.Schema({
     price: {
       amount: Number,
       currency: { type: String, default: 'MAD' }
+    },
+    sessionId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Session'
     }
   },
   appointmentDate: {

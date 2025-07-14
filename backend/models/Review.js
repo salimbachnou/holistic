@@ -1,192 +1,162 @@
 const mongoose = require('mongoose');
 
 const reviewSchema = new mongoose.Schema({
-  userId: {
+  // Client qui a laissé la note
+  clientId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: true
+    required: true,
+    index: true
   },
-  targetId: {
+  
+  // Professionnel concerné
+  professionalId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Professional',
+    required: true,
+    index: true
+  },
+  
+  // Type de contenu noté (produit, événement, session)
+  contentType: {
+    type: String,
+    enum: ['product', 'event', 'session'],
+    required: true,
+    index: true
+  },
+  
+  // ID du contenu noté (produit, événement ou session)
+  contentId: {
     type: mongoose.Schema.Types.ObjectId,
     required: true,
-    refPath: 'targetType'
+    index: true
   },
-  targetType: {
+  
+  // Titre du contenu noté (pour référence)
+  contentTitle: {
     type: String,
-    required: true,
-    enum: ['Product', 'Professional']
+    required: true
   },
+  
+  // Note (1-5 étoiles)
   rating: {
     type: Number,
     required: true,
     min: 1,
     max: 5,
-    validate: {
-      validator: Number.isInteger,
-      message: 'Rating must be an integer between 1 and 5'
-    }
+    index: true
   },
+  
+  // Commentaire
   comment: {
     type: String,
     required: true,
-    trim: true,
     maxlength: 1000
   },
-  // Additional fields for better functionality
-  title: {
-    type: String,
-    trim: true,
-    maxlength: 100
-  },
-  images: [{
-    type: String
-  }],
-  isVerified: {
-    type: Boolean,
-    default: false
-  },
-  isReported: {
-    type: Boolean,
-    default: false
-  },
-  reportCount: {
-    type: Number,
-    default: 0
-  },
-  helpfulVotes: {
-    count: {
-      type: Number,
-      default: 0
-    },
-    users: [{
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User'
-    }]
-  },
-  reply: {
-    text: String,
-    date: Date,
-    author: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User'
-    }
-  },
-  status: {
-    type: String,
-    enum: ['pending', 'approved', 'rejected', 'hidden'],
-    default: 'pending'
-  },
-  // For product reviews
-  purchaseVerified: {
-    type: Boolean,
-    default: false
-  },
+  
+  // Commande associée (optionnel)
   orderId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Order'
   },
-  // For professional reviews
-  sessionId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Session'
+  
+  // Statut de la note (approuvé, en attente, rejeté)
+  status: {
+    type: String,
+    enum: ['pending', 'approved', 'rejected'],
+    default: 'pending',
+    index: true
   },
-  bookingId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Booking'
+  
+  // Réponse du professionnel (optionnel)
+  professionalResponse: {
+    type: String,
+    maxlength: 1000
+  },
+  
+  // Date de réponse du professionnel
+  respondedAt: {
+    type: Date
+  },
+  
+  // Images associées (optionnel)
+  images: [{
+    type: String
+  }],
+  
+  // Tags pour catégoriser la note
+  tags: [{
+    type: String,
+    enum: ['qualité', 'service', 'livraison', 'prix', 'communication', 'ponctualité', 'expertise', 'ambiance']
+  }],
+  
+  // Données supplémentaires
+  metadata: {
+    type: mongoose.Schema.Types.Mixed,
+    default: {}
   }
 }, {
   timestamps: true
 });
 
-// Compound index to prevent duplicate reviews
-reviewSchema.index({ userId: 1, targetId: 1, targetType: 1 }, { unique: true });
+// Indexes pour optimiser les requêtes
+reviewSchema.index({ clientId: 1, contentType: 1, createdAt: -1 });
+reviewSchema.index({ professionalId: 1, contentType: 1, status: 1 });
+reviewSchema.index({ contentId: 1, contentType: 1 });
+reviewSchema.index({ rating: 1, status: 1 });
 
-// Index for target queries
-reviewSchema.index({ targetId: 1, targetType: 1, status: 1 });
+// Index unique pour empêcher les doublons d'avis
+// Un client ne peut laisser qu'un seul avis par contenu
+reviewSchema.index(
+  { clientId: 1, contentId: 1, contentType: 1 }, 
+  { unique: true }
+);
 
-// Index for user reviews
-reviewSchema.index({ userId: 1 });
-
-// Index for rating-based queries
-reviewSchema.index({ rating: 1 });
-
-// Index for date-based queries
-reviewSchema.index({ createdAt: -1 });
-
-// Virtual for days since creation
-reviewSchema.virtual('daysAgo').get(function() {
-  const diffTime = Math.abs(new Date() - this.createdAt);
-  return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-});
-
-// Method to check if review can be edited
-reviewSchema.methods.canBeEdited = function(userId) {
-  return this.userId.toString() === userId.toString() && 
-         this.daysAgo <= 7 && 
-         this.status === 'approved';
-};
-
-// Method to check if user found review helpful
-reviewSchema.methods.isHelpfulForUser = function(userId) {
-  return this.helpfulVotes.users.includes(userId);
-};
-
-// Static method to get average rating for target
-reviewSchema.statics.getAverageRating = async function(targetId, targetType) {
-  const result = await this.aggregate([
-    {
-      $match: {
-        targetId: new mongoose.Types.ObjectId(targetId),
-        targetType: targetType,
-        status: 'approved'
-      }
-    },
-    {
-      $group: {
-        _id: null,
-        averageRating: { $avg: '$rating' },
-        totalReviews: { $sum: 1 },
-        ratingDistribution: {
-          $push: '$rating'
-        }
-      }
-    }
+// Méthodes statiques
+reviewSchema.statics.getAverageRating = function(contentId, contentType) {
+  return this.aggregate([
+    { $match: { contentId: contentId, contentType: contentType, status: 'approved' } },
+    { $group: { _id: null, averageRating: { $avg: '$rating' }, totalReviews: { $sum: 1 } } }
   ]);
-
-  return result.length > 0 ? result[0] : { averageRating: 0, totalReviews: 0 };
 };
 
-// Middleware to update target rating after save
-reviewSchema.post('save', async function() {
-  if (this.status === 'approved') {
-    const Model = mongoose.model(this.targetType);
-    const stats = await this.constructor.getAverageRating(this.targetId, this.targetType);
-    
-    await Model.findByIdAndUpdate(this.targetId, {
-      'rating.average': stats.averageRating,
-      'rating.totalReviews': stats.totalReviews
-    });
-  }
-});
-
-// Middleware to update target rating after remove
-reviewSchema.post('remove', async function() {
-  const Model = mongoose.model(this.targetType);
-  const stats = await this.constructor.getAverageRating(this.targetId, this.targetType);
+reviewSchema.statics.getReviewsByProfessional = function(professionalId, options = {}) {
+  const match = { professionalId: professionalId };
   
-  await Model.findByIdAndUpdate(this.targetId, {
-    'rating.average': stats.averageRating,
-    'rating.totalReviews': stats.totalReviews
-  });
-});
-
-// Ensure virtual fields are serialized
-reviewSchema.set('toJSON', {
-  virtuals: true,
-  transform: function(doc, ret) {
-    delete ret.__v;
-    return ret;
+  if (options.status) {
+    match.status = options.status;
   }
-});
+  
+  if (options.contentType) {
+    match.contentType = options.contentType;
+  }
+  
+  return this.find(match)
+    .populate('clientId', 'firstName lastName email')
+    .populate('contentId', 'title name')
+    .sort({ createdAt: -1 });
+};
 
-module.exports = mongoose.model('Review', reviewSchema); 
+// Méthodes d'instance
+reviewSchema.methods.toPublicJSON = function() {
+  return {
+    id: this._id,
+    rating: this.rating,
+    comment: this.comment,
+    contentType: this.contentType,
+    contentTitle: this.contentTitle,
+    createdAt: this.createdAt,
+    tags: this.tags,
+    images: this.images,
+    professionalResponse: this.professionalResponse,
+    respondedAt: this.respondedAt,
+    client: {
+      firstName: this.clientId.firstName,
+      lastName: this.clientId.lastName
+    }
+  };
+};
+
+const Review = mongoose.model('Review', reviewSchema);
+
+module.exports = Review; 

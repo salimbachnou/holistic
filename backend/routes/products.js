@@ -378,4 +378,184 @@ router.get('/categories/list', async (req, res) => {
   }
 });
 
+// @route   GET /api/products/:id/reviews
+// @desc    Get reviews for a specific product
+// @access  Public
+router.get('/:id/reviews', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { page = 1, limit = 10, sortBy = 'createdAt', sortOrder = 'desc' } = req.query;
+
+    // Validate ObjectId
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'ID de produit invalide'
+      });
+    }
+
+    // Verify product exists
+    const product = await Product.findOne({
+      _id: id,
+      status: 'approved',
+      isActive: true
+    });
+
+    if (!product) {
+      return res.status(404).json({
+        success: false,
+        message: 'Produit non trouvé'
+      });
+    }
+
+    const Review = mongoose.model('Review');
+
+    // Build sort options
+    const sort = {};
+    sort[sortBy] = sortOrder === 'asc' ? 1 : -1;
+
+    // Calculate pagination
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    // Get reviews
+    const reviews = await Review.find({
+      contentId: id,
+      contentType: 'product',
+      status: 'approved'
+    })
+    .populate('clientId', 'firstName lastName profileImage')
+    .populate('professionalId', 'businessName')
+    .sort(sort)
+    .skip(skip)
+    .limit(parseInt(limit))
+    .lean();
+
+    // Get total count for pagination
+    const totalReviews = await Review.countDocuments({
+      contentId: id,
+      contentType: 'product',
+      status: 'approved'
+    });
+
+    // Get rating statistics
+    const ratingStats = await Review.aggregate([
+      {
+        $match: {
+          contentId: new mongoose.Types.ObjectId(id),
+          contentType: 'product',
+          status: 'approved'
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          averageRating: { $avg: '$rating' },
+          totalReviews: { $sum: 1 },
+          ratings: {
+            $push: '$rating'
+          }
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          averageRating: { $round: ['$averageRating', 1] },
+          totalReviews: 1,
+          ratingDistribution: {
+            5: {
+              $size: {
+                $filter: {
+                  input: '$ratings',
+                  cond: { $eq: ['$$this', 5] }
+                }
+              }
+            },
+            4: {
+              $size: {
+                $filter: {
+                  input: '$ratings',
+                  cond: { $eq: ['$$this', 4] }
+                }
+              }
+            },
+            3: {
+              $size: {
+                $filter: {
+                  input: '$ratings',
+                  cond: { $eq: ['$$this', 3] }
+                }
+              }
+            },
+            2: {
+              $size: {
+                $filter: {
+                  input: '$ratings',
+                  cond: { $eq: ['$$this', 2] }
+                }
+              }
+            },
+            1: {
+              $size: {
+                $filter: {
+                  input: '$ratings',
+                  cond: { $eq: ['$$this', 1] }
+                }
+              }
+            }
+          }
+        }
+      }
+    ]);
+
+    // Transform reviews for frontend
+    const transformedReviews = reviews.map(review => ({
+      _id: review._id,
+      rating: review.rating,
+      comment: review.comment,
+      createdAt: review.createdAt,
+      updatedAt: review.updatedAt,
+      tags: review.tags || [],
+      images: review.images || [],
+      professionalResponse: review.professionalResponse,
+      respondedAt: review.respondedAt,
+      client: {
+        _id: review.clientId._id,
+        firstName: review.clientId.firstName,
+        lastName: review.clientId.lastName,
+        profileImage: review.clientId.profileImage,
+        displayName: `${review.clientId.firstName} ${review.clientId.lastName.charAt(0)}.`
+      }
+    }));
+
+    const stats = ratingStats[0] || {
+      averageRating: 0,
+      totalReviews: 0,
+      ratingDistribution: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 }
+    };
+
+    res.json({
+      success: true,
+      data: {
+        reviews: transformedReviews,
+        pagination: {
+          currentPage: parseInt(page),
+          totalPages: Math.ceil(totalReviews / parseInt(limit)),
+          totalReviews,
+          hasNextPage: parseInt(page) * parseInt(limit) < totalReviews,
+          hasPrevPage: parseInt(page) > 1
+        },
+        statistics: stats
+      }
+    });
+
+  } catch (error) {
+    console.error('Error fetching product reviews:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la récupération des avis',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
 module.exports = router;

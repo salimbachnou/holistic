@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { toast } from 'react-hot-toast';
 import {
   FaUser,
@@ -16,7 +16,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { apiService } from '../services/axiosConfig';
 
 const ClientProfilePage = () => {
-  const { user } = useAuth();
+  const { user, refreshUserData } = useAuth();
   const [activeTab, setActiveTab] = useState('personal');
   const [loading, setLoading] = useState(false);
   const [bookingsLoading, setBookingsLoading] = useState(false);
@@ -29,6 +29,9 @@ const ClientProfilePage = () => {
     lastName: '',
     email: '',
     phone: '',
+    address: '',
+    birthDate: '',
+    gender: '',
   });
   const [editMode, setEditMode] = useState(false);
   const [contactForm, setContactForm] = useState({
@@ -38,47 +41,7 @@ const ClientProfilePage = () => {
   const [submittingContact, setSubmittingContact] = useState(false);
   const [previewImage, setPreviewImage] = useState(null);
 
-  useEffect(() => {
-    if (user) {
-      setProfileForm({
-        firstName: user.firstName || '',
-        lastName: user.lastName || '',
-        email: user.email || '',
-        phone: user.phone || '',
-      });
-
-      // Set preview image if user has profile image
-      if (user.profileImage) {
-        setPreviewImage(
-          user.profileImage.startsWith('http')
-            ? user.profileImage
-            : `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}${user.profileImage}`
-        );
-      }
-
-      // Load data based on active tab
-      loadTabData(activeTab);
-    }
-  }, [user, activeTab]);
-
-  const loadTabData = tab => {
-    if (!user) return;
-
-    if (tab === 'bookings') {
-      fetchBookings();
-    } else if (tab === 'orders') {
-      setLoading(true);
-      fetchOrders();
-    } else if (tab === 'messages') {
-      setLoading(true);
-      fetchConversations();
-    } else if (tab === 'favorites') {
-      setLoading(true);
-      fetchFavorites();
-    }
-  };
-
-  const fetchBookings = async () => {
+  const fetchBookings = useCallback(async () => {
     try {
       setBookingsLoading(true);
       const response = await apiService.get('/bookings/my-bookings');
@@ -89,9 +52,9 @@ const ClientProfilePage = () => {
     } finally {
       setBookingsLoading(false);
     }
-  };
+  }, []);
 
-  const fetchOrders = async () => {
+  const fetchOrders = useCallback(async () => {
     try {
       const response = await apiService.get('/orders');
       setOrders(response.data?.orders || []);
@@ -101,9 +64,9 @@ const ClientProfilePage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const fetchConversations = async () => {
+  const fetchConversations = useCallback(async () => {
     try {
       const response = await apiService.get('/messages/conversations');
       // Ensure we have the correct data structure
@@ -119,9 +82,9 @@ const ClientProfilePage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const fetchFavorites = async () => {
+  const fetchFavorites = useCallback(async () => {
     try {
       const response = await apiService.get('/users/favorites');
       // Ensure we have the correct data structure
@@ -135,7 +98,53 @@ const ClientProfilePage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  const loadTabData = useCallback(
+    tab => {
+      if (!user) return;
+
+      if (tab === 'bookings') {
+        fetchBookings();
+      } else if (tab === 'orders') {
+        setLoading(true);
+        fetchOrders();
+      } else if (tab === 'messages') {
+        setLoading(true);
+        fetchConversations();
+      } else if (tab === 'favorites') {
+        setLoading(true);
+        fetchFavorites();
+      }
+    },
+    [user, fetchBookings, fetchOrders, fetchConversations, fetchFavorites]
+  );
+
+  useEffect(() => {
+    if (user) {
+      setProfileForm({
+        firstName: user.firstName || '',
+        lastName: user.lastName || '',
+        email: user.email || '',
+        phone: user.phone || '',
+        address: user.address || '',
+        birthDate: user.birthDate ? new Date(user.birthDate).toISOString().split('T')[0] : '',
+        gender: user.gender || '',
+      });
+
+      // Set preview image if user has profile image
+      if (user.profileImage) {
+        setPreviewImage(
+          user.profileImage.startsWith('http')
+            ? user.profileImage
+            : `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}${user.profileImage}`
+        );
+      }
+
+      // Load data based on active tab
+      loadTabData(activeTab);
+    }
+  }, [user, activeTab, loadTabData]);
 
   const handleInputChange = e => {
     const { name, value } = e.target;
@@ -181,6 +190,17 @@ const ClientProfilePage = () => {
       formData.append('lastName', profileForm.lastName);
       formData.append('email', profileForm.email);
       formData.append('phone', profileForm.phone || '');
+      formData.append('address', profileForm.address || '');
+
+      // Only append birthDate if it's not empty
+      if (profileForm.birthDate) {
+        formData.append('birthDate', profileForm.birthDate);
+      }
+
+      // Only append gender if it's not empty
+      if (profileForm.gender) {
+        formData.append('gender', profileForm.gender);
+      }
 
       // Only append profileImage if it exists
       if (profileForm.profileImage) {
@@ -196,6 +216,14 @@ const ClientProfilePage = () => {
       if (response.data.success) {
         toast.success('Profil mis à jour avec succès');
         setEditMode(false);
+        // Refresh user data to show updated info immediately
+        try {
+          await refreshUserData();
+        } catch (error) {
+          console.error('Failed to refresh user data:', error);
+          // If refresh fails, just reload the page as fallback
+          window.location.reload();
+        }
       }
     } catch (error) {
       toast.error(error.response?.data?.message || 'Erreur lors de la mise à jour du profil');
@@ -247,51 +275,230 @@ const ClientProfilePage = () => {
   };
 
   const renderPersonalInfo = () => (
-    <div className="bg-white rounded-lg shadow-sm p-6">
+    <div className="bg-white rounded-lg shadow-sm p-3 sm:p-6">
       {!editMode ? (
         <>
-          <div className="flex justify-between mb-6">
-            <h2 className="text-xl font-semibold">Informations personnelles</h2>
+          <div className="flex flex-col sm:flex-row sm:justify-between mb-4 sm:mb-6">
+            <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-0">
+              Informations personnelles
+            </h2>
             <button
               onClick={() => setEditMode(true)}
-              className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors"
+              className="bg-primary-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors text-sm sm:text-base"
             >
               Modifier
             </button>
           </div>
 
-          <div className="flex flex-col md:flex-row items-center mb-8">
-            <div className="w-32 h-32 rounded-full overflow-hidden bg-gray-200 flex items-center justify-center mb-4 md:mb-0 md:mr-8">
+          <div className="flex flex-col md:flex-row items-center mb-6 sm:mb-8">
+            <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-full overflow-hidden bg-gray-200 flex items-center justify-center mb-4 md:mb-0 md:mr-6 lg:mr-8">
               {previewImage ? (
                 <img src={previewImage} alt="Profile" className="w-full h-full object-cover" />
               ) : (
-                <FaUser className="text-gray-400 w-12 h-12" />
+                <FaUser className="text-gray-400 w-8 h-8 sm:w-12 sm:h-12" />
               )}
             </div>
 
-            <div className="flex-1">
-              <h2 className="text-2xl font-bold">
+            <div className="flex-1 text-center md:text-left">
+              <h2 className="text-xl sm:text-2xl font-bold">
                 {user?.firstName} {user?.lastName}
               </h2>
-              <p className="text-gray-600 mt-1">{user?.email}</p>
-              {user?.phone && <p className="text-gray-600 mt-1">{user?.phone}</p>}
+              <p className="text-gray-600 mt-1 text-sm sm:text-base break-all">{user?.email}</p>
+              <div className="flex items-center justify-center md:justify-start mt-2">
+                <span
+                  className={`px-2 py-1 rounded-full text-xs font-medium ${
+                    user?.isVerified
+                      ? 'bg-green-100 text-green-800'
+                      : 'bg-yellow-100 text-yellow-800'
+                  }`}
+                >
+                  {user?.isVerified ? 'Compte vérifié' : 'Compte non vérifié'}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Informations détaillées */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Informations de contact */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-gray-900 border-b border-gray-200 pb-2">
+                Contact
+              </h3>
+
+              <div className="space-y-3">
+                <div>
+                  <span className="text-sm font-medium text-gray-500">Email</span>
+                  <p className="text-sm sm:text-base text-gray-900 break-all">
+                    {user?.email || 'Non renseigné'}
+                  </p>
+                </div>
+
+                {user?.phone && (
+                  <div>
+                    <span className="text-sm font-medium text-gray-500">Téléphone</span>
+                    <p className="text-sm sm:text-base text-gray-900">{user.phone}</p>
+                  </div>
+                )}
+
+                {user?.address && (
+                  <div>
+                    <span className="text-sm font-medium text-gray-500">Adresse</span>
+                    <p className="text-sm sm:text-base text-gray-900">{user.address}</p>
+                  </div>
+                )}
+
+                {user?.coordinates?.city && (
+                  <div>
+                    <span className="text-sm font-medium text-gray-500">Localisation</span>
+                    <p className="text-sm sm:text-base text-gray-900">
+                      {user.coordinates.city}
+                      {user.coordinates.country && `, ${user.coordinates.country}`}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Informations personnelles */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-gray-900 border-b border-gray-200 pb-2">
+                Informations personnelles
+              </h3>
+
+              <div className="space-y-3">
+                {user?.birthDate && (
+                  <div>
+                    <span className="text-sm font-medium text-gray-500">Date de naissance</span>
+                    <p className="text-sm sm:text-base text-gray-900">
+                      {new Date(user.birthDate).toLocaleDateString('fr-FR')}
+                    </p>
+                  </div>
+                )}
+
+                {user?.gender && (
+                  <div>
+                    <span className="text-sm font-medium text-gray-500">Genre</span>
+                    <p className="text-sm sm:text-base text-gray-900 capitalize">
+                      {user.gender === 'male'
+                        ? 'Homme'
+                        : user.gender === 'female'
+                          ? 'Femme'
+                          : user.gender === 'other'
+                            ? 'Autre'
+                            : 'Préfère ne pas dire'}
+                    </p>
+                  </div>
+                )}
+
+                <div>
+                  <span className="text-sm font-medium text-gray-500">Type de compte</span>
+                  <p className="text-sm sm:text-base text-gray-900 capitalize">
+                    {user?.role === 'client'
+                      ? 'Client'
+                      : user?.role === 'professional'
+                        ? 'Professionnel'
+                        : user?.role === 'admin'
+                          ? 'Administrateur'
+                          : user?.role}
+                  </p>
+                </div>
+
+                <div>
+                  <span className="text-sm font-medium text-gray-500">Membre depuis</span>
+                  <p className="text-sm sm:text-base text-gray-900">
+                    {user?.createdAt
+                      ? new Date(user.createdAt).toLocaleDateString('fr-FR')
+                      : 'Non disponible'}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Préférences */}
+          {user?.preferences && (
+            <div className="mt-6 pt-6 border-t border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Préférences</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <span className="text-sm font-medium text-gray-500">Langue</span>
+                  <p className="text-sm sm:text-base text-gray-900">
+                    {user.preferences.language === 'fr'
+                      ? 'Français'
+                      : user.preferences.language === 'en'
+                        ? 'Anglais'
+                        : user.preferences.language === 'ar'
+                          ? 'Arabe'
+                          : user.preferences.language || 'Non définie'}
+                  </p>
+                </div>
+
+                {user.preferences.notifications && (
+                  <div>
+                    <span className="text-sm font-medium text-gray-500">Notifications</span>
+                    <div className="text-sm sm:text-base text-gray-900">
+                      <p>
+                        Email: {user.preferences.notifications.email ? 'Activées' : 'Désactivées'}
+                      </p>
+                      <p>
+                        Push: {user.preferences.notifications.push ? 'Activées' : 'Désactivées'}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Statistiques du compte */}
+          <div className="mt-6 pt-6 border-t border-gray-200">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Statistiques du compte</h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="text-center p-3 bg-gray-50 rounded-lg">
+                <p className="text-lg font-semibold text-primary-600">
+                  {user?.bookings?.length || 0}
+                </p>
+                <p className="text-xs text-gray-500">Réservations</p>
+              </div>
+
+              <div className="text-center p-3 bg-gray-50 rounded-lg">
+                <p className="text-lg font-semibold text-primary-600">
+                  {user?.orders?.length || 0}
+                </p>
+                <p className="text-xs text-gray-500">Commandes</p>
+              </div>
+
+              <div className="text-center p-3 bg-gray-50 rounded-lg">
+                <p className="text-lg font-semibold text-primary-600">
+                  {user?.favorites?.length || 0}
+                </p>
+                <p className="text-xs text-gray-500">Favoris</p>
+              </div>
+
+              <div className="text-center p-3 bg-gray-50 rounded-lg">
+                <p className="text-lg font-semibold text-primary-600">
+                  {user?.provider || 'Local'}
+                </p>
+                <p className="text-xs text-gray-500">Méthode de connexion</p>
+              </div>
             </div>
           </div>
         </>
       ) : (
         <form onSubmit={handleSubmit}>
-          <h2 className="text-xl font-semibold mb-6">Modifier le profil</h2>
+          <h2 className="text-lg sm:text-xl font-semibold mb-4 sm:mb-6">Modifier le profil</h2>
 
-          <div className="flex flex-col md:flex-row items-center mb-8">
-            <div className="w-32 h-32 rounded-full overflow-hidden bg-gray-200 flex items-center justify-center mb-4 md:mb-0 md:mr-8 relative group">
+          <div className="flex flex-col md:flex-row items-center mb-6 sm:mb-8">
+            <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-full overflow-hidden bg-gray-200 flex items-center justify-center mb-4 md:mb-0 md:mr-6 lg:mr-8 relative group">
               {previewImage ? (
                 <img src={previewImage} alt="Profile" className="w-full h-full object-cover" />
               ) : (
-                <FaUser className="text-gray-400 w-12 h-12" />
+                <FaUser className="text-gray-400 w-8 h-8 sm:w-12 sm:h-12" />
               )}
 
               <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                <label className="cursor-pointer text-white text-sm font-medium">
+                <label className="cursor-pointer text-white text-xs sm:text-sm font-medium">
                   Changer
                   <input
                     type="file"
@@ -303,12 +510,12 @@ const ClientProfilePage = () => {
               </div>
             </div>
 
-            <div className="flex-1 space-y-4 w-full">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="flex-1 space-y-3 sm:space-y-4 w-full">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                 <div>
                   <label
                     htmlFor="firstName"
-                    className="block text-sm font-medium text-gray-700 mb-1"
+                    className="block text-xs sm:text-sm font-medium text-gray-700 mb-1"
                   >
                     Prénom
                   </label>
@@ -318,13 +525,13 @@ const ClientProfilePage = () => {
                     type="text"
                     value={profileForm.firstName}
                     onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm sm:text-base"
                   />
                 </div>
                 <div>
                   <label
                     htmlFor="lastName"
-                    className="block text-sm font-medium text-gray-700 mb-1"
+                    className="block text-xs sm:text-sm font-medium text-gray-700 mb-1"
                   >
                     Nom
                   </label>
@@ -334,13 +541,16 @@ const ClientProfilePage = () => {
                     type="text"
                     value={profileForm.lastName}
                     onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm sm:text-base"
                   />
                 </div>
               </div>
 
               <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+                <label
+                  htmlFor="email"
+                  className="block text-xs sm:text-sm font-medium text-gray-700 mb-1"
+                >
                   Email
                 </label>
                 <input
@@ -349,12 +559,15 @@ const ClientProfilePage = () => {
                   type="email"
                   value={profileForm.email}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm sm:text-base"
                 />
               </div>
 
               <div>
-                <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
+                <label
+                  htmlFor="phone"
+                  className="block text-xs sm:text-sm font-medium text-gray-700 mb-1"
+                >
                   Téléphone
                 </label>
                 <input
@@ -363,23 +576,82 @@ const ClientProfilePage = () => {
                   type="text"
                   value={profileForm.phone}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm sm:text-base"
                 />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="address"
+                  className="block text-xs sm:text-sm font-medium text-gray-700 mb-1"
+                >
+                  Adresse
+                </label>
+                <input
+                  id="address"
+                  name="address"
+                  type="text"
+                  value={profileForm.address}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm sm:text-base"
+                  placeholder="Votre adresse complète"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+                <div>
+                  <label
+                    htmlFor="birthDate"
+                    className="block text-xs sm:text-sm font-medium text-gray-700 mb-1"
+                  >
+                    Date de naissance
+                  </label>
+                  <input
+                    id="birthDate"
+                    name="birthDate"
+                    type="date"
+                    value={profileForm.birthDate}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm sm:text-base"
+                  />
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="gender"
+                    className="block text-xs sm:text-sm font-medium text-gray-700 mb-1"
+                  >
+                    Genre
+                  </label>
+                  <select
+                    id="gender"
+                    name="gender"
+                    value={profileForm.gender}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm sm:text-base"
+                  >
+                    <option value="">Sélectionner</option>
+                    <option value="male">Homme</option>
+                    <option value="female">Femme</option>
+                    <option value="other">Autre</option>
+                    <option value="prefer_not_to_say">Préfère ne pas dire</option>
+                  </select>
+                </div>
               </div>
             </div>
           </div>
 
-          <div className="flex justify-end space-x-3">
+          <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3">
             <button
               type="button"
               onClick={() => setEditMode(false)}
-              className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+              className="w-full sm:w-auto px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 text-sm sm:text-base"
             >
               Annuler
             </button>
             <button
               type="submit"
-              className="bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 transition-colors"
+              className="w-full sm:w-auto bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 transition-colors text-sm sm:text-base"
               disabled={loading}
             >
               {loading ? 'Enregistrement...' : 'Enregistrer'}
@@ -391,15 +663,17 @@ const ClientProfilePage = () => {
   );
 
   const renderBookings = () => (
-    <div className="bg-white rounded-lg shadow-sm p-6">
-      <h2 className="text-xl font-semibold mb-6">Mes réservations</h2>
+    <div className="bg-white rounded-lg shadow-sm p-3 sm:p-6">
+      <h2 className="text-lg sm:text-xl font-semibold mb-4 sm:mb-6">Mes réservations</h2>
 
       {/* Tabs for upcoming and past bookings */}
-      <div className="flex border-b border-gray-200 mb-6">
-        <button className="py-2 px-4 border-b-2 border-primary-600 text-primary-600">
+      <div className="flex border-b border-gray-200 mb-4 sm:mb-6">
+        <button className="py-2 px-3 sm:px-4 border-b-2 border-primary-600 text-primary-600 text-sm sm:text-base">
           À venir
         </button>
-        <button className="py-2 px-4 text-gray-500 hover:text-gray-700">Passées</button>
+        <button className="py-2 px-3 sm:px-4 text-gray-500 hover:text-gray-700 text-sm sm:text-base">
+          Passées
+        </button>
       </div>
 
       {bookingsLoading ? (
@@ -407,13 +681,15 @@ const ClientProfilePage = () => {
           <LoadingSpinner />
         </div>
       ) : bookings.length > 0 ? (
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           {bookings.map(booking => (
-            <div key={booking._id} className="border border-gray-200 rounded-lg p-4">
-              <div className="flex flex-wrap justify-between mb-2">
-                <h3 className="text-lg font-medium">{booking.service?.name || 'Session'}</h3>
+            <div key={booking._id} className="border border-gray-200 rounded-lg p-3 sm:p-4">
+              <div className="flex flex-col sm:flex-row sm:justify-between mb-3 sm:mb-2">
+                <h3 className="text-base sm:text-lg font-medium mb-2 sm:mb-0">
+                  {booking.service?.name || 'Session'}
+                </h3>
                 <span
-                  className={`px-2 py-1 rounded-full text-xs font-medium ${
+                  className={`px-2 py-1 rounded-full text-xs font-medium self-start ${
                     booking.status === 'confirmed'
                       ? 'bg-green-100 text-green-800'
                       : booking.status === 'pending'
@@ -435,29 +711,31 @@ const ClientProfilePage = () => {
                 </span>
               </div>
 
-              <p className="text-gray-600 mb-3">{booking.professional?.businessName}</p>
+              <p className="text-gray-600 mb-3 text-sm sm:text-base">
+                {booking.professional?.businessName}
+              </p>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-4">
-                <div className="flex items-center text-sm">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4 text-xs sm:text-sm">
+                <div className="flex items-center">
                   <span className="mr-2">📅</span>
                   <span>{new Date(booking.appointmentDate).toLocaleDateString('fr-FR')}</span>
                 </div>
-                <div className="flex items-center text-sm">
+                <div className="flex items-center">
                   <span className="mr-2">🕒</span>
                   <span>
                     {booking.appointmentTime.start} - {booking.appointmentTime.end}
                   </span>
                 </div>
-                <div className="flex items-center text-sm">
+                <div className="flex items-center">
                   <span className="mr-2">📍</span>
-                  <span>
+                  <span className="truncate">
                     {booking.location.type === 'online'
                       ? 'Session en ligne'
                       : booking.location.address?.street &&
                         `${booking.location.address.street}, ${booking.location.address.city}`}
                   </span>
                 </div>
-                <div className="flex items-center text-sm">
+                <div className="flex items-center">
                   <span className="mr-2">💰</span>
                   <span>
                     {booking.totalAmount.amount} {booking.totalAmount.currency}
@@ -465,10 +743,10 @@ const ClientProfilePage = () => {
                 </div>
               </div>
 
-              <div className="flex flex-wrap gap-2 justify-end">
+              <div className="flex flex-col sm:flex-row gap-2 justify-end">
                 <Link
                   to={`/professionals/${booking.professional?._id}`}
-                  className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-md text-sm hover:bg-gray-200"
+                  className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-md text-xs sm:text-sm hover:bg-gray-200 text-center"
                 >
                   Voir professionnel
                 </Link>
@@ -476,7 +754,7 @@ const ClientProfilePage = () => {
                 {booking.location.type === 'online' && booking.status === 'confirmed' && (
                   <button
                     onClick={() => joinMeeting(booking.location.onlineLink)}
-                    className="px-3 py-1.5 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700"
+                    className="px-3 py-1.5 bg-blue-600 text-white rounded-md text-xs sm:text-sm hover:bg-blue-700 flex items-center justify-center"
                   >
                     <FaVideo className="inline mr-1" /> Rejoindre
                   </button>
@@ -485,7 +763,7 @@ const ClientProfilePage = () => {
                 {(booking.status === 'confirmed' || booking.status === 'pending') && (
                   <button
                     onClick={() => cancelBooking(booking._id)}
-                    className="px-3 py-1.5 bg-red-100 text-red-700 rounded-md text-sm hover:bg-red-200"
+                    className="px-3 py-1.5 bg-red-100 text-red-700 rounded-md text-xs sm:text-sm hover:bg-red-200"
                   >
                     Annuler
                   </button>
@@ -496,10 +774,12 @@ const ClientProfilePage = () => {
         </div>
       ) : (
         <div className="text-center py-8">
-          <p className="text-gray-500 mb-4">Vous n'avez pas encore de réservations</p>
+          <p className="text-gray-500 mb-4 text-sm sm:text-base">
+            Vous n&apos;avez pas encore de réservations
+          </p>
           <Link
             to="/professionals"
-            className="inline-block bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700"
+            className="inline-block bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 text-sm sm:text-base"
           >
             Explorer les professionnels
           </Link>
@@ -509,26 +789,28 @@ const ClientProfilePage = () => {
   );
 
   const renderOrders = () => (
-    <div className="bg-white rounded-lg shadow-sm p-6">
-      <h2 className="text-xl font-semibold mb-6">Mes commandes</h2>
+    <div className="bg-white rounded-lg shadow-sm p-3 sm:p-6">
+      <h2 className="text-lg sm:text-xl font-semibold mb-4 sm:mb-6">Mes commandes</h2>
 
       {loading ? (
         <div className="flex justify-center py-10">
           <LoadingSpinner />
         </div>
       ) : orders.length > 0 ? (
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           {orders.map(order => (
-            <div key={order._id} className="border border-gray-200 rounded-lg p-4">
-              <div className="flex flex-wrap justify-between mb-3">
+            <div key={order._id} className="border border-gray-200 rounded-lg p-3 sm:p-4">
+              <div className="flex flex-col sm:flex-row sm:justify-between mb-3">
                 <div>
-                  <h3 className="font-medium">Commande #{order.orderNumber}</h3>
-                  <p className="text-sm text-gray-500">
+                  <h3 className="font-medium text-sm sm:text-base">
+                    Commande #{order.orderNumber}
+                  </h3>
+                  <p className="text-xs sm:text-sm text-gray-500">
                     {new Date(order.createdAt).toLocaleDateString('fr-FR')}
                   </p>
                 </div>
                 <span
-                  className={`px-2 py-1 rounded-full text-xs font-medium ${
+                  className={`px-2 py-1 rounded-full text-xs font-medium self-start mt-2 sm:mt-0 ${
                     order.status === 'delivered'
                       ? 'bg-green-100 text-green-800'
                       : order.status === 'shipped'
@@ -546,18 +828,18 @@ const ClientProfilePage = () => {
 
               <div className="mb-3 space-y-2">
                 {order.items.map((item, idx) => (
-                  <div key={idx} className="flex justify-between text-sm">
-                    <span>
+                  <div key={idx} className="flex justify-between text-xs sm:text-sm">
+                    <span className="truncate mr-2">
                       {item.quantity}x {item.product?.name || 'Produit'}
                     </span>
-                    <span>
+                    <span className="whitespace-nowrap">
                       {item.price?.amount} {item.price?.currency}
                     </span>
                   </div>
                 ))}
               </div>
 
-              <div className="border-t border-gray-100 pt-2 flex justify-between">
+              <div className="border-t border-gray-100 pt-2 flex justify-between text-sm sm:text-base">
                 <span className="font-medium">Total</span>
                 <span className="font-medium">
                   {order.totalAmount.amount} {order.totalAmount.currency}
@@ -568,10 +850,12 @@ const ClientProfilePage = () => {
         </div>
       ) : (
         <div className="text-center py-8">
-          <p className="text-gray-500 mb-4">Vous n'avez pas encore de commandes</p>
+          <p className="text-gray-500 mb-4 text-sm sm:text-base">
+            Vous n&apos;avez pas encore de commandes
+          </p>
           <Link
             to="/products"
-            className="inline-block bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700"
+            className="inline-block bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 text-sm sm:text-base"
           >
             Explorer les produits
           </Link>
@@ -581,8 +865,8 @@ const ClientProfilePage = () => {
   );
 
   const renderMessages = () => (
-    <div className="bg-white rounded-lg shadow-sm p-6">
-      <h2 className="text-xl font-semibold mb-6">Mes conversations</h2>
+    <div className="bg-white rounded-lg shadow-sm p-3 sm:p-6">
+      <h2 className="text-lg sm:text-xl font-semibold mb-4 sm:mb-6">Mes conversations</h2>
 
       {loading ? (
         <div className="flex justify-center py-10">
@@ -605,7 +889,7 @@ const ClientProfilePage = () => {
                 key={conversation.conversationId}
                 className="flex items-center border border-gray-200 rounded-lg p-3 hover:bg-gray-50"
               >
-                <div className="w-12 h-12 rounded-full bg-gray-200 overflow-hidden mr-3">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gray-200 overflow-hidden mr-3 flex-shrink-0">
                   {otherUser.profileImage ? (
                     <img
                       src={otherUser.profileImage}
@@ -614,7 +898,7 @@ const ClientProfilePage = () => {
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center bg-primary-100">
-                      <span className="text-primary-600 font-medium">
+                      <span className="text-primary-600 font-medium text-xs sm:text-sm">
                         {otherUser.firstName?.charAt(0)}
                         {otherUser.lastName?.charAt(0)}
                       </span>
@@ -622,23 +906,23 @@ const ClientProfilePage = () => {
                   )}
                 </div>
 
-                <div className="flex-1">
-                  <div className="flex justify-between">
-                    <h4 className="font-medium">
+                <div className="flex-1 min-w-0">
+                  <div className="flex justify-between items-start">
+                    <h4 className="font-medium text-sm sm:text-base truncate">
                       {otherUser.firstName} {otherUser.lastName}
                     </h4>
-                    <span className="text-xs text-gray-500">
+                    <span className="text-xs text-gray-500 ml-2 flex-shrink-0">
                       {new Date(conversation.lastMessage.createdAt).toLocaleDateString()}
                     </span>
                   </div>
 
-                  <p className="text-sm text-gray-600 truncate">
+                  <p className="text-xs sm:text-sm text-gray-600 truncate">
                     {conversation.lastMessage.content}
                   </p>
                 </div>
 
                 {conversation.unreadCount > 0 && (
-                  <div className="ml-2 bg-primary-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                  <div className="ml-2 bg-primary-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0">
                     {conversation.unreadCount}
                   </div>
                 )}
@@ -648,22 +932,24 @@ const ClientProfilePage = () => {
         </div>
       ) : (
         <div className="text-center py-8">
-          <p className="text-gray-500">Vous n'avez pas encore de conversations</p>
+          <p className="text-gray-500 text-sm sm:text-base">
+            Vous n&apos;avez pas encore de conversations
+          </p>
         </div>
       )}
     </div>
   );
 
   const renderFavorites = () => (
-    <div className="bg-white rounded-lg shadow-sm p-6">
-      <h2 className="text-xl font-semibold mb-6">Mes favoris</h2>
+    <div className="bg-white rounded-lg shadow-sm p-3 sm:p-6">
+      <h2 className="text-lg sm:text-xl font-semibold mb-4 sm:mb-6">Mes favoris</h2>
 
       {loading ? (
         <div className="flex justify-center py-10">
           <LoadingSpinner />
         </div>
       ) : favorites.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           {favorites.map(favorite => {
             // Safety check to prevent errors if data is missing
             if (!favorite || !favorite._id) {
@@ -672,7 +958,7 @@ const ClientProfilePage = () => {
 
             return (
               <div key={favorite._id} className="border border-gray-200 rounded-lg overflow-hidden">
-                <div className="relative h-32">
+                <div className="relative h-24 sm:h-32">
                   {favorite.coverImages && favorite.coverImages.length > 0 ? (
                     <img
                       src={favorite.coverImages[0]}
@@ -681,24 +967,28 @@ const ClientProfilePage = () => {
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center bg-gray-100">
-                      <span className="text-gray-400">Pas d'image</span>
+                      <span className="text-gray-400 text-xs sm:text-sm">Pas d&apos;image</span>
                     </div>
                   )}
 
                   <button
                     onClick={() => removeFavorite(favorite._id)}
-                    className="absolute top-2 right-2 bg-white rounded-full p-1.5 shadow-md hover:bg-red-50 transition-colors"
+                    className="absolute top-2 right-2 bg-white rounded-full p-1 sm:p-1.5 shadow-md hover:bg-red-50 transition-colors"
                   >
-                    <FaHeart className="text-red-500 w-4 h-4" />
+                    <FaHeart className="text-red-500 w-3 h-3 sm:w-4 sm:h-4" />
                   </button>
                 </div>
 
-                <div className="p-3">
-                  <h3 className="font-medium">{favorite.businessName}</h3>
-                  <p className="text-sm text-gray-500 mb-2 capitalize">{favorite.businessType}</p>
+                <div className="p-2 sm:p-3">
+                  <h3 className="font-medium text-sm sm:text-base truncate">
+                    {favorite.businessName}
+                  </h3>
+                  <p className="text-xs sm:text-sm text-gray-500 mb-2 capitalize truncate">
+                    {favorite.businessType}
+                  </p>
 
                   <div className="flex justify-between items-center mt-2">
-                    <div className="flex items-center text-yellow-400 text-sm">
+                    <div className="flex items-center text-yellow-400 text-xs sm:text-sm">
                       {'★'.repeat(Math.floor(favorite.rating?.average || 0))}
                       {'☆'.repeat(5 - Math.floor(favorite.rating?.average || 0))}
                       <span className="ml-1 text-gray-500">
@@ -708,7 +998,7 @@ const ClientProfilePage = () => {
 
                     <Link
                       to={`/professionals/${favorite._id}`}
-                      className="text-primary-600 text-sm font-medium hover:underline"
+                      className="text-primary-600 text-xs sm:text-sm font-medium hover:underline"
                     >
                       Voir
                     </Link>
@@ -720,10 +1010,12 @@ const ClientProfilePage = () => {
         </div>
       ) : (
         <div className="text-center py-8">
-          <p className="text-gray-500 mb-4">Vous n'avez pas encore de favoris</p>
+          <p className="text-gray-500 mb-4 text-sm sm:text-base">
+            Vous n&apos;avez pas encore de favoris
+          </p>
           <Link
             to="/professionals"
-            className="inline-block bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700"
+            className="inline-block bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 text-sm sm:text-base"
           >
             Explorer les professionnels
           </Link>
@@ -733,12 +1025,15 @@ const ClientProfilePage = () => {
   );
 
   const renderContactForm = () => (
-    <div className="bg-white rounded-lg shadow-sm p-6">
-      <h2 className="text-xl font-semibold mb-6">Nous contacter</h2>
+    <div className="bg-white rounded-lg shadow-sm p-3 sm:p-6">
+      <h2 className="text-lg sm:text-xl font-semibold mb-4 sm:mb-6">Nous contacter</h2>
 
-      <form onSubmit={handleContactSubmit} className="space-y-4">
+      <form onSubmit={handleContactSubmit} className="space-y-3 sm:space-y-4">
         <div>
-          <label htmlFor="subject" className="block text-sm font-medium text-gray-700 mb-1">
+          <label
+            htmlFor="subject"
+            className="block text-xs sm:text-sm font-medium text-gray-700 mb-1"
+          >
             Sujet
           </label>
           <input
@@ -748,12 +1043,15 @@ const ClientProfilePage = () => {
             value={contactForm.subject}
             onChange={handleContactInputChange}
             required
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm sm:text-base"
           />
         </div>
 
         <div>
-          <label htmlFor="message" className="block text-sm font-medium text-gray-700 mb-1">
+          <label
+            htmlFor="message"
+            className="block text-xs sm:text-sm font-medium text-gray-700 mb-1"
+          >
             Message
           </label>
           <textarea
@@ -763,7 +1061,7 @@ const ClientProfilePage = () => {
             value={contactForm.message}
             onChange={handleContactInputChange}
             required
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm sm:text-base resize-y"
           ></textarea>
         </div>
 
@@ -771,7 +1069,7 @@ const ClientProfilePage = () => {
           <button
             type="submit"
             disabled={submittingContact}
-            className="bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 transition-colors disabled:bg-primary-400"
+            className="w-full sm:w-auto bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 transition-colors disabled:bg-primary-400 text-sm sm:text-base"
           >
             {submittingContact ? 'Envoi en cours...' : 'Envoyer'}
           </button>
@@ -781,85 +1079,85 @@ const ClientProfilePage = () => {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="mb-10">
-          <h1 className="text-3xl font-bold text-gray-900">Mon espace personnel</h1>
+    <div className="min-h-screen bg-gray-50 py-4 sm:py-8 lg:py-12">
+      <div className="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8">
+        <div className="mb-6 sm:mb-8 lg:mb-10">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Mon espace personnel</h1>
         </div>
 
-        <div className="flex flex-col md:flex-row gap-6">
+        <div className="flex flex-col lg:flex-row gap-4 sm:gap-6">
           {/* Sidebar */}
-          <div className="w-full md:w-64 space-y-1">
+          <div className="w-full lg:w-64 space-y-1 lg:space-y-2">
             <button
               onClick={() => setActiveTab('personal')}
-              className={`w-full flex items-center space-x-2 px-4 py-3 rounded-lg text-left ${
+              className={`w-full flex items-center space-x-2 px-3 sm:px-4 py-2 sm:py-3 rounded-lg text-left text-sm sm:text-base ${
                 activeTab === 'personal'
                   ? 'bg-primary-600 text-white'
                   : 'hover:bg-gray-100 text-gray-700'
               }`}
             >
-              <FaUser className="w-5 h-5" />
-              <span>Informations personnelles</span>
+              <FaUser className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
+              <span className="truncate">Informations personnelles</span>
             </button>
 
             <button
               onClick={() => setActiveTab('bookings')}
-              className={`w-full flex items-center space-x-2 px-4 py-3 rounded-lg text-left ${
+              className={`w-full flex items-center space-x-2 px-3 sm:px-4 py-2 sm:py-3 rounded-lg text-left text-sm sm:text-base ${
                 activeTab === 'bookings'
                   ? 'bg-primary-600 text-white'
                   : 'hover:bg-gray-100 text-gray-700'
               }`}
             >
-              <FaHistory className="w-5 h-5" />
-              <span>Mes réservations</span>
+              <FaHistory className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
+              <span className="truncate">Mes réservations</span>
             </button>
 
             <button
               onClick={() => setActiveTab('orders')}
-              className={`w-full flex items-center space-x-2 px-4 py-3 rounded-lg text-left ${
+              className={`w-full flex items-center space-x-2 px-3 sm:px-4 py-2 sm:py-3 rounded-lg text-left text-sm sm:text-base ${
                 activeTab === 'orders'
                   ? 'bg-primary-600 text-white'
                   : 'hover:bg-gray-100 text-gray-700'
               }`}
             >
-              <FaShoppingBag className="w-5 h-5" />
-              <span>Mes commandes</span>
+              <FaShoppingBag className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
+              <span className="truncate">Mes commandes</span>
             </button>
 
             <button
               onClick={() => setActiveTab('messages')}
-              className={`w-full flex items-center space-x-2 px-4 py-3 rounded-lg text-left ${
+              className={`w-full flex items-center space-x-2 px-3 sm:px-4 py-2 sm:py-3 rounded-lg text-left text-sm sm:text-base ${
                 activeTab === 'messages'
                   ? 'bg-primary-600 text-white'
                   : 'hover:bg-gray-100 text-gray-700'
               }`}
             >
-              <FaComment className="w-5 h-5" />
-              <span>Mes messages</span>
+              <FaComment className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
+              <span className="truncate">Mes messages</span>
             </button>
 
             <button
               onClick={() => setActiveTab('favorites')}
-              className={`w-full flex items-center space-x-2 px-4 py-3 rounded-lg text-left ${
+              className={`w-full flex items-center space-x-2 px-3 sm:px-4 py-2 sm:py-3 rounded-lg text-left text-sm sm:text-base ${
                 activeTab === 'favorites'
                   ? 'bg-primary-600 text-white'
                   : 'hover:bg-gray-100 text-gray-700'
               }`}
             >
-              <FaHeart className="w-5 h-5" />
-              <span>Mes favoris</span>
+              <FaHeart className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
+              <span className="truncate">Mes favoris</span>
             </button>
 
             <button
               onClick={() => setActiveTab('contact')}
-              className={`w-full flex items-center space-x-2 px-4 py-3 rounded-lg text-left ${
+              className={`w-full flex items-center space-x-2 px-3 sm:px-4 py-2 sm:py-3 rounded-lg text-left text-sm sm:text-base ${
                 activeTab === 'contact'
                   ? 'bg-primary-600 text-white'
                   : 'hover:bg-gray-100 text-gray-700'
               }`}
             >
-              <FaEnvelope className="w-5 h-5" />
-              <span>Nous contacter</span>
+              <FaEnvelope className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
+              <span className="truncate">Nous contacter</span>
             </button>
           </div>
 

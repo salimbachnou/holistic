@@ -20,6 +20,7 @@ const uploadsRoutes = require('./routes/uploads');
 const eventsRoutes = require('./routes/events');
 const zoomRoutes = require('./routes/zoom');
 const statsRouter = require('./routes/stats');
+const homepageRoutes = require('./routes/homepage');
 
 const app = express();
 
@@ -55,6 +56,7 @@ app.use('/api/upload', uploadsRoutes);
 app.use('/api/events', eventsRoutes);
 app.use('/api/zoom', zoomRoutes);
 app.use('/api/stats', statsRouter);
+app.use('/api/homepage', homepageRoutes);
 
 // Serve uploads directory
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));

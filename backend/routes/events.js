@@ -208,22 +208,175 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Récupérer les événements d'un professionnel - doit être placé avant la route paramétrée
+// Récupérer les événements d'un professionnel (doit être avant /:id)
 router.get('/professional', isAuthenticated, isProfessional, async (req, res) => {
   try {
     const events = await Event.find({ professional: req.user._id })
-      .sort({ date: 1 });
+      .populate('participants.user', 'firstName lastName email profileImage')
+      .sort({ date: -1 });
     
     res.json({ events });
   } catch (error) {
     console.error('Error fetching professional events:', error);
-    res.status(500).json({ message: 'Erreur lors de la récupération des événements du professionnel' });
+    res.status(500).json({ message: 'Erreur lors de la récupération des événements' });
+  }
+});
+
+// Récupérer les événements auxquels l'utilisateur s'est inscrit (doit être avant /:id)
+router.get('/my-events', isAuthenticated, async (req, res) => {
+  try {
+    console.log('🔍 [MY-EVENTS] Fetching events for user:', req.user._id);
+    
+    const events = await Event.find({
+      'participants.user': req.user._id,
+      status: 'approved'
+    })
+      .populate('professional', 'firstName lastName profileImage businessName')
+      .sort({ date: -1 });
+    
+    // Filtrer pour récupérer seulement les événements où l'utilisateur est participant
+    const userEvents = events.map(event => {
+      const userParticipation = event.participants.find(
+        p => p.user.toString() === req.user._id.toString()
+      );
+      
+      return {
+        ...event.toObject(),
+        userParticipation: userParticipation
+      };
+    });
+    
+    console.log('✅ [MY-EVENTS] Found events:', userEvents.length);
+    res.json({ events: userEvents });
+  } catch (error) {
+    console.error('❌ [MY-EVENTS] Error fetching user events:', error);
+    res.status(500).json({ message: 'Erreur lors de la récupération de vos événements' });
+  }
+});
+
+// Récupérer les participants d'un événement (doit être avant /:id)
+router.get('/:id/participants', isAuthenticated, isProfessional, async (req, res) => {
+  try {
+    console.log('🔍 [PARTICIPANTS] Fetching participants for event:', req.params.id);
+    console.log('🔍 [PARTICIPANTS] Route matched: /:id/participants');
+    
+    const event = await Event.findById(req.params.id)
+      .populate('participants.user', 'firstName lastName email profileImage phone');
+    
+    if (!event) {
+      console.log('❌ [PARTICIPANTS] Event not found:', req.params.id);
+      return res.status(404).json({ message: 'Événement non trouvé' });
+    }
+    
+    console.log('✅ [PARTICIPANTS] Event found, professional:', event.professional);
+    console.log('✅ [PARTICIPANTS] Current user:', req.user._id);
+    
+    // Vérifier que l'événement appartient au professionnel
+    if (event.professional.toString() !== req.user._id.toString()) {
+      console.log('❌ [PARTICIPANTS] Access denied - not the owner');
+      return res.status(403).json({ message: 'Non autorisé à voir les participants de cet événement' });
+    }
+    
+    console.log('✅ [PARTICIPANTS] Returning participants:', event.participants.length);
+    res.json({ participants: event.participants });
+  } catch (error) {
+    console.error('❌ [PARTICIPANTS] Error fetching event participants:', error);
+    res.status(500).json({ message: 'Erreur lors de la récupération des participants' });
+  }
+});
+
+// Mettre à jour le statut d'un participant (doit être avant /:id)
+router.put('/:eventId/participants/:participantId', isAuthenticated, isProfessional, async (req, res) => {
+  try {
+    const { eventId, participantId } = req.params;
+    const { status, reason } = req.body;
+    
+    console.log('Updating participant status:', { eventId, participantId, status });
+    
+    const event = await Event.findById(eventId)
+      .populate('participants.user', 'firstName lastName email');
+    
+    if (!event) {
+      return res.status(404).json({ message: 'Événement non trouvé' });
+    }
+    
+    // Vérifier que l'événement appartient au professionnel
+    if (event.professional.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'Non autorisé à modifier les participants de cet événement' });
+    }
+    
+    // Trouver le participant
+    const participantIndex = event.participants.findIndex(
+      p => p._id.toString() === participantId
+    );
+    
+    if (participantIndex === -1) {
+      return res.status(404).json({ message: 'Participant non trouvé' });
+    }
+    
+    // Mettre à jour le statut
+    event.participants[participantIndex].status = status;
+    
+    if (status === 'cancelled' && reason) {
+      event.participants[participantIndex].cancellationReason = reason;
+    }
+    
+    await event.save();
+    
+    // Envoyer une notification au participant
+    try {
+      const NotificationService = require('../services/notificationService');
+      const participant = event.participants[participantIndex];
+      
+      if (status === 'confirmed') {
+        await NotificationService.createClientNotification(
+          participant.user._id,
+          'Inscription confirmée',
+          `Votre inscription à l'événement "${event.title}" a été confirmée !`,
+          'event_confirmed',
+          `/events/${event._id}`,
+          {
+            eventId: event._id,
+            eventTitle: event.title,
+            eventDate: event.date
+          }
+        );
+      } else if (status === 'cancelled') {
+        await NotificationService.createClientNotification(
+          participant.user._id,
+          'Inscription refusée',
+          `Votre inscription à l'événement "${event.title}" a été refusée.${reason ? ` Raison: ${reason}` : ''}`,
+          'event_cancelled',
+          `/events/${event._id}`,
+          {
+            eventId: event._id,
+            eventTitle: event.title,
+            reason: reason || 'Aucune raison spécifiée'
+          }
+        );
+      }
+    } catch (notificationError) {
+      console.error('Erreur lors de l\'envoi de la notification:', notificationError);
+    }
+    
+    console.log('Participant status updated successfully');
+    res.json({ 
+      message: `Statut du participant mis à jour: ${status}`,
+      participant: event.participants[participantIndex]
+    });
+    
+  } catch (error) {
+    console.error('Error updating participant status:', error);
+    res.status(500).json({ message: 'Erreur lors de la mise à jour du statut du participant' });
   }
 });
 
 // Récupérer un événement par son ID
 router.get('/:id', async (req, res) => {
   try {
+    console.log('🔍 [EVENT] Fetching event by ID:', req.params.id);
+    console.log('🔍 [EVENT] Route matched: /:id');
+    
     const event = await Event.findById(req.params.id)
       .populate({
         path: 'professional',
@@ -234,12 +387,14 @@ router.get('/:id', async (req, res) => {
 
     
     if (!event) {
+      console.log('❌ [EVENT] Event not found:', req.params.id);
       return res.status(404).json({ message: 'Événement non trouvé' });
     }
     
+    console.log('✅ [EVENT] Event found:', event.title);
     res.json({ event });
   } catch (error) {
-    console.error('Error fetching event:', error);
+    console.error('❌ [EVENT] Error fetching event:', error);
     res.status(500).json({ message: 'Erreur lors de la récupération de l\'événement' });
   }
 });
@@ -352,12 +507,58 @@ router.put('/:id', isAuthenticated, isProfessional, async (req, res) => {
       event.coverImages = coverImages;
     }
     
+    // Vérifier si l'événement était déjà approuvé pour notifier les participants
+    const wasApproved = event.status === 'approved';
+    
     // Si l'événement était déjà approuvé, le passer en attente de modération
-    if (event.status === 'approved') {
+    if (wasApproved) {
       event.status = 'pending';
     }
 
     await event.save();
+    
+    // Notifier les participants si l'événement était approuvé et passe en attente
+    if (wasApproved && event.participants && event.participants.length > 0) {
+      try {
+        console.log('🔔 [UPDATE] Événement était approuvé, envoi des notifications...');
+        const NotificationService = require('../services/notificationService');
+        
+        // Notifier tous les participants actifs (non annulés)
+        const activeParticipants = event.participants.filter(p => p.status !== 'cancelled');
+        console.log(`🔔 [UPDATE] ${activeParticipants.length} participants actifs trouvés:`, activeParticipants.map(p => ({
+          userId: p.user.toString(),
+          status: p.status
+        })));
+        
+        for (const participant of activeParticipants) {
+          console.log(`🔔 [UPDATE] Envoi notification à l'utilisateur: ${participant.user}`);
+          const result = await NotificationService.createClientNotification(
+            participant.user,
+            'Événement modifié',
+            `L'événement "${event.title}" a été modifié par l'organisateur. Il est maintenant en attente de validation.`,
+            'event_updated',
+            `/events/${event._id}`,
+            {
+              eventId: event._id,
+              eventTitle: event.title,
+              eventDate: event.date,
+              changes: 'Événement modifié - en attente de validation'
+            }
+          );
+          console.log(`🔔 [UPDATE] Résultat notification pour ${participant.user}:`, result ? 'Succès' : 'Échec');
+        }
+        
+        console.log(`✅ [UPDATE] Notifications envoyées à ${activeParticipants.length} participants pour l'événement modifié: ${event.title}`);
+      } catch (notificationError) {
+        console.error('❌ [UPDATE] Erreur lors de l\'envoi des notifications de modification:', notificationError);
+      }
+    } else {
+      console.log('🔔 [UPDATE] Conditions non remplies pour l\'envoi de notifications:', {
+        wasApproved,
+        hasParticipants: event.participants && event.participants.length > 0,
+        participantsCount: event.participants ? event.participants.length : 0
+      });
+    }
     
     res.json({ message: 'Événement mis à jour avec succès', event });
   } catch (error) {
@@ -392,43 +593,84 @@ router.delete('/:id', isAuthenticated, isProfessional, async (req, res) => {
 // S'inscrire à un événement
 router.post('/:id/register', isAuthenticated, async (req, res) => {
   try {
+    console.log('🔍 [REGISTER] Event registration request:', {
+      eventId: req.params.id,
+      userId: req.user._id,
+      userEmail: req.user.email
+    });
+    
     const event = await Event.findById(req.params.id);
     
     if (!event) {
+      console.log('❌ [REGISTER] Event not found:', req.params.id);
       return res.status(404).json({ message: 'Événement non trouvé' });
     }
     
+    console.log('✅ [REGISTER] Event found:', event.title);
+    console.log('🔍 [REGISTER] Event participants:', event.participants.map(p => ({
+      userId: p.user.toString(),
+      status: p.status,
+      _id: p._id
+    })));
+    
     // Vérifier si l'événement est approuvé
     if (event.status !== 'approved') {
+      console.log('❌ [REGISTER] Event not approved:', event.status);
       return res.status(400).json({ message: 'Cet événement n\'est pas disponible pour inscription' });
     }
     
-    // Vérifier si l'utilisateur est déjà inscrit
-    const isRegistered = event.participants.some(p => 
-      p.user.toString() === req.user._id.toString() && p.status !== 'cancelled'
+    // Vérifier si l'utilisateur est déjà inscrit (avec statut non annulé)
+    const existingParticipations = event.participants.filter(p => 
+      p.user.toString() === req.user._id.toString()
     );
     
-    if (isRegistered) {
+    console.log('🔍 [REGISTER] All user participations:', existingParticipations);
+    
+    const activeParticipation = existingParticipations.find(p => p.status !== 'cancelled');
+    
+    console.log('🔍 [REGISTER] Active participation:', activeParticipation);
+    
+    if (activeParticipation) {
+      console.log('❌ [REGISTER] User already has active registration');
       return res.status(400).json({ message: 'Vous êtes déjà inscrit à cet événement' });
     }
     
+    // Trouver la participation annulée la plus récente pour la réactiver
+    const cancelledParticipation = existingParticipations
+      .filter(p => p.status === 'cancelled')
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
+    
+    console.log('🔍 [REGISTER] Most recent cancelled participation:', cancelledParticipation);
+    
     // Vérifier si l'événement est complet
     const activeParticipants = event.participants.filter(p => p.status !== 'cancelled').length;
+    console.log('🔍 [REGISTER] Active participants:', activeParticipants, '/', event.maxParticipants);
+    
     if (activeParticipants >= event.maxParticipants) {
+      console.log('❌ [REGISTER] Event is full');
       return res.status(400).json({ message: 'Cet événement est complet' });
     }
     
-    // Ajouter l'utilisateur aux participants
-    event.participants.push({
-      user: req.user._id,
-      status: 'pending',
-    });
+    // Si l'utilisateur a une participation annulée, la réactiver au lieu de créer une nouvelle
+    if (cancelledParticipation) {
+      console.log('🔄 [REGISTER] Reactivating cancelled participation');
+      cancelledParticipation.status = 'pending';
+      cancelledParticipation.createdAt = new Date();
+    } else {
+      console.log('➕ [REGISTER] Adding new participation');
+      // Ajouter l'utilisateur aux participants
+      event.participants.push({
+        user: req.user._id,
+        status: 'pending',
+      });
+    }
     
     await event.save();
     
+    console.log('✅ [REGISTER] Registration successful');
     res.json({ message: 'Inscription réussie', event });
   } catch (error) {
-    console.error('Error registering for event:', error);
+    console.error('❌ [REGISTER] Error registering for event:', error);
     res.status(500).json({ message: 'Erreur lors de l\'inscription à l\'événement' });
   }
 });
@@ -480,6 +722,7 @@ router.put('/:id/review', isAuthenticated, isAdmin, async (req, res) => {
       return res.status(404).json({ message: 'Événement non trouvé' });
     }
     
+    const previousStatus = event.status;
     event.status = status;
     
     if (status === 'rejected' && reason) {
@@ -487,6 +730,65 @@ router.put('/:id/review', isAuthenticated, isAdmin, async (req, res) => {
     }
     
     await event.save();
+    
+    // Notifier les participants si l'événement est approuvé après modification
+    if (status === 'approved' && previousStatus === 'pending' && event.participants && event.participants.length > 0) {
+      try {
+        const NotificationService = require('../services/notificationService');
+        
+        // Notifier tous les participants actifs (non annulés)
+        const activeParticipants = event.participants.filter(p => p.status !== 'cancelled');
+        
+        for (const participant of activeParticipants) {
+          await NotificationService.createClientNotification(
+            participant.user,
+            'Événement validé',
+            `L'événement "${event.title}" a été validé après modification. Vous pouvez maintenant consulter les détails mis à jour.`,
+            'event_approved',
+            `/events/${event._id}`,
+            {
+              eventId: event._id,
+              eventTitle: event.title,
+              eventDate: event.date,
+              changes: 'Événement validé après modification'
+            }
+          );
+        }
+        
+        console.log(`✅ Notifications d'approbation envoyées à ${activeParticipants.length} participants pour l'événement: ${event.title}`);
+      } catch (notificationError) {
+        console.error('Erreur lors de l\'envoi des notifications d\'approbation:', notificationError);
+      }
+    }
+    
+    // Notifier les participants si l'événement est rejeté
+    if (status === 'rejected' && event.participants && event.participants.length > 0) {
+      try {
+        const NotificationService = require('../services/notificationService');
+        
+        // Notifier tous les participants actifs (non annulés)
+        const activeParticipants = event.participants.filter(p => p.status !== 'cancelled');
+        
+        for (const participant of activeParticipants) {
+          await NotificationService.createClientNotification(
+            participant.user,
+            'Événement rejeté',
+            `L'événement "${event.title}" a été rejeté par l'administration.${reason ? ` Raison: ${reason}` : ''}`,
+            'event_rejected',
+            `/events/${event._id}`,
+            {
+              eventId: event._id,
+              eventTitle: event.title,
+              reason: reason || 'Aucune raison spécifiée'
+            }
+          );
+        }
+        
+        console.log(`✅ Notifications de rejet envoyées à ${activeParticipants.length} participants pour l'événement: ${event.title}`);
+      } catch (notificationError) {
+        console.error('Erreur lors de l\'envoi des notifications de rejet:', notificationError);
+      }
+    }
     
     res.json({ message: 'Statut de l\'événement mis à jour', event });
   } catch (error) {

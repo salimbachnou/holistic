@@ -79,7 +79,6 @@ const AdminNotificationsPanel = ({ user }) => {
 
         const payload = JSON.parse(jsonPayload);
         userId = payload.userId || payload.sub || payload.id;
-        console.log('AdminNotificationsPanel: Extracted user ID from token:', userId);
       } catch (error) {
         console.error('AdminNotificationsPanel: Error extracting user ID from token:', error);
       }
@@ -174,18 +173,8 @@ const AdminNotificationsPanel = ({ user }) => {
         ];
       }
 
-      // Mettre à jour l'état avec les données (réelles ou fictives)
-      console.log(
-        'AdminNotificationsPanel: Setting notifications state:',
-        JSON.stringify(notificationsData)
-      );
-
       setNotifications(notificationsData);
       setUnreadCount(notificationsData.filter(n => !n.read).length);
-      console.log(
-        'AdminNotificationsPanel: Unread count:',
-        notificationsData.filter(n => !n.read).length
-      );
     } catch (error) {
       console.error('AdminNotificationsPanel: Error in fetchNotifications:', error);
     } finally {

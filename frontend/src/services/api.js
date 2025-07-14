@@ -82,6 +82,31 @@ const apiService = {
     return response.data;
   },
 
+  // Professional dashboard statistics
+  getDashboardStats: async () => {
+    console.log('📡 API Service - getDashboardStats called');
+    try {
+      const response = await api.get('/professionals/dashboard-stats');
+      console.log('✅ API Service - Dashboard stats response:', response);
+      return response.data;
+    } catch (error) {
+      console.error('❌ API Service - Error in getDashboardStats:', error);
+      throw error;
+    }
+  },
+
+  // Professional analytics data
+  getAnalyticsData: async (period = 'month') => {
+    const response = await api.get('/professionals/analytics', { params: { period } });
+    return response.data;
+  },
+
+  // Professional basic stats
+  getProfessionalStats: async () => {
+    const response = await api.get('/professionals/me/stats');
+    return response.data;
+  },
+
   // Health check to verify API connectivity
   checkHealth: async () => {
     try {

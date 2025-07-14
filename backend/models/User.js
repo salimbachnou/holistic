@@ -44,6 +44,11 @@ const userSchema = new mongoose.Schema({
     type: Date,
     default: null
   },
+  gender: {
+    type: String,
+    enum: ['male', 'female', 'other', 'prefer_not_to_say'],
+    default: null
+  },
   profileImage: {
     type: String,
     default: null
@@ -112,6 +117,15 @@ const userSchema = new mongoose.Schema({
   verifiedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
+    default: null
+  },
+  // Password reset fields
+  resetPasswordToken: {
+    type: String,
+    default: null
+  },
+  resetPasswordExpiry: {
+    type: Date,
     default: null
   }
 }, {

@@ -267,7 +267,7 @@ const ProfessionalEventsPage = () => {
             toast.error('Non autorisé. Veuillez vous reconnecter.');
             break;
           case 413:
-            toast.error('Fichier trop volumineux. Limite de 10 Mo.');
+            toast.error('Fichier trop volumineux. Limite de 10 Mo. Limite de 10 Mo.');
             break;
           case 500:
             toast.error('Erreur serveur. Réessayez plus tard.');
@@ -291,16 +291,16 @@ const ProfessionalEventsPage = () => {
     }
   };
 
-  const handleRemoveImage = e => {
-    e.preventDefault();
-    const imageToRemove = e.target.getAttribute('data-image');
-    const updatedImages = getValues('coverImages').filter(img => img !== imageToRemove);
-    setValue('coverImages', updatedImages);
-  };
+  const handleRemoveImageFromList = imageToRemove => {
+    // Handle both direct image parameter and event object
+    if (typeof imageToRemove === 'object' && imageToRemove.target) {
+      // If it's an event object, prevent default and get the image from data attribute
+      if (imageToRemove.preventDefault) {
+        imageToRemove.preventDefault();
+      }
+      imageToRemove = imageToRemove.target.getAttribute('data-image');
+    }
 
-  const handleRemoveImageFromList = e => {
-    e.preventDefault();
-    const imageToRemove = e.target.getAttribute('data-image');
     const updatedImages = getValues('coverImages').filter(img => img !== imageToRemove);
     setValue('coverImages', updatedImages);
   };
@@ -564,7 +564,9 @@ const ProfessionalEventsPage = () => {
                     </div>
                     <div className="flex items-center">
                       <CurrencyDollarIcon className="h-4 w-4 mr-1" />
-                      <span>{event.price} MAD</span>
+                      <span>
+                        {event.price?.amount || event.price} {event.price?.currency || 'MAD'}
+                      </span>
                     </div>
                   </div>
 
@@ -1014,11 +1016,11 @@ const ProfessionalEventsPage = () => {
                           />
                           <button
                             type="button"
-                            onClick={() =>
-                              handleRemoveImageFromList({
-                                target: { getAttribute: () => image },
-                              })
-                            }
+                            onClick={e => {
+                              e.preventDefault();
+                              handleRemoveImageFromList(image);
+                            }}
+                            data-image={image}
                             className="absolute top-1 right-1 bg-red-600 text-white rounded-full p-1 hover:bg-red-700"
                           >
                             <XMarkIcon className="h-4 w-4" />
@@ -1133,7 +1135,10 @@ const ProfessionalEventsPage = () => {
 
                 <div>
                   <h3 className="text-sm font-medium text-gray-500">Prix</h3>
-                  <p className="text-gray-900 mt-1">{selectedEvent.price} MAD</p>
+                  <p className="text-gray-900 mt-1">
+                    {selectedEvent.price?.amount || selectedEvent.price}{' '}
+                    {selectedEvent.price?.currency || 'MAD'}
+                  </p>
                 </div>
 
                 <div>

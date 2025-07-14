@@ -1,350 +1,416 @@
-// External dependencies
 import {
   UserIcon,
   CalendarDaysIcon,
   ShoppingBagIcon,
+  ChartBarIcon,
   CogIcon,
   ArrowRightIcon,
   EyeIcon,
   PlusIcon,
-  TicketIcon,
-  ChatBubbleBottomCenterTextIcon,
+  UsersIcon,
   CreditCardIcon,
   StarIcon,
-  UsersIcon,
+  ArrowPathIcon,
 } from '@heroicons/react/24/outline';
-import axios from 'axios';
-import { motion } from 'framer-motion';
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { toast } from 'react-toastify';
 
-// Internal dependencies
-import ProfessionalButton from '../../components/professional/ProfessionalButton';
-import ProfessionalCard from '../../components/professional/ProfessionalCard';
-import ProfessionalDashboardCard from '../../components/professional/ProfessionalDashboardCard';
-import { API_URL } from '../../config/constants';
+import ProfessionalStatsDebugger from '../../components/professional/ProfessionalStatsDebugger';
+import RatingBreakdown from '../../components/professional/RatingBreakdown';
+import RecentMessagesSection from '../../components/professional/RecentMessageCard';
 import { useAuth } from '../../contexts/AuthContext';
+import ProfessionalService from '../../services/professionalService';
 
 const ProfessionalDashboardPage = () => {
   const { user } = useAuth();
-  const [isLoading, setIsLoading] = useState(true);
   const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const fetchDashboardStats = async () => {
-      try {
-        setIsLoading(true);
-        const token = localStorage.getItem('token');
-
-        if (!token) {
-          throw new Error('Authentication token not found');
-        }
-
-        const response = await axios.get(`${API_URL}/professionals/dashboard-stats`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
-        if (response.data && response.data.success) {
-          setStats(response.data.stats);
-        } else {
-          throw new Error(response.data?.message || 'Failed to fetch dashboard data');
-        }
-      } catch (error) {
-        console.error('Error fetching dashboard stats:', error);
-
-        // More descriptive error message based on the error type
-        let errorMessage = 'Une erreur est survenue lors du chargement des données';
-        if (error.response) {
-          // The request was made and the server responded with a status code
-          // that falls out of the range of 2xx
-          if (error.response.status === 500) {
-            errorMessage = 'Erreur serveur: Le service est temporairement indisponible';
-          } else if (error.response.status === 404) {
-            errorMessage = 'Endpoint introuvable: Veuillez contacter le support technique';
-          } else if (error.response.status === 403) {
-            errorMessage = "Accès refusé: Vous n'avez pas les permissions nécessaires";
-          }
-        } else if (error.request) {
-          // The request was made but no response was received
-          errorMessage = 'Aucune réponse du serveur: Vérifiez votre connexion internet';
-        }
-
-        setError(errorMessage);
-
-        // Use mock data as fallback in case of error
-        setStats({
-          sessions: {
-            total: 0,
-            trend: 'up',
-            trendValue: '+0%',
-          },
-          clients: {
-            total: 0,
-            trend: 'up',
-            trendValue: '+0',
-          },
-          revenue: {
-            total: '0',
-            trend: 'up',
-            trendValue: '+0%',
-          },
-          rating: {
-            total: '0.0',
-            trend: 'up',
-            trendValue: '+0.0',
-          },
-          upcomingSessions: [],
-          recentMessages: [],
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     fetchDashboardStats();
   }, []);
 
+  const fetchDashboardStats = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const result = await ProfessionalService.getDashboardStats();
+
+      if (result.success && result.data && result.data.success) {
+        // Validate the data structure
+        if (ProfessionalService.validateDashboardStats(result.data.stats)) {
+          setStats(result.data.stats);
+        } else {
+          throw new Error('Format de données invalide');
+        }
+      } else {
+        throw new Error(result.error || 'Erreur lors du chargement des statistiques');
+      }
+    } catch (err) {
+      console.error('Erreur lors du chargement des statistiques:', err);
+      setError(err.message);
+      toast.error('Erreur lors du chargement des statistiques');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const quickActions = [
     {
-      name: 'Mon Profil',
-      href: '/dashboard/professional/profile',
-      icon: UserIcon,
-      description: 'Gérer les informations de votre profil',
-      color: 'primary',
-    },
-    {
-      name: 'Mes Sessions',
+      name: 'Nouvelle session',
+      description: 'Créer une nouvelle session',
       href: '/dashboard/professional/sessions',
       icon: CalendarDaysIcon,
-      description: 'Créer et gérer vos sessions',
-      color: 'green',
     },
     {
-      name: 'Mes Produits',
+      name: 'Mes clients',
+      description: 'Gérer mes clients',
+      href: '/dashboard/professional/clients',
+      icon: UsersIcon,
+    },
+    {
+      name: 'Mes produits',
+      description: 'Gérer mes produits',
       href: '/dashboard/professional/products',
       icon: ShoppingBagIcon,
-      description: 'Gérer votre catalogue de produits',
-      color: 'blue',
     },
     {
-      name: 'Mes Événements',
-      href: '/dashboard/professional/events',
-      icon: TicketIcon,
-      description: 'Organiser et gérer vos événements',
-      color: 'purple',
+      name: 'Statistiques',
+      description: 'Voir mes statistiques',
+      href: '/dashboard/professional/analytics',
+      icon: ChartBarIcon,
+    },
+    {
+      name: 'Mon profil',
+      description: 'Modifier mon profil',
+      href: '/dashboard/professional/profile',
+      icon: UserIcon,
+    },
+    {
+      name: 'Paramètres',
+      description: 'Configurer mon compte',
+      href: '/dashboard/professional/settings',
+      icon: CogIcon,
     },
   ];
 
-  if (isLoading) {
+  if (loading) {
     return (
-      <div className="flex items-center justify-center h-full py-16">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-600 shadow-lotus"></div>
+      <div className="min-h-screen bg-gray-50 py-4 sm:py-8">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-center h-64">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div>
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Dashboard Professionnel</h1>
-        <p className="mt-2 text-lg text-gray-600">
-          Bienvenue {user?.firstName}, gérez votre activité holistic
-        </p>
-        {error && (
-          <div className="mt-2 p-4 bg-red-50 text-red-700 rounded-md border border-red-200">
-            <div className="font-medium mb-1">Erreur de chargement des données</div>
-            <div className="text-sm">{error}</div>
-            {error.includes('serveur') && (
-              <div className="mt-2 text-sm">
-                Le serveur rencontre actuellement des difficultés. Nous travaillons à résoudre ce
-                problème.
-                <br />
-                Les données affichées ci-dessous sont des exemples et ne reflètent pas votre
-                activité réelle.
+    <div className="min-h-screen bg-gray-50 py-4 sm:py-8">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        {/* Header */}
+        <div className="mb-6 sm:mb-8">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
+            <div className="flex-1">
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
+                Dashboard Professionnel
+              </h1>
+              <p className="mt-2 text-base sm:text-lg text-gray-600">
+                Bienvenue {user?.firstName}, gérez votre activité Holistic
+              </p>
+            </div>
+            <button
+              onClick={fetchDashboardStats}
+              disabled={loading}
+              className="flex items-center px-3 sm:px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 disabled:opacity-50 transition-all duration-200 self-start"
+            >
+              <ArrowPathIcon className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+              <span className="hidden sm:inline">Actualiser</span>
+              <span className="sm:hidden">Actualiser</span>
+            </button>
+          </div>
+          {error && (
+            <div className="mt-4 p-3 sm:p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                <p className="text-sm text-yellow-800">
+                  ⚠️ Certaines données peuvent ne pas être à jour. {error}
+                </p>
+                <button
+                  onClick={fetchDashboardStats}
+                  className="text-sm text-yellow-800 hover:text-yellow-900 underline self-start"
+                >
+                  Réessayer
+                </button>
               </div>
-            )}
+            </div>
+          )}
+        </div>
+
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
+          <div className="lotus-card">
+            <div className="flex items-center justify-between">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-gray-600 truncate">Sessions ce mois</p>
+                <p className="text-xl sm:text-2xl font-bold text-gray-900">
+                  {stats?.sessions?.total || 0}
+                </p>
+              </div>
+              <div className="flex items-center ml-4">
+                <CalendarDaysIcon className="h-6 w-6 sm:h-8 sm:w-8 text-primary-600 mr-2" />
+                <span
+                  className={`text-xs sm:text-sm font-medium ${
+                    stats?.sessions?.trend === 'up' ? 'text-emerald-600' : 'text-red-600'
+                  }`}
+                >
+                  {stats?.sessions?.trendValue || '+0%'}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="lotus-card">
+            <div className="flex items-center justify-between">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-gray-600 truncate">Nouveaux clients</p>
+                <p className="text-xl sm:text-2xl font-bold text-gray-900">
+                  {stats?.clients?.total || 0}
+                </p>
+              </div>
+              <div className="flex items-center ml-4">
+                <UsersIcon className="h-6 w-6 sm:h-8 sm:w-8 text-emerald-600 mr-2" />
+                <span
+                  className={`text-xs sm:text-sm font-medium ${
+                    stats?.clients?.trend === 'up' ? 'text-emerald-600' : 'text-red-600'
+                  }`}
+                >
+                  {stats?.clients?.trendValue || '+0'}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="lotus-card">
+            <div className="flex items-center justify-between">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-gray-600 truncate">Revenus ce mois</p>
+                <p className="text-lg sm:text-2xl font-bold text-gray-900 truncate">
+                  {ProfessionalService.formatCurrency(stats?.revenue?.total || 0)} MAD
+                </p>
+              </div>
+              <div className="flex items-center ml-4">
+                <CreditCardIcon className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600 mr-2" />
+                <span
+                  className={`text-xs sm:text-sm font-medium ${
+                    stats?.revenue?.trend === 'up' ? 'text-emerald-600' : 'text-red-600'
+                  }`}
+                >
+                  {stats?.revenue?.trendValue || '+0%'}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="lotus-card">
+            <div className="flex items-center justify-between">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-gray-600 truncate">Note moyenne</p>
+                <div className="flex items-baseline">
+                  <p className="text-xl sm:text-2xl font-bold text-gray-900">
+                    {stats?.rating?.total || '0.0'}
+                  </p>
+                  <span className="text-sm text-gray-500 ml-1">/5</span>
+                </div>
+                {stats?.rating?.totalReviews > 0 && (
+                  <p className="text-xs text-gray-500 mt-1">{stats.rating.totalReviews} avis</p>
+                )}
+              </div>
+              <div className="flex flex-col items-center ml-4">
+                <StarIcon className="h-6 w-6 sm:h-8 sm:w-8 text-yellow-500 mb-1" />
+                {stats?.rating?.totalReviews > 0 &&
+                stats?.rating?.trendValue &&
+                stats?.rating?.trendValue !== '0.0' &&
+                stats?.rating?.trendValue !== '+0.0' ? (
+                  <span
+                    className={`text-xs font-medium ${
+                      stats?.rating?.trend === 'up'
+                        ? 'text-emerald-600'
+                        : stats?.rating?.trend === 'down'
+                          ? 'text-red-600'
+                          : 'text-gray-500'
+                    }`}
+                  >
+                    {stats?.rating?.trend === 'up'
+                      ? '↗'
+                      : stats?.rating?.trend === 'down'
+                        ? '↘'
+                        : '→'}{' '}
+                    {stats.rating.trendValue}
+                  </span>
+                ) : (
+                  <span className="text-xs text-gray-400">
+                    {stats?.rating?.totalReviews > 0 ? 'Stable' : 'Nouveau'}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Quick Actions */}
+        <div className="mb-6 sm:mb-8">
+          <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4 sm:mb-6">
+            Actions rapides
+          </h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 sm:gap-6">
+            {quickActions.map(action => {
+              const Icon = action.icon;
+              return (
+                <Link
+                  key={action.name}
+                  to={action.href}
+                  className="lotus-card hover:shadow-lotus-hover transition-all duration-300 group"
+                >
+                  <div className="flex flex-col items-center text-center p-3 sm:p-4">
+                    <div
+                      className={`w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-gradient-lotus opacity-90 flex items-center justify-center mb-3 sm:mb-4 group-hover:scale-110 transition-transform duration-300`}
+                    >
+                      <Icon className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
+                    </div>
+                    <h3 className="text-sm sm:text-base font-semibold text-gray-900 mb-1 sm:mb-2 text-center leading-tight">
+                      {action.name}
+                    </h3>
+                    <p className="text-xs sm:text-sm text-gray-600 mb-2 sm:mb-4 text-center leading-tight hidden sm:block">
+                      {action.description}
+                    </p>
+                    <div className="flex items-center text-primary-600 group-hover:text-primary-700 font-medium">
+                      <span className="text-xs sm:text-sm">Accéder</span>
+                      <ArrowRightIcon className="ml-1 h-3 w-3 sm:h-4 sm:w-4 group-hover:translate-x-1 transition-transform duration-300" />
+                    </div>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Rating Breakdown */}
+        {stats?.rating?.totalReviews > 0 && (
+          <div className="mb-6 sm:mb-8">
+            <RatingBreakdown rating={stats.rating} />
           </div>
         )}
-      </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <ProfessionalDashboardCard
-          title="Sessions ce mois"
-          value={stats.sessions.total}
-          icon={CalendarDaysIcon}
-          color="primary"
-          trend={stats.sessions.trend}
-          trendValue={stats.sessions.trendValue}
-          link="/dashboard/professional/sessions"
-        />
-        <ProfessionalDashboardCard
-          title="Nouveaux clients"
-          value={stats.clients.total}
-          icon={UsersIcon}
-          color="green"
-          trend={stats.clients.trend}
-          trendValue={stats.clients.trendValue}
-          link="/dashboard/professional/clients"
-        />
-        <ProfessionalDashboardCard
-          title="Revenus (MAD)"
-          value={stats.revenue.total}
-          icon={CreditCardIcon}
-          color="blue"
-          trend={stats.revenue.trend}
-          trendValue={stats.revenue.trendValue}
-          link="/dashboard/professional/analytics"
-        />
-        <ProfessionalDashboardCard
-          title="Note moyenne"
-          value={stats.rating.total}
-          icon={StarIcon}
-          color="yellow"
-          trend={stats.rating.trend}
-          trendValue={stats.rating.trendValue}
-          description="/5"
-          link="/dashboard/professional/reviews"
-        />
-      </div>
+        {/* Recent Activity */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
+          {/* Prochaines sessions */}
+          <div className="lotus-card">
+            <div className="flex items-center justify-between mb-4 sm:mb-6">
+              <h3 className="text-base sm:text-lg font-semibold text-gray-900">
+                Prochaines sessions
+              </h3>
+              <Link
+                to="/dashboard/professional/sessions"
+                className="text-primary-600 hover:text-primary-700 font-medium text-sm flex items-center"
+              >
+                <span className="hidden sm:inline">Voir tout</span>
+                <span className="sm:hidden">Tout</span>
+                <ArrowRightIcon className="ml-1 h-4 w-4" />
+              </Link>
+            </div>
+            <div className="space-y-3 sm:space-y-4">
+              {stats?.upcomingSessions?.length > 0 ? (
+                stats.upcomingSessions.map((session, index) => (
+                  <div
+                    key={index}
+                    className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                  >
+                    <div className="flex items-center flex-1 min-w-0">
+                      <div className="w-2 h-2 bg-primary-500 rounded-full mr-3 flex-shrink-0"></div>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium text-gray-900 text-sm sm:text-base truncate">
+                          {session.title}
+                        </p>
+                        <p className="text-xs sm:text-sm text-gray-600">
+                          {new Date(session.date).toLocaleDateString('fr-FR')} à {session.time}
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-xs sm:text-sm text-gray-500 ml-2 flex-shrink-0">
+                      {session.participants || 0} participants
+                    </span>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-6 sm:py-8 text-gray-500">
+                  <CalendarDaysIcon className="mx-auto h-10 w-10 sm:h-12 sm:w-12 text-gray-400 mb-3 sm:mb-4" />
+                  <p className="text-sm">Aucune session prochaine</p>
+                </div>
+              )}
+            </div>
+            <div className="mt-4 pt-4 border-t border-gray-200">
+              <Link
+                to="/dashboard/professional/sessions"
+                className="w-full btn-primary text-sm flex justify-center items-center"
+              >
+                <PlusIcon className="h-4 w-4 mr-2" />
+                Nouvelle session
+              </Link>
+            </div>
+          </div>
 
-      {/* Quick Actions */}
-      <section className="mb-8">
-        <div className="flex items-center justify-between mb-5">
-          <h2 className="text-xl font-semibold text-gray-900">Actions rapides</h2>
-          <ProfessionalButton
-            to="/dashboard/professional/settings"
-            variant="ghost"
-            icon={CogIcon}
-            size="sm"
-          >
-            Paramètres
-          </ProfessionalButton>
+          {/* Messages récents */}
+          <div className="lotus-card">
+            <div className="flex items-center justify-between mb-4 sm:mb-6">
+              <h3 className="text-base sm:text-lg font-semibold text-gray-900">Messages récents</h3>
+              <Link
+                to="/dashboard/professional/messages"
+                className="text-primary-600 hover:text-primary-700 font-medium text-sm flex items-center"
+              >
+                <span className="hidden sm:inline">Voir tout</span>
+                <span className="sm:hidden">Tout</span>
+                <ArrowRightIcon className="ml-1 h-4 w-4" />
+              </Link>
+            </div>
+            <RecentMessagesSection
+              messages={stats?.recentMessages || []}
+              onMessageClick={message => {}}
+            />
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {quickActions.map((action, index) => (
-            <motion.div
-              key={action.name}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, delay: index * 0.1 }}
-            >
-              <ProfessionalCard hover title={action.name} icon={action.icon} color={action.color}>
-                <div className="text-center pt-2 pb-3">
-                  <p className="text-sm text-gray-600 mb-5">{action.description}</p>
-                  <ProfessionalButton to={action.href} variant="primary" fullWidth>
-                    Accéder
-                  </ProfessionalButton>
-                </div>
-              </ProfessionalCard>
-            </motion.div>
-          ))}
+        {/* Call to Action */}
+        <div className="mt-6 sm:mt-8 lotus-card bg-gradient-to-r from-primary-50 to-purple-50 border border-primary-200">
+          <div className="text-center">
+            <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">
+              Optimisez votre profil professionnel
+            </h3>
+            <p className="text-sm sm:text-base text-gray-600 mb-4">
+              Un profil complet attire plus de clients. Ajoutez vos photos, certifications et
+              horaires.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <Link
+                to="/dashboard/professional/profile"
+                className="btn-primary text-sm sm:text-base"
+              >
+                <EyeIcon className="h-4 w-4 mr-2" />
+                Voir mon profil
+              </Link>
+              <Link
+                to="/dashboard/professional/settings"
+                className="btn-secondary text-sm sm:text-base"
+              >
+                <CogIcon className="h-4 w-4 mr-2" />
+                Paramètres
+              </Link>
+            </div>
+          </div>
         </div>
-      </section>
-
-      {/* Recent Activity */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-        {/* Prochaines sessions */}
-        <ProfessionalCard
-          title="Prochaines sessions"
-          icon={CalendarDaysIcon}
-          color="primary"
-          actionButtons={
-            <Link
-              to="/dashboard/professional/sessions"
-              className="text-sm text-primary-600 hover:text-primary-700 font-medium flex items-center"
-            >
-              Voir tout
-              <ArrowRightIcon className="ml-1 h-4 w-4" />
-            </Link>
-          }
-        >
-          <div className="space-y-4">
-            {stats.upcomingSessions && stats.upcomingSessions.length > 0 ? (
-              stats.upcomingSessions.map(session => (
-                <div
-                  key={session.id}
-                  className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors duration-200"
-                >
-                  <div className="flex items-center">
-                    <div className="w-2 h-12 bg-gradient-lotus rounded-full mr-3"></div>
-                    <div>
-                      <p className="font-medium text-gray-900">{session.title}</p>
-                      <p className="text-sm text-gray-600">{session.time}</p>
-                    </div>
-                  </div>
-                  <span className="text-sm text-gray-500">{session.participants} participants</span>
-                </div>
-              ))
-            ) : (
-              <div className="p-4 text-center text-gray-500">Aucune session à venir</div>
-            )}
-          </div>
-          <div className="mt-6">
-            <ProfessionalButton
-              to="/dashboard/professional/sessions/new"
-              variant="primary"
-              icon={PlusIcon}
-              fullWidth
-            >
-              Créer une session
-            </ProfessionalButton>
-          </div>
-        </ProfessionalCard>
-
-        {/* Messages récents */}
-        <ProfessionalCard
-          title="Messages récents"
-          icon={ChatBubbleBottomCenterTextIcon}
-          color="blue"
-          actionButtons={
-            <Link
-              to="/dashboard/professional/messages"
-              className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center"
-            >
-              Voir tout
-              <ArrowRightIcon className="ml-1 h-4 w-4" />
-            </Link>
-          }
-        >
-          <div className="space-y-4">
-            {stats.recentMessages && stats.recentMessages.length > 0 ? (
-              stats.recentMessages.map(message => (
-                <div
-                  key={message.id}
-                  className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors duration-200"
-                >
-                  <div className="flex items-center">
-                    <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center mr-3">
-                      <UserIcon className="h-5 w-5 text-blue-600" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-gray-900">{message.name}</p>
-                      <p className="text-sm text-gray-600 truncate">{message.message}</p>
-                    </div>
-                  </div>
-                  <span className="text-xs text-gray-500 ml-2">{message.time}</span>
-                </div>
-              ))
-            ) : (
-              <div className="p-4 text-center text-gray-500">Aucun message récent</div>
-            )}
-          </div>
-          <div className="mt-6">
-            <ProfessionalButton
-              to="/dashboard/professional/messages"
-              variant="outline"
-              color="blue"
-              icon={EyeIcon}
-              fullWidth
-            >
-              Voir tous les messages
-            </ProfessionalButton>
-          </div>
-        </ProfessionalCard>
       </div>
     </div>
   );
