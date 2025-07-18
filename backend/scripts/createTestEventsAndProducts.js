@@ -7,7 +7,7 @@ const User = require('../models/User');
 async function createTestEventsAndProducts() {
   try {
     // Connexion à MongoDB
-    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/holisticcare', {
+    await mongoose.connect(process.env.MONGODB_URI || 'mongodb+srv://salimbachnou:sasaSASA13%40%40@cluster0.b01i0ev.mongodb.net/holistic?retryWrites=true&w=majority&appName=Cluster0/holisticcare', {
       useNewUrlParser: true,
       useUnifiedTopology: true,
     });

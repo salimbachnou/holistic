@@ -79,7 +79,7 @@ const ProfessionalProfilePage = () => {
           // Check if URL is relative and needs to be prepended with API URL
           const photoUrl = response.professional.profilePhoto.startsWith('http')
             ? response.professional.profilePhoto
-            : `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}${response.professional.profilePhoto}`;
+            : `${process.env.REACT_APP_API_URL || 'https://holistic-maroc-backend.onrender.com'}${response.professional.profilePhoto}`;
 
           setProfilePhoto(photoUrl);
         }
@@ -106,7 +106,7 @@ const ProfessionalProfilePage = () => {
             // Assurer que les URLs sont cohérentes (complètes pour l'affichage)
             const normalizedImages = (coverImagesResponse.coverImages || []).map(img => {
               if (img.startsWith('/uploads/')) {
-                return `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}${img}`;
+                return `${process.env.REACT_APP_API_URL || 'https://holistic-maroc-backend.onrender.com'}${img}`;
               }
               return img;
             });
@@ -615,7 +615,7 @@ const ProfessionalProfilePage = () => {
           // Ensure the URL is absolute
           const photoUrl = response.photoUrl.startsWith('http')
             ? response.photoUrl
-            : `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}${response.photoUrl}`;
+            : `${process.env.REACT_APP_API_URL || 'https://holistic-maroc-backend.onrender.com'}${response.photoUrl}`;
 
           setProfilePhoto(photoUrl);
 

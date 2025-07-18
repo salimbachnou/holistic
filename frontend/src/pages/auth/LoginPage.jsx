@@ -23,7 +23,7 @@ const LoginPage = () => {
     setLoading(true);
 
     try {
-      const endpoint = `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/auth/login`;
+      const endpoint = `${process.env.REACT_APP_API_URL || 'https://holistic-maroc-backend.onrender.com'}/api/auth/login`;
       const response = await axios.post(endpoint, { email, password, rememberMe });
 
       if (response.data.token) {

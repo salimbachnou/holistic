@@ -78,7 +78,8 @@ const ProfessionalSessionBookingsPage = () => {
   const fetchBookings = async () => {
     try {
       setLoading(true);
-      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      const API_URL =
+        process.env.REACT_APP_API_URL || 'https://holistic-maroc-backend.onrender.com';
       const token = localStorage.getItem('token');
 
       // Include all bookings by default (includeAll=true)
@@ -224,7 +225,8 @@ const ProfessionalSessionBookingsPage = () => {
   const handleStatusUpdate = async (bookingId, newStatus, reason = '') => {
     try {
       setUpdatingStatus(true);
-      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      const API_URL =
+        process.env.REACT_APP_API_URL || 'https://holistic-maroc-backend.onrender.com';
       const token = localStorage.getItem('token');
 
       await axios.put(
@@ -361,7 +363,9 @@ const ProfessionalSessionBookingsPage = () => {
                 <button
                   onClick={async () => {
                     try {
-                      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+                      const API_URL =
+                        process.env.REACT_APP_API_URL ||
+                        'https://holistic-maroc-backend.onrender.com';
                       const token = localStorage.getItem('token');
                       const response = await axios.get(
                         `${API_URL}/api/bookings/professional/debug`,

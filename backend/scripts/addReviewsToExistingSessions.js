@@ -5,7 +5,7 @@ const User = require('../models/User');
 const Professional = require('../models/Professional');
 
 // Configuration de la base de données
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/holistic';
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://salimbachnou:sasaSASA13%40%40@cluster0.b01i0ev.mongodb.net/holistic?retryWrites=true&w=majority&appName=Cluster0/holistic';
 
 // Exemples de commentaires pour les reviews
 const sampleComments = [

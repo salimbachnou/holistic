@@ -90,7 +90,7 @@ const RegisterProfessionalPage = () => {
       const state = Math.random().toString(36).substring(7);
       // Stocker l'état dans localStorage pour vérification ultérieure
       localStorage.setItem('googleAuthState', state);
-      const redirectUrl = `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/auth/google?role=professional&state=${state}`;
+      const redirectUrl = `${process.env.REACT_APP_API_URL || 'https://holistic-maroc-backend.onrender.com'}/api/auth/google?role=professional&state=${state}`;
       window.location.href = redirectUrl;
     } catch (err) {
       setError(err.message || "Échec de l'inscription avec Google.");

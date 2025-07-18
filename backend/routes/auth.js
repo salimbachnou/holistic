@@ -26,7 +26,7 @@ const convertImageUrl = (imagePath) => {
   if (imagePath.startsWith('http') || imagePath.startsWith('data:')) {
     return imagePath;
   }
-  const baseUrl = process.env.BASE_URL || 'http://localhost:5000';
+  const baseUrl = process.env.BASE_URL || 'https://holistic-maroc-backend.onrender.com';
   return imagePath.startsWith('/uploads') ? `${baseUrl}${imagePath}` : `${baseUrl}/uploads/profiles/${imagePath}`;
 };
 
@@ -270,7 +270,7 @@ router.get('/google/url', (req, res) => {
     const state = Math.random().toString(36).substring(7);
     
     // Create the Google auth URL
-    const googleAuthUrl = `${process.env.BASE_URL || 'http://localhost:5000'}/api/auth/google?role=${isProfessional ? 'professional' : 'client'}&state=${state}`;
+    const googleAuthUrl = `${process.env.BASE_URL || 'https://holistic-maroc-backend.onrender.com'}/api/auth/google?role=${isProfessional ? 'professional' : 'client'}&state=${state}`;
     
     res.json({ url: googleAuthUrl, state });
   } catch (error) {

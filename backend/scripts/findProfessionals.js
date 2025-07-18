@@ -5,7 +5,7 @@ const User = require('../models/User');
 async function findProfessionals() {
   try {
     console.log('Connecting to database...');
-    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/holistic-platform');
+    await mongoose.connect(process.env.MONGODB_URI || 'mongodb+srv://salimbachnou:sasaSASA13%40%40@cluster0.b01i0ev.mongodb.net/holistic?retryWrites=true&w=majority&appName=Cluster0/holistic-platform');
     
     console.log('Finding professionals...');
     const professionals = await Professional.find().populate('userId', 'firstName lastName email').limit(5);

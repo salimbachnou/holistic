@@ -4,7 +4,7 @@ require('dotenv').config();
 
 // Test the homepage API endpoints
 async function testHomepageAPI() {
-  const baseURL = process.env.API_URL || 'http://localhost:5000';
+  const baseURL = process.env.API_URL || 'https://holistic-maroc-backend.onrender.com';
   
   console.log('🚀 Testing Homepage API endpoints...');
   console.log(`Base URL: ${baseURL}`);
@@ -78,7 +78,7 @@ async function testHomepageAPI() {
 async function runTests() {
   try {
     // Connect to MongoDB
-    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/holistic', {
+    await mongoose.connect(process.env.MONGODB_URI || 'mongodb+srv://salimbachnou:sasaSASA13%40%40@cluster0.b01i0ev.mongodb.net/holistic?retryWrites=true&w=majority&appName=Cluster0/holistic', {
       useNewUrlParser: true,
       useUnifiedTopology: true,
     });

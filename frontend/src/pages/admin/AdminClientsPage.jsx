@@ -41,7 +41,7 @@ const AdminClientsPage = () => {
       setLoading(true);
       const token = localStorage.getItem('token');
       const response = await axios.get(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/admin/clients`,
+        `${process.env.REACT_APP_API_URL || 'https://holistic-maroc-backend.onrender.com'}/api/admin/clients`,
         {
           headers: { Authorization: `Bearer ${token}` },
           params: {
@@ -74,7 +74,7 @@ const AdminClientsPage = () => {
     try {
       const token = localStorage.getItem('token');
       await axios.patch(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/admin/clients/${clientId}/verify`,
+        `${process.env.REACT_APP_API_URL || 'https://holistic-maroc-backend.onrender.com'}/api/admin/clients/${clientId}/verify`,
         { isVerified: !currentStatus },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -96,7 +96,7 @@ const AdminClientsPage = () => {
     try {
       const token = localStorage.getItem('token');
       await axios.delete(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/admin/clients/${clientId}`,
+        `${process.env.REACT_APP_API_URL || 'https://holistic-maroc-backend.onrender.com'}/api/admin/clients/${clientId}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
@@ -113,7 +113,7 @@ const AdminClientsPage = () => {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.get(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/admin/clients/${clientId}`,
+        `${process.env.REACT_APP_API_URL || 'https://holistic-maroc-backend.onrender.com'}/api/admin/clients/${clientId}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
 

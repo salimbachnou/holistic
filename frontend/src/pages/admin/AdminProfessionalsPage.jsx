@@ -77,7 +77,7 @@ const AdminProfessionalsPage = () => {
       });
 
       const response = await axios.get(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/admin/professionals?${queryParams}`,
+        `${process.env.REACT_APP_API_URL || 'https://holistic-maroc-backend.onrender.com'}/api/admin/professionals?${queryParams}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -101,7 +101,7 @@ const AdminProfessionalsPage = () => {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.post(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/admin/professionals`,
+        `${process.env.REACT_APP_API_URL || 'https://holistic-maroc-backend.onrender.com'}/api/admin/professionals`,
         data,
         {
           headers: { Authorization: `Bearer ${token}` },
@@ -132,7 +132,7 @@ const AdminProfessionalsPage = () => {
     try {
       const token = localStorage.getItem('token');
       await axios.delete(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/admin/professionals/${id}`,
+        `${process.env.REACT_APP_API_URL || 'https://holistic-maroc-backend.onrender.com'}/api/admin/professionals/${id}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -150,7 +150,7 @@ const AdminProfessionalsPage = () => {
     try {
       const token = localStorage.getItem('token');
       await axios.put(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/admin/professionals/${id}`,
+        `${process.env.REACT_APP_API_URL || 'https://holistic-maroc-backend.onrender.com'}/api/admin/professionals/${id}`,
         { [field]: value },
         {
           headers: { Authorization: `Bearer ${token}` },

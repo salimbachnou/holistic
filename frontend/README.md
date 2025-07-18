@@ -81,7 +81,7 @@ Pour masquer les erreurs dans la console qui ne sont pas critiques:
 
 ## Configuration du proxy
 
-Le fichier `src/setupProxy.js` configure le proxy pour rediriger les requêtes API vers le backend. En mode développement, toutes les requêtes vers `/api/*` sont redirigées vers `http://localhost:5000`.
+Le fichier `src/setupProxy.js` configure le proxy pour rediriger les requêtes API vers le backend. En mode développement, toutes les requêtes vers `/api/*` sont redirigées vers `https://holistic-maroc-backend.onrender.com`.
 
 ## Fonctionnalités principales
 

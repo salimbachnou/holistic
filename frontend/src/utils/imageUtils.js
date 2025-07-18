@@ -12,12 +12,12 @@ export const getImageUrl = (imagePath, basePath = '/uploads/profiles') => {
 
   // If it already starts with /uploads, prepend the API URL
   if (imagePath.startsWith('/uploads')) {
-    const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+    const apiUrl = process.env.REACT_APP_API_URL || 'https://holistic-maroc-backend.onrender.com';
     return `${apiUrl}${imagePath}`;
   }
 
   // Otherwise, construct the full path
-  const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+  const apiUrl = process.env.REACT_APP_API_URL || 'https://holistic-maroc-backend.onrender.com';
   return `${apiUrl}${basePath}/${imagePath}`;
 };
 

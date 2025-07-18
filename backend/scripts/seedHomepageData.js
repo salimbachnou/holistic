@@ -9,7 +9,7 @@ require('dotenv').config();
 const seedHomepageData = async () => {
   try {
     // Connect to MongoDB
-    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/holistic');
+    await mongoose.connect(process.env.MONGODB_URI || 'mongodb+srv://salimbachnou:sasaSASA13%40%40@cluster0.b01i0ev.mongodb.net/holistic?retryWrites=true&w=majority&appName=Cluster0/holistic');
     console.log('Connected to MongoDB');
 
     // Mark some professionals as featured

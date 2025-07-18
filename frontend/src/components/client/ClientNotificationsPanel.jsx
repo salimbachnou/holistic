@@ -40,7 +40,7 @@ const ClientNotificationsPanel = ({ user }) => {
   const [loading, setLoading] = useState(false);
   const socketRef = useRef(null);
   const panelRef = useRef(null);
-  const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+  const apiUrl = process.env.REACT_APP_API_URL || 'https://holistic-maroc-backend.onrender.com';
 
   // Handle click outside to close panel
   useEffect(() => {

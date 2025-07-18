@@ -42,7 +42,7 @@ const AdminBookingsPage = () => {
       });
 
       const response = await axios.get(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/admin/bookings?${queryParams}`,
+        `${process.env.REACT_APP_API_URL || 'https://holistic-maroc-backend.onrender.com'}/api/admin/bookings?${queryParams}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -86,7 +86,7 @@ const AdminBookingsPage = () => {
     try {
       const token = localStorage.getItem('token');
       await axios.put(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/admin/bookings/${bookingId}/status`,
+        `${process.env.REACT_APP_API_URL || 'https://holistic-maroc-backend.onrender.com'}/api/admin/bookings/${bookingId}/status`,
         { status: newStatus, adminNotes },
         {
           headers: {

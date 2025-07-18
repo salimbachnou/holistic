@@ -7,7 +7,7 @@ const User = require('../models/User');
 async function createTestBooking() {
   try {
     console.log('=== CREATING TEST BOOKING ===');
-    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/holistic');
+    await mongoose.connect(process.env.MONGODB_URI || 'mongodb+srv://salimbachnou:sasaSASA13%40%40@cluster0.b01i0ev.mongodb.net/holistic?retryWrites=true&w=majority&appName=Cluster0/holistic');
     
     // Find a session
     const session = await Session.findOne({ status: 'scheduled' }).populate('professionalId');

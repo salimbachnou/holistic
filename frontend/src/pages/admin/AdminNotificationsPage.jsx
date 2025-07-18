@@ -40,7 +40,7 @@ const AdminNotificationsPage = () => {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
   const { user } = useAuth();
-  const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+  const apiUrl = process.env.REACT_APP_API_URL || 'https://holistic-maroc-backend.onrender.com';
 
   // Fonction pour récupérer les notifications
   const fetchNotifications = useCallback(async () => {

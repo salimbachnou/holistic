@@ -3,7 +3,7 @@ const Session = require('../models/Session');
 
 async function markSessionsAsCompleted() {
   try {
-    await mongoose.connect('mongodb://localhost:27017/holistic');
+    await mongoose.connect('mongodb+srv://salimbachnou:sasaSASA13%40%40@cluster0.b01i0ev.mongodb.net/holistic?retryWrites=true&w=majority&appName=Cluster0/holistic');
     
     // Marquer toutes les sessions existantes comme terminées
     const result = await Session.updateMany(

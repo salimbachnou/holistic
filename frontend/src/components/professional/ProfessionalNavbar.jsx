@@ -36,7 +36,7 @@ const ProfessionalNavbar = () => {
     if (user?.profileImage) {
       const imageUrl = user.profileImage.startsWith('http')
         ? user.profileImage
-        : `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}${user.profileImage}`;
+        : `${process.env.REACT_APP_API_URL || 'https://holistic-maroc-backend.onrender.com'}${user.profileImage}`;
       setProfileImageUrl(imageUrl);
     } else {
       setProfileImageUrl(null);

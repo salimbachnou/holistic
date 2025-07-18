@@ -8,7 +8,7 @@ const Professional = require('../models/Professional');
 async function testReviewUniqueness() {
   try {
     console.log('=== TEST REVIEW UNIQUENESS ===');
-    await mongoose.connect('mongodb://localhost:27017/holistic');
+    await mongoose.connect('mongodb+srv://salimbachnou:sasaSASA13%40%40@cluster0.b01i0ev.mongodb.net/holistic?retryWrites=true&w=majority&appName=Cluster0/holistic');
     
     // Find a session with a confirmed booking
     const booking = await Booking.findOne({ 

@@ -133,7 +133,7 @@ const ClientProfilePage = () => {
         setPreviewImage(
           user.profileImage.startsWith('http')
             ? user.profileImage
-            : `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}${user.profileImage}`
+            : `${process.env.REACT_APP_API_URL || 'https://holistic-maroc-backend.onrender.com'}${user.profileImage}`
         );
       }
 

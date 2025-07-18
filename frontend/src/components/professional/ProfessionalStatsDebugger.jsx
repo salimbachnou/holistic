@@ -91,7 +91,9 @@ const ProfessionalStatsDebugger = ({ stats, error, loading }) => {
             <div className="mt-2 text-sm text-gray-600">
               <div>Node ENV: {process.env.NODE_ENV}</div>
               <div>
-                API URL: {process.env.REACT_APP_API_URL || 'Default (http://localhost:5000)'}
+                API URL:{' '}
+                {process.env.REACT_APP_API_URL ||
+                  'Default (https://holistic-maroc-backend.onrender.com)'}
               </div>
               <div>
                 Stats Valid:{' '}

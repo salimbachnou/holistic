@@ -238,11 +238,15 @@ const MessagesPage = () => {
         const formData = new FormData();
         formData.append('file', attachment.file);
 
-        const response = await _axios.post('http://localhost:5000/api/uploads/message', formData, {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
-          },
-        });
+        const response = await _axios.post(
+          'https://holistic-maroc-backend.onrender.com/api/uploads/message',
+          formData,
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem('token')}`,
+            },
+          }
+        );
 
         uploadedFiles.push({
           type: attachment.type,
@@ -319,7 +323,7 @@ const MessagesPage = () => {
       }
 
       await _axios.post(
-        `http://localhost:5000/api/messages/mark-read/${senderId}`,
+        `https://holistic-maroc-backend.onrender.com/api/messages/mark-read/${senderId}`,
         {},
         getAuthHeaders()
       );
@@ -406,7 +410,7 @@ const MessagesPage = () => {
 
       setConversationsLoading(true);
       const response = await _axios.get(
-        'http://localhost:5000/api/messages/conversations',
+        'https://holistic-maroc-backend.onrender.com/api/messages/conversations',
         getAuthHeaders()
       );
 
@@ -465,7 +469,7 @@ const MessagesPage = () => {
   const fetchProfessional = async id => {
     try {
       const response = await _axios.get(
-        `http://localhost:5000/api/professionals/${id}`,
+        `https://holistic-maroc-backend.onrender.com/api/professionals/${id}`,
         getAuthHeaders()
       );
 
@@ -493,7 +497,7 @@ const MessagesPage = () => {
     try {
       setMessagesLoading(true);
       const response = await _axios.get(
-        `http://localhost:5000/api/messages/${userId}`,
+        `https://holistic-maroc-backend.onrender.com/api/messages/${userId}`,
         getAuthHeaders()
       );
 
@@ -553,7 +557,7 @@ const MessagesPage = () => {
         : professionalId;
 
       const response = await _axios.post(
-        'http://localhost:5000/api/messages',
+        'https://holistic-maroc-backend.onrender.com/api/messages',
         {
           receiverId: receiverId,
           text:

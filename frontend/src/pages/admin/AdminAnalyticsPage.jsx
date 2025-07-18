@@ -39,7 +39,7 @@ ChartJS.register(
 );
 
 // URL du backend - à ajuster selon votre configuration
-const API_URL = 'http://localhost:5000';
+const API_URL = 'https://holistic-maroc-backend.onrender.com';
 
 const AdminAnalyticsPage = () => {
   const [loading, setLoading] = useState(true);

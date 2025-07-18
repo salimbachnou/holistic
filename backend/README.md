@@ -26,7 +26,7 @@ Create a `.env` file in the backend directory with the following variables:
 
 ```env
 # Database
-MONGODB_URI=mongodb://localhost:27017/holistic
+MONGODB_URI=mongodb+srv://salimbachnou:sasaSASA13%40%40@cluster0.b01i0ev.mongodb.net/holistic?retryWrites=true&w=majority&appName=Cluster0/holistic
 
 # JWT Secret
 JWT_SECRET=your-super-secret-jwt-key-here
@@ -50,7 +50,7 @@ PORT=5000
 NODE_ENV=development
 
 # Base URL for backend
-BASE_URL=http://localhost:5000
+BASE_URL=https://holistic-maroc-backend.onrender.com
 ```
 
 ### 3. Google OAuth Setup
@@ -59,7 +59,7 @@ BASE_URL=http://localhost:5000
 3. Enable Google+ API
 4. Create OAuth 2.0 credentials
 5. Add authorized redirect URIs:
-   - `http://localhost:5000/api/auth/google/callback` (development)
+   - `https://holistic-maroc-backend.onrender.com/api/auth/google/callback` (development)
    - Your production callback URL
 6. Copy Client ID and Client Secret to your `.env` file
 
@@ -84,7 +84,7 @@ npm run dev
 npm start
 ```
 
-The server will run on `http://localhost:5000`
+The server will run on `https://holistic-maroc-backend.onrender.com`
 
 ## API Endpoints
 

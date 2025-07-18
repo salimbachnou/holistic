@@ -3,7 +3,10 @@ import axios from 'axios';
 import apiConfig from '../config/api.config';
 
 const instance = axios.create({
-  baseURL: process.env.NODE_ENV === 'development' ? 'http://localhost:5000/api' : '/api',
+  baseURL:
+    process.env.NODE_ENV === 'development'
+      ? 'https://holistic-maroc-backend.onrender.com/api'
+      : '/api',
   headers: {
     'Content-Type': 'application/json',
   },

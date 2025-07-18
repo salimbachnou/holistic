@@ -35,7 +35,8 @@ const AdminSessionsPage = () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
-      const BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      const BASE_URL =
+        process.env.REACT_APP_API_URL || 'https://holistic-maroc-backend.onrender.com';
 
       const response = await axios.get(`${BASE_URL}/api/admin/sessions`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -63,7 +64,8 @@ const AdminSessionsPage = () => {
   const handleUpdateStatus = async (sessionId, status) => {
     try {
       const token = localStorage.getItem('token');
-      const BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      const BASE_URL =
+        process.env.REACT_APP_API_URL || 'https://holistic-maroc-backend.onrender.com';
 
       await axios.put(
         `${BASE_URL}/api/admin/sessions/${sessionId}/status`,
@@ -86,7 +88,8 @@ const AdminSessionsPage = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      const BASE_URL =
+        process.env.REACT_APP_API_URL || 'https://holistic-maroc-backend.onrender.com';
 
       await axios.delete(`${BASE_URL}/api/admin/sessions/${sessionId}`, {
         headers: { Authorization: `Bearer ${token}` },

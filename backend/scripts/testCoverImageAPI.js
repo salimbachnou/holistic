@@ -5,8 +5,8 @@ const Professional = require('../models/Professional');
 const jwt = require('jsonwebtoken');
 
 // Configuration
-const API_BASE_URL = 'http://localhost:5000/api';
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/holistic-platform';
+const API_BASE_URL = 'https://holistic-maroc-backend.onrender.com/api';
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://salimbachnou:sasaSASA13%40%40@cluster0.b01i0ev.mongodb.net/holistic?retryWrites=true&w=majority&appName=Cluster0/holistic-platform';
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
 async function testCoverImageAPI() {

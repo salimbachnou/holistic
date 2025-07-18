@@ -3,7 +3,7 @@ const Session = require('../models/Session');
 
 async function checkSessions() {
   try {
-    await mongoose.connect('mongodb://localhost:27017/holistic_app');
+    await mongoose.connect('mongodb+srv://salimbachnou:sasaSASA13%40%40@cluster0.b01i0ev.mongodb.net/holistic?retryWrites=true&w=majority&appName=Cluster0/holistic_app');
     
     const sessions = await Session.find({}).populate('professionalId', 'businessName');
     console.log('Sessions trouvées:', sessions.length);

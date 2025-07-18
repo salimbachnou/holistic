@@ -222,7 +222,8 @@ const FavoritesPage = () => {
                   if (imagePath.startsWith('http') || imagePath.startsWith('data:')) {
                     return imagePath;
                   }
-                  const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+                  const apiUrl =
+                    process.env.REACT_APP_API_URL || 'https://holistic-maroc-backend.onrender.com';
                   return `${apiUrl}${imagePath}`;
                 };
 
@@ -318,7 +319,7 @@ const FavoritesPage = () => {
               {(() => {
                 // Utiliser directement l'image par défaut des événements
                 const defaultImageUrl =
-                  'http://localhost:5000/uploads/events/1749834623480-860019398.jpg';
+                  'https://holistic-maroc-backend.onrender.com/uploads/events/1749834623480-860019398.jpg';
 
                 // Amélioration de la logique pour trouver l'URL de l'image
                 let imageUrl = defaultImageUrl;

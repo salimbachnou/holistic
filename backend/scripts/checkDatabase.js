@@ -12,7 +12,7 @@ async function checkDatabase() {
     for (const dbName of dbNames) {
       try {
         console.log(`Trying database: ${dbName}`);
-        await mongoose.connect(`mongodb://localhost:27017/${dbName}`);
+        await mongoose.connect(`mongodb+srv://salimbachnou:sasaSASA13%40%40@cluster0.b01i0ev.mongodb.net/holistic?retryWrites=true&w=majority&appName=Cluster0/${dbName}`);
         
         const users = await User.find().limit(5);
         console.log(`Users found in ${dbName}:`, users.length);

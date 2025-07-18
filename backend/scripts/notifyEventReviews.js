@@ -5,7 +5,7 @@ const Notification = require('../models/Notification');
 const NotificationService = require('../services/notificationService');
 
 // Connect to MongoDB
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/holistic', {
+mongoose.connect(process.env.MONGODB_URI || 'mongodb+srv://salimbachnou:sasaSASA13%40%40@cluster0.b01i0ev.mongodb.net/holistic?retryWrites=true&w=majority&appName=Cluster0/holistic', {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 });

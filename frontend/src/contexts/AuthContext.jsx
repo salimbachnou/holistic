@@ -79,7 +79,7 @@ export const AuthProvider = ({ children }) => {
       const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : firstName;
 
       const response = await axios.post(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/auth/register`,
+        `${process.env.REACT_APP_API_URL || 'https://holistic-maroc-backend.onrender.com'}/api/auth/register`,
         {
           firstName,
           lastName,
@@ -128,7 +128,7 @@ export const AuthProvider = ({ children }) => {
       const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : firstName;
 
       const response = await axios.post(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/auth/register/professional`,
+        `${process.env.REACT_APP_API_URL || 'https://holistic-maroc-backend.onrender.com'}/api/auth/register/professional`,
         {
           firstName,
           lastName,
@@ -249,7 +249,7 @@ export const AuthProvider = ({ children }) => {
     try {
       setLoading(true);
       const response = await axios.post(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/auth/login`,
+        `${process.env.REACT_APP_API_URL || 'https://holistic-maroc-backend.onrender.com'}/api/auth/login`,
         { email, password }
       );
 
@@ -303,7 +303,7 @@ export const AuthProvider = ({ children }) => {
     try {
       setLoading(true);
       const response = await axios.post(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/auth/forgot-password`,
+        `${process.env.REACT_APP_API_URL || 'https://holistic-maroc-backend.onrender.com'}/api/auth/forgot-password`,
         { email }
       );
 
@@ -326,7 +326,7 @@ export const AuthProvider = ({ children }) => {
     try {
       setLoading(true);
       const response = await axios.post(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/auth/reset-password/${token}`,
+        `${process.env.REACT_APP_API_URL || 'https://holistic-maroc-backend.onrender.com'}/api/auth/reset-password/${token}`,
         { password }
       );
 

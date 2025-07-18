@@ -6,7 +6,7 @@
 
 const environments = {
   development: {
-    baseURL: 'http://localhost:5000/api',
+    baseURL: 'https://holistic-maroc-backend.onrender.com/api',
     timeout: 10000,
   },
   staging: {

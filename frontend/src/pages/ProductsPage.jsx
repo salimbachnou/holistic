@@ -138,7 +138,7 @@ const getImageUrl = imagePath => {
   ) {
     return imagePath;
   }
-  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+  const API_URL = process.env.REACT_APP_API_URL || 'https://holistic-maroc-backend.onrender.com';
   return `${API_URL}${imagePath}`;
 };
 
@@ -962,7 +962,8 @@ const ProductsPage = () => {
   const fetchProducts = async () => {
     try {
       setLoading(true);
-      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      const API_URL =
+        process.env.REACT_APP_API_URL || 'https://holistic-maroc-backend.onrender.com';
 
       try {
         // Try to fetch from API

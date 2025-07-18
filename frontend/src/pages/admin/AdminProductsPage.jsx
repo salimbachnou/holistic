@@ -59,7 +59,7 @@ const AdminProductsPage = () => {
       setLoading(true);
       const token = localStorage.getItem('token');
       const response = await axios.get(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/admin/products`,
+        `${process.env.REACT_APP_API_URL || 'https://holistic-maroc-backend.onrender.com'}/api/admin/products`,
         {
           headers: { Authorization: `Bearer ${token}` },
           params: {
@@ -95,7 +95,7 @@ const AdminProductsPage = () => {
       const newStatus = currentStatus === 'approved' ? 'pending' : 'approved';
 
       await axios.patch(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/admin/products/${productId}/approve`,
+        `${process.env.REACT_APP_API_URL || 'https://holistic-maroc-backend.onrender.com'}/api/admin/products/${productId}/approve`,
         { status: newStatus },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -116,7 +116,7 @@ const AdminProductsPage = () => {
     try {
       const token = localStorage.getItem('token');
       await axios.post(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/admin/products`,
+        `${process.env.REACT_APP_API_URL || 'https://holistic-maroc-backend.onrender.com'}/api/admin/products`,
         formData,
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -137,7 +137,7 @@ const AdminProductsPage = () => {
     try {
       const token = localStorage.getItem('token');
       await axios.put(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/admin/products/${selectedProduct._id}`,
+        `${process.env.REACT_APP_API_URL || 'https://holistic-maroc-backend.onrender.com'}/api/admin/products/${selectedProduct._id}`,
         formData,
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -161,7 +161,7 @@ const AdminProductsPage = () => {
     try {
       const token = localStorage.getItem('token');
       await axios.delete(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/admin/products/${productId}`,
+        `${process.env.REACT_APP_API_URL || 'https://holistic-maroc-backend.onrender.com'}/api/admin/products/${productId}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
@@ -178,7 +178,7 @@ const AdminProductsPage = () => {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.get(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/admin/products/${productId}`,
+        `${process.env.REACT_APP_API_URL || 'https://holistic-maroc-backend.onrender.com'}/api/admin/products/${productId}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
 

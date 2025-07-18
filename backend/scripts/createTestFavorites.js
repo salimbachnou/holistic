@@ -3,7 +3,7 @@ const User = require('../models/User');
 const Professional = require('../models/Professional');
 
 // Connect to MongoDB
-mongoose.connect('mongodb://localhost:27017/holistic', {
+mongoose.connect('mongodb+srv://salimbachnou:sasaSASA13%40%40@cluster0.b01i0ev.mongodb.net/holistic?retryWrites=true&w=majority&appName=Cluster0/holistic', {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 });
