@@ -10,6 +10,10 @@ import {
   ExclamationTriangleIcon,
   InboxIcon,
   ArchiveBoxIcon,
+  PhoneIcon,
+  CalendarIcon,
+  ChatBubbleLeftRightIcon,
+  PaperAirplaneIcon,
 } from '@heroicons/react/24/outline';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -24,6 +28,10 @@ const AdminContactsPage = () => {
   const [statusFilter, setStatusFilter] = useState('');
   const [selectedContact, setSelectedContact] = useState(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [showResponseModal, setShowResponseModal] = useState(false);
+  const [responseMessage, setResponseMessage] = useState('');
+  const [responseType, setResponseType] = useState('email');
+  const [sendingResponse, setSendingResponse] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [stats, setStats] = useState({
@@ -40,12 +48,12 @@ const AdminContactsPage = () => {
       setLoading(true);
       const token = localStorage.getItem('token');
       const response = await axios.get(
-        `${process.env.REACT_APP_API_URL || 'http://hamza-aourass.ddns.net:5001'}/api/admin/contacts`,
+        `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/admin/contacts`,
         {
           headers: { Authorization: `Bearer ${token}` },
           params: {
             page,
-            limit: 10,
+            limit: 12, // Increased for cards layout
             search,
             type,
             status,
@@ -74,7 +82,7 @@ const AdminContactsPage = () => {
     try {
       const token = localStorage.getItem('token');
       await axios.patch(
-        `${process.env.REACT_APP_API_URL || 'http://hamza-aourass.ddns.net:5001'}/api/admin/contacts/${contactId}/status`,
+        `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/admin/contacts/${contactId}/status`,
         { isProcessed: !currentStatus },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -98,7 +106,7 @@ const AdminContactsPage = () => {
     try {
       const token = localStorage.getItem('token');
       await axios.delete(
-        `${process.env.REACT_APP_API_URL || 'http://hamza-aourass.ddns.net:5001'}/api/admin/contacts/${contactId}`,
+        `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/admin/contacts/${contactId}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
@@ -121,12 +129,68 @@ const AdminContactsPage = () => {
     }
   };
 
+  // Open response modal
+  const openResponseModal = contact => {
+    setSelectedContact(contact);
+    setResponseMessage('');
+    setResponseType('email');
+    setShowResponseModal(true);
+  };
+
+  // Send response to contact
+  const sendResponse = async () => {
+    if (!responseMessage.trim()) {
+      toast.error('Veuillez saisir un message');
+      return;
+    }
+
+    try {
+      setSendingResponse(true);
+      const token = localStorage.getItem('token');
+
+      // Debug logs
+      console.log('Sending response to contact:', selectedContact._id);
+      console.log('Token:', token ? 'Present' : 'Missing');
+      console.log('Message:', responseMessage.trim());
+      console.log('Response type:', responseType);
+
+      const url = `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/admin/contacts/${selectedContact._id}/respond`;
+      console.log('Request URL:', url);
+
+      const response = await axios.post(
+        url,
+        {
+          message: responseMessage.trim(),
+          responseType,
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      console.log('Response received:', response.data);
+      toast.success('Réponse envoyée avec succès');
+      setShowResponseModal(false);
+      setResponseMessage('');
+      fetchContacts(currentPage, searchTerm, typeFilter, statusFilter);
+    } catch (error) {
+      console.error('Error sending response:', error);
+      console.error('Error details:', {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data,
+        url: error.config?.url,
+      });
+      toast.error("Erreur lors de l'envoi de la réponse");
+    } finally {
+      setSendingResponse(false);
+    }
+  };
+
   // Mark contact as read
   const markAsRead = async contactId => {
     try {
       const token = localStorage.getItem('token');
       await axios.patch(
-        `${process.env.REACT_APP_API_URL || 'http://hamza-aourass.ddns.net:5001'}/api/admin/contacts/${contactId}/read`,
+        `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/admin/contacts/${contactId}/read`,
         { isRead: true },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -285,81 +349,53 @@ const AdminContactsPage = () => {
         </div>
       </motion.div>
 
-      {/* Contacts List */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden"
-      >
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Contact
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Type
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Message
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Date
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Statut
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {loading ? (
-                <tr>
-                  <td colSpan="6" className="px-6 py-12 text-center">
-                    <div className="flex justify-center">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
-                    </div>
-                  </td>
-                </tr>
-              ) : contacts.length === 0 ? (
-                <tr>
-                  <td colSpan="6" className="px-6 py-12 text-center text-gray-500">
-                    Aucun contact trouvé
-                  </td>
-                </tr>
-              ) : (
-                contacts.map(contact => (
-                  <motion.tr
-                    key={contact._id}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className={`hover:bg-gray-50 transition-colors ${
-                      !contact.isRead ? 'bg-blue-50' : ''
-                    }`}
-                  >
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center">
-                          <UserIcon className="h-6 w-6 text-gray-600" />
-                        </div>
-                        <div className="ml-4">
-                          <div
-                            className={`text-sm font-medium ${
-                              !contact.isRead ? 'text-gray-900 font-bold' : 'text-gray-900'
-                            }`}
-                          >
-                            {contact.type === 'professional'
-                              ? contact.businessName
-                              : `${contact.firstName} ${contact.lastName}`}
-                          </div>
-                          <div className="text-sm text-gray-500">{contact.email}</div>
-                        </div>
+      {/* Contacts Cards Grid */}
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
+        {loading ? (
+          <div className="flex justify-center items-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600"></div>
+          </div>
+        ) : contacts.length === 0 ? (
+          <div className="text-center py-12">
+            <EnvelopeIcon className="mx-auto h-12 w-12 text-gray-400" />
+            <h3 className="mt-2 text-sm font-medium text-gray-900">Aucun contact trouvé</h3>
+            <p className="mt-1 text-sm text-gray-500">
+              Aucun contact ne correspond à vos critères de recherche.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {contacts.map((contact, index) => (
+              <motion.div
+                key={contact._id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.1 }}
+                className={`bg-white rounded-xl shadow-lg border border-gray-100 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 ${
+                  !contact.isRead ? 'ring-2 ring-blue-200 bg-blue-50' : ''
+                }`}
+              >
+                <div className="p-6">
+                  {/* Header */}
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-center">
+                      <div className="h-10 w-10 rounded-full bg-emerald-100 flex items-center justify-center">
+                        <UserIcon className="h-6 w-6 text-emerald-600" />
                       </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="ml-3">
+                        <h3
+                          className={`text-sm font-medium ${
+                            !contact.isRead ? 'text-gray-900 font-bold' : 'text-gray-900'
+                          }`}
+                        >
+                          {contact.type === 'professional'
+                            ? contact.businessName
+                            : `${contact.firstName} ${contact.lastName}`}
+                        </h3>
+                        <p className="text-xs text-gray-500">{contact.email}</p>
+                      </div>
+                    </div>
+                    <div className="flex flex-col items-end space-y-1">
                       <span
                         className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
                           contact.type === 'professional'
@@ -367,109 +403,125 @@ const AdminContactsPage = () => {
                             : 'bg-purple-100 text-purple-800'
                         }`}
                       >
-                        {contact.type === 'professional' ? 'Professionnel' : 'Information'}
+                        {contact.type === 'professional' ? 'Pro' : 'Info'}
                       </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm text-gray-900 max-w-xs truncate">
-                        {contact.message || contact.activityType || 'Pas de message'}
-                      </div>
-                      {contact.phone && (
-                        <div className="text-sm text-gray-500">📞 {contact.phone}</div>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {new Date(contact.createdAt).toLocaleDateString('fr-FR')}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex flex-col space-y-1">
-                        <span
-                          className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                            contact.isProcessed
-                              ? 'bg-gray-100 text-gray-800'
-                              : 'bg-yellow-100 text-yellow-800'
-                          }`}
-                        >
-                          {contact.isProcessed ? 'Traité' : 'En attente'}
+                      {!contact.isRead && (
+                        <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                          Nouveau
                         </span>
-                        {!contact.isRead && (
-                          <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
-                            Non lu
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="flex space-x-2">
-                        <button
-                          onClick={() => viewContactDetails(contact)}
-                          className="text-blue-600 hover:text-blue-900 p-1 rounded"
-                          title="Voir détails"
-                        >
-                          <EyeIcon className="h-5 w-5" />
-                        </button>
-                        <button
-                          onClick={() => toggleProcessed(contact._id, contact.isProcessed)}
-                          className={`p-1 rounded ${
-                            contact.isProcessed
-                              ? 'text-yellow-600 hover:text-yellow-900'
-                              : 'text-green-600 hover:text-green-900'
-                          }`}
-                          title={
-                            contact.isProcessed
-                              ? 'Marquer comme non traité'
-                              : 'Marquer comme traité'
-                          }
-                        >
-                          {contact.isProcessed ? (
-                            <XCircleIcon className="h-5 w-5" />
-                          ) : (
-                            <CheckCircleIcon className="h-5 w-5" />
-                          )}
-                        </button>
-                        <button
-                          onClick={() => deleteContact(contact._id)}
-                          className="text-red-600 hover:text-red-900 p-1 rounded"
-                          title="Supprimer"
-                        >
-                          <TrashIcon className="h-5 w-5" />
-                        </button>
-                      </div>
-                    </td>
-                  </motion.tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                      )}
+                    </div>
+                  </div>
 
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="bg-white px-4 py-3 border-t border-gray-200 sm:px-6">
-            <div className="flex justify-between items-center">
-              <div className="text-sm text-gray-700">
-                Page {currentPage} sur {totalPages}
-              </div>
-              <div className="flex space-x-2">
-                <button
-                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                  disabled={currentPage === 1}
-                  className="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50"
-                >
-                  Précédent
-                </button>
-                <button
-                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                  disabled={currentPage === totalPages}
-                  className="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50"
-                >
-                  Suivant
-                </button>
-              </div>
-            </div>
+                  {/* Content */}
+                  <div className="space-y-3">
+                    <div className="text-sm text-gray-700 line-clamp-2">
+                      {contact.message || contact.activityType || 'Pas de message'}
+                    </div>
+
+                    {contact.phone && (
+                      <div className="flex items-center text-sm text-gray-500">
+                        <PhoneIcon className="h-4 w-4 mr-2" />
+                        {contact.phone}
+                      </div>
+                    )}
+
+                    <div className="flex items-center text-sm text-gray-500">
+                      <CalendarIcon className="h-4 w-4 mr-2" />
+                      {new Date(contact.createdAt).toLocaleDateString('fr-FR')}
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span
+                        className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                          contact.isProcessed
+                            ? 'bg-gray-100 text-gray-800'
+                            : 'bg-yellow-100 text-yellow-800'
+                        }`}
+                      >
+                        {contact.isProcessed ? 'Traité' : 'En attente'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex justify-end space-x-2 mt-4 pt-4 border-t border-gray-100">
+                    <button
+                      onClick={() => viewContactDetails(contact)}
+                      className="text-blue-600 hover:text-blue-900 p-2 rounded-lg hover:bg-blue-50 transition-colors"
+                      title="Voir détails"
+                    >
+                      <EyeIcon className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => openResponseModal(contact)}
+                      className="text-emerald-600 hover:text-emerald-900 p-2 rounded-lg hover:bg-emerald-50 transition-colors"
+                      title="Répondre"
+                    >
+                      <ChatBubbleLeftRightIcon className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => toggleProcessed(contact._id, contact.isProcessed)}
+                      className={`p-2 rounded-lg transition-colors ${
+                        contact.isProcessed
+                          ? 'text-yellow-600 hover:text-yellow-900 hover:bg-yellow-50'
+                          : 'text-green-600 hover:text-green-900 hover:bg-green-50'
+                      }`}
+                      title={
+                        contact.isProcessed ? 'Marquer comme non traité' : 'Marquer comme traité'
+                      }
+                    >
+                      {contact.isProcessed ? (
+                        <XCircleIcon className="h-4 w-4" />
+                      ) : (
+                        <CheckCircleIcon className="h-4 w-4" />
+                      )}
+                    </button>
+                    <button
+                      onClick={() => deleteContact(contact._id)}
+                      className="text-red-600 hover:text-red-900 p-2 rounded-lg hover:bg-red-50 transition-colors"
+                      title="Supprimer"
+                    >
+                      <TrashIcon className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
           </div>
         )}
       </motion.div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white rounded-xl shadow-lg border border-gray-100 p-6"
+        >
+          <div className="flex justify-between items-center">
+            <div className="text-sm text-gray-700">
+              Page {currentPage} sur {totalPages}
+            </div>
+            <div className="flex space-x-2">
+              <button
+                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                disabled={currentPage === 1}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-sm disabled:opacity-50 hover:bg-gray-50 transition-colors"
+              >
+                Précédent
+              </button>
+              <button
+                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                disabled={currentPage === totalPages}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-sm disabled:opacity-50 hover:bg-gray-50 transition-colors"
+              >
+                Suivant
+              </button>
+            </div>
+          </div>
+        </motion.div>
+      )}
 
       {/* Contact Details Modal */}
       <AnimatePresence>
@@ -584,6 +636,41 @@ const AdminContactsPage = () => {
                     </div>
                   )}
 
+                  {/* Responses History */}
+                  {selectedContact.responses && selectedContact.responses.length > 0 && (
+                    <div className="bg-green-50 rounded-lg p-4">
+                      <h4 className="font-semibold text-gray-900 mb-3">Historique des Réponses</h4>
+                      <div className="space-y-3">
+                        {selectedContact.responses.map((response, index) => (
+                          <div
+                            key={index}
+                            className="bg-white rounded-lg p-3 border border-green-200"
+                          >
+                            <div className="flex justify-between items-start mb-2">
+                              <span className="text-sm font-medium text-gray-700">
+                                {response.adminId?.firstName} {response.adminId?.lastName}
+                              </span>
+                              <span className="text-xs text-gray-500">
+                                {new Date(response.sentAt).toLocaleDateString('fr-FR')}
+                              </span>
+                            </div>
+                            <p className="text-sm text-gray-600 whitespace-pre-wrap">
+                              {response.message}
+                            </p>
+                            <div className="flex items-center justify-between mt-2">
+                              <span className="text-xs text-gray-500">
+                                Type: {response.responseType === 'email' ? 'Email' : 'Note interne'}
+                              </span>
+                              {response.isSent && (
+                                <span className="text-xs text-green-600">✓ Envoyé</span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Status */}
                   <div className="bg-gray-50 rounded-lg p-4">
                     <h4 className="font-semibold text-gray-900 mb-3">Statut</h4>
@@ -612,6 +699,15 @@ const AdminContactsPage = () => {
                   {/* Actions */}
                   <div className="flex justify-end space-x-4">
                     <button
+                      onClick={() => {
+                        setShowDetailsModal(false);
+                        openResponseModal(selectedContact);
+                      }}
+                      className="px-4 py-2 bg-emerald-100 text-emerald-800 hover:bg-emerald-200 rounded-lg text-sm font-medium"
+                    >
+                      Répondre
+                    </button>
+                    <button
                       onClick={() =>
                         toggleProcessed(selectedContact._id, selectedContact.isProcessed)
                       }
@@ -630,6 +726,106 @@ const AdminContactsPage = () => {
                       className="px-4 py-2 bg-red-100 text-red-800 hover:bg-red-200 rounded-lg text-sm font-medium"
                     >
                       Supprimer
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Response Modal */}
+      <AnimatePresence>
+        {showResponseModal && selectedContact && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+            onClick={() => setShowResponseModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white rounded-xl shadow-xl max-w-2xl w-full"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="p-6">
+                <div className="flex justify-between items-start mb-6">
+                  <h3 className="text-xl font-bold text-gray-900">Répondre au Contact</h3>
+                  <button
+                    onClick={() => setShowResponseModal(false)}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <XCircleIcon className="h-6 w-6" />
+                  </button>
+                </div>
+
+                <div className="space-y-6">
+                  {/* Contact Info */}
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <h4 className="font-semibold text-gray-900 mb-2">Destinataire</h4>
+                    <p className="text-sm text-gray-600">
+                      {selectedContact.type === 'professional'
+                        ? selectedContact.businessName
+                        : `${selectedContact.firstName} ${selectedContact.lastName}`}
+                    </p>
+                    <p className="text-sm text-gray-600">{selectedContact.email}</p>
+                  </div>
+
+                  {/* Response Type */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Type de réponse
+                    </label>
+                    <select
+                      value={responseType}
+                      onChange={e => setResponseType(e.target.value)}
+                      className="w-full py-2 px-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                    >
+                      <option value="email">Email</option>
+                      <option value="internal_note">Note interne</option>
+                    </select>
+                  </div>
+
+                  {/* Message */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Message</label>
+                    <textarea
+                      value={responseMessage}
+                      onChange={e => setResponseMessage(e.target.value)}
+                      rows={6}
+                      className="w-full py-2 px-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                      placeholder="Saisissez votre réponse..."
+                    />
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex justify-end space-x-4">
+                    <button
+                      onClick={() => setShowResponseModal(false)}
+                      className="px-4 py-2 border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-lg text-sm font-medium"
+                    >
+                      Annuler
+                    </button>
+                    <button
+                      onClick={sendResponse}
+                      disabled={sendingResponse || !responseMessage.trim()}
+                      className="px-4 py-2 bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 rounded-lg text-sm font-medium flex items-center"
+                    >
+                      {sendingResponse ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                          Envoi...
+                        </>
+                      ) : (
+                        <>
+                          <PaperAirplaneIcon className="h-4 w-4 mr-2" />
+                          Envoyer
+                        </>
+                      )}
                     </button>
                   </div>
                 </div>

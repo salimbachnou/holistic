@@ -138,7 +138,7 @@ const getImageUrl = imagePath => {
   ) {
     return imagePath;
   }
-  const API_URL = process.env.REACT_APP_API_URL || 'http://hamza-aourass.ddns.net:5001';
+  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
   return `${API_URL}${imagePath}`;
 };
 
@@ -151,12 +151,13 @@ const isCompletelyOutOfStock = product => {
 };
 
 // Product Card Component
-const ProductCard = ({ product }) => {
+const ProductCard = ({ product, onViewProduct }) => {
   const { isAuthenticated } = useAuth();
   const { formatCurrency } = useSettings();
   const { toggleProductFavorite, isFavorite } = useFavorites();
   const navigate = useNavigate();
   const isProductFavorite = isFavorite('products', product._id);
+  const [ordering, setOrdering] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
 
@@ -213,8 +214,8 @@ const ProductCard = ({ product }) => {
       return;
     }
 
-    // Rediriger vers la page de détail du produit
-    navigate(`/products/${product._id}`);
+    // Ouvrir le modal de détail du produit
+    onViewProduct(product);
   };
 
   const handleImageLoad = () => {
@@ -307,7 +308,7 @@ const ProductCard = ({ product }) => {
           <button
             onClick={e => {
               e.stopPropagation();
-              navigate(`/products/${product._id}`);
+              onViewProduct(product);
             }}
             className="p-3 rounded-full bg-white/90 backdrop-blur-md text-gray-700 hover:bg-white transition-all duration-300 hover:scale-110 shadow-lg"
           >
@@ -403,10 +404,6 @@ const ProductCard = ({ product }) => {
         <div className="flex items-center justify-between pt-4 border-t border-gray-100">
           <div className="text-lg font-bold text-gray-900">{formatCurrency(product.price)}</div>
           <button
-            onClick={e => {
-              e.stopPropagation();
-              navigate(`/products/${product._id}`);
-            }}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
               isCompletelyOutOfStock(product)
                 ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
@@ -422,6 +419,480 @@ const ProductCard = ({ product }) => {
   );
 };
 
+// Product Detail Modal Component
+const ProductDetailModal = ({ product, isOpen, onClose }) => {
+  const { user, isAuthenticated } = useAuth();
+  const { formatCurrency } = useSettings();
+  const navigate = useNavigate();
+  const [selectedSize, setSelectedSize] = useState(null);
+  const [quantity, setQuantity] = useState(1);
+  const [isOrdering, setIsOrdering] = useState(false);
+  const [defaultSizes, setDefaultSizes] = useState([]);
+  const [sizeError, setSizeError] = useState(false);
+
+  // Fonction pour obtenir les tailles exactes de la base de données
+  const getExactSizesFromDB = useCallback(product => {
+    if (
+      product &&
+      product.sizeOptions &&
+      Array.isArray(product.sizeOptions) &&
+      product.sizeOptions.length > 0
+    ) {
+      return [...product.sizeOptions]; // Retourne une copie pour éviter les mutations
+    }
+
+    // Si le produit n'a pas de tailles définies, retourner un tableau vide
+    // au lieu de créer des tailles par défaut
+    return [];
+  }, []);
+
+  // Reset state when product changes
+  useEffect(() => {
+    if (product) {
+      // Obtenir les tailles exactes de la base de données
+      const sizes = getExactSizesFromDB(product);
+      if (!product.sizeOptions || product.sizeOptions.length === 0) {
+        setDefaultSizes(sizes);
+      }
+
+      setSelectedSize(sizes.length > 0 ? sizes[0] : null);
+      setQuantity(1);
+      setSizeError(false); // Réinitialiser l'erreur de taille
+    }
+  }, [product, getExactSizesFromDB]);
+
+  if (!product) return null;
+
+  // Use either product's size options or default sizes
+  const sizeOptions =
+    product.sizeOptions && Array.isArray(product.sizeOptions) && product.sizeOptions.length > 0
+      ? [...product.sizeOptions]
+      : defaultSizes;
+
+  // Get stock for selected size
+  const getStockForSize = size => {
+    if (
+      product.sizeInventory &&
+      Array.isArray(product.sizeInventory) &&
+      product.sizeInventory.length > 0
+    ) {
+      // Recherche exacte, sans transformation de casse
+      const sizeInfo = product.sizeInventory.find(item => item.size === size);
+      if (sizeInfo) {
+        return sizeInfo.stock;
+      }
+      return 0;
+    }
+    return product.stock || 0;
+  };
+
+  // Get current stock based on selected size
+  const currentStock = getStockForSize(selectedSize);
+
+  // Fonction pour envoyer une commande directe au professionnel
+  const handleDirectOrder = async () => {
+    // Vérifier si une taille est sélectionnée UNIQUEMENT si le produit a des tailles
+    if (sizeOptions && sizeOptions.length > 0 && !selectedSize) {
+      setSizeError(true);
+      toast.error('Veuillez sélectionner une taille');
+      return;
+    }
+
+    // Vérifier si l'utilisateur est connecté
+    if (!isAuthenticated) {
+      toast.error('Veuillez vous connecter pour commander');
+      navigate('/login', { state: { from: '/products' } });
+      return;
+    }
+
+    setSizeError(false);
+    setIsOrdering(true);
+
+    try {
+      // Vérifier le stock disponible
+      const stockToCheck =
+        sizeOptions && sizeOptions.length > 0
+          ? getStockForSize(selectedSize) // Si le produit a des tailles, vérifier le stock pour la taille sélectionnée
+          : product.stock || 0; // Sinon, utiliser le stock général du produit
+
+      // Vérifier si la quantité demandée dépasse le stock disponible
+      if (quantity > stockToCheck) {
+        toast.error(`Stock insuffisant. Seulement ${stockToCheck} disponibles.`);
+        setIsOrdering(false);
+        return;
+      }
+
+      // Préparer le message de commande
+      const orderMessage = `✨ *NOUVELLE COMMANDE * ✨ 
+      
+📦 * Produit: * ${product.title} 
+💰 * Prix: * ${formatCurrency(product.price)}
+${sizeOptions && sizeOptions.length > 0 ? `📏 * Taille: * ${selectedSize}` : ''}
+🔢 * Quantité: * ${quantity} 
+💵 * Total: * ${formatCurrency(product.price * quantity)}
+
+Merci de confirmer cette commande. Je suis impatient(e) de recevoir ce produit!`;
+
+      // Rediriger vers la page de messages avec le professionnel
+      const professionalId = product.professionalId._id;
+
+      // Rediriger vers la page de messages
+      navigate(`/messages/${professionalId}`, { state: { initialMessage: orderMessage } });
+
+      // Fermer le modal
+      onClose();
+    } catch (error) {
+      console.error('Erreur lors de la commande:', error);
+      toast.error('Une erreur est survenue lors de la commande');
+    } finally {
+      setIsOrdering(false);
+    }
+  };
+
+  const incrementQuantity = () => {
+    // Vérifier si l'augmentation de la quantité dépasserait le stock disponible
+    if (quantity < currentStock) {
+      setQuantity(prev => prev + 1);
+    } else {
+      toast.error(`Stock insuffisant. Seulement ${currentStock} disponibles au total.`);
+    }
+  };
+
+  const decrementQuantity = () => {
+    if (quantity > 1) {
+      setQuantity(prev => prev - 1);
+    }
+  };
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-50 overflow-y-auto"
+          onClick={onClose}
+        >
+          <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 transition-opacity bg-gray-900 bg-opacity-75"
+            />
+
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="inline-block w-full max-w-4xl p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-white shadow-xl rounded-2xl relative z-50"
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="flex items-start justify-between mb-6">
+                <div>
+                  <h3 className="text-2xl font-bold text-gray-900 mb-2">{product.title}</h3>
+                  <p className="text-primary-600">
+                    Par {product.professionalId?.businessName || product.name || 'Professionnel'}
+                  </p>
+                </div>
+                <button
+                  onClick={onClose}
+                  className="p-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                >
+                  <XMarkIcon className="h-6 w-6" />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* Product Images */}
+                <div className="space-y-4">
+                  <div className="aspect-square rounded-xl overflow-hidden bg-gray-100">
+                    <img
+                      src={getImageUrl(product.images?.[0])}
+                      alt={product.title}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+
+                  {/* Additional Images */}
+                  {product.images && product.images.length > 1 && (
+                    <div className="flex space-x-2 overflow-x-auto pb-2">
+                      {product.images.slice(1).map((image, index) => (
+                        <div
+                          key={index}
+                          className="w-20 h-20 flex-shrink-0 rounded-md overflow-hidden"
+                        >
+                          <img
+                            src={getImageUrl(image)}
+                            alt={`${product.title} - vue ${index + 2}`}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Product Details */}
+                <div className="space-y-6">
+                  {/* Price and Rating */}
+                  <div className="space-y-4">
+                    <div className="flex items-center space-x-4">
+                      <span className="text-3xl font-bold text-gray-900">
+                        {formatCurrency(product.price || 0)}
+                      </span>
+                      {product.featured && (
+                        <span className="bg-primary-100 text-primary-800 text-sm font-medium px-3 py-1 rounded-full">
+                          Recommandé
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center space-x-2">
+                      <div className="flex">
+                        {[...Array(5)].map((_, i) => (
+                          <StarIconSolid
+                            key={i}
+                            className={`h-5 w-5 ${
+                              i < Math.floor(product.rating?.average || 0)
+                                ? 'text-yellow-400'
+                                : 'text-gray-200'
+                            }`}
+                          />
+                        ))}
+                      </div>
+                      <span className="text-gray-600">
+                        {product.rating?.average?.toFixed(1) || '0.0'} (
+                        {product.rating?.totalReviews || 0} avis)
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Description */}
+                  <div>
+                    <h4 className="font-semibold text-gray-900 mb-2">Description</h4>
+                    <p className="text-gray-600 leading-relaxed">{product.description}</p>
+                  </div>
+
+                  {/* Composition */}
+                  {product.composition && (
+                    <div>
+                      <h4 className="font-semibold text-gray-900 mb-2">Composition</h4>
+                      <p className="text-gray-600 leading-relaxed">{product.composition}</p>
+                    </div>
+                  )}
+
+                  {/* Size Options */}
+                  {sizeOptions && sizeOptions.length > 0 && (
+                    <div>
+                      <h4 className="font-semibold text-gray-900 mb-2">Tailles disponibles</h4>
+                      <div className="flex flex-wrap gap-2">
+                        {sizeOptions.map((size, index) => {
+                          const sizeStock = getStockForSize(size);
+                          const isOutOfStock = sizeStock === 0;
+
+                          return (
+                            <button
+                              key={index}
+                              disabled={isOutOfStock}
+                              className={`w-10 h-10 flex items-center justify-center rounded-full text-sm font-medium ${
+                                isOutOfStock
+                                  ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                                  : selectedSize === size
+                                    ? 'bg-primary-600 text-white'
+                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                              }`}
+                              onClick={() => {
+                                setSelectedSize(size);
+                                setSizeError(false);
+                              }}
+                            >
+                              {size}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <p className="text-sm text-gray-500 mt-2">
+                        Taille sélectionnée: <span className="font-medium">{selectedSize}</span>
+                        {product.sizeInventory && (
+                          <span className="ml-2">
+                            ({getStockForSize(selectedSize)} disponibles)
+                          </span>
+                        )}
+                      </p>
+                      {sizeError && (
+                        <p className="text-sm text-red-500 mt-1">
+                          Veuillez sélectionner une taille avant d&apos;ajouter au panier
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Quantity Selector */}
+                  <div>
+                    <h4 className="font-semibold text-gray-900 mb-2">Quantité</h4>
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={decrementQuantity}
+                        disabled={quantity <= 1}
+                        className={`p-2 rounded-md ${
+                          quantity <= 1
+                            ? 'bg-gray-100 text-gray-400'
+                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                        }`}
+                      >
+                        <MinusIcon className="h-4 w-4" />
+                      </button>
+                      <span className="px-4 py-2 border border-gray-300 rounded-md min-w-[40px] text-center">
+                        {quantity}
+                      </span>
+                      <button
+                        onClick={incrementQuantity}
+                        disabled={quantity >= currentStock}
+                        className={`p-2 rounded-md ${
+                          quantity >= currentStock
+                            ? 'bg-gray-100 text-gray-400'
+                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                        }`}
+                      >
+                        <PlusIcon className="h-4 w-4" />
+                      </button>
+                      <span className="text-sm text-gray-500">{currentStock} disponibles</span>
+                    </div>
+                  </div>
+
+                  {/* Specifications */}
+                  {product.specifications && product.specifications.length > 0 && (
+                    <div>
+                      <h4 className="font-semibold text-gray-900 mb-2">Spécifications</h4>
+                      <ul className="list-disc list-inside text-gray-600 space-y-1">
+                        {product.specifications.map((spec, index) => (
+                          <li key={index}>{spec}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* Stock Status */}
+                  <div>
+                    <div className="flex items-center space-x-2">
+                      <span className="font-medium text-gray-900">Disponibilité:</span>
+                      {currentStock > (product.lowStockThreshold || 5) ? (
+                        <span className="text-green-600 font-medium">
+                          En stock ({currentStock} disponibles)
+                        </span>
+                      ) : currentStock > 0 ? (
+                        <span className="text-orange-600 font-medium">
+                          Stock limité ({currentStock} restants)
+                        </span>
+                      ) : (
+                        <span className="text-red-600 font-medium">Rupture de stock</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Shipping Info */}
+                  {product.shippingInfo && (
+                    <div>
+                      <h4 className="font-semibold text-gray-900 mb-2">Livraison</h4>
+                      <p className="text-gray-600">
+                        {product.shippingInfo.freeShipping
+                          ? 'Livraison gratuite'
+                          : product.shippingInfo.shippingCost > 0
+                            ? `Frais de livraison: ${product.shippingInfo.shippingCost} ${product.currency || 'MAD'}`
+                            : 'Frais de livraison à déterminer'}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Category */}
+                  <div>
+                    <h4 className="font-semibold text-gray-900 mb-2">Catégorie</h4>
+                    <p className="text-gray-600">
+                      {PRODUCT_CATEGORIES.find(cat => cat.value === product.category)?.label ||
+                        product.category}
+                    </p>
+                  </div>
+
+                  {/* Tags */}
+                  {product.tags && product.tags.length > 0 && (
+                    <div>
+                      <h4 className="font-semibold text-gray-900 mb-2">Tags</h4>
+                      <div className="flex flex-wrap gap-2">
+                        {product.tags.map((tag, index) => (
+                          <span
+                            key={index}
+                            className="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Action Buttons */}
+                  <div className="flex flex-col space-y-3">
+                    <button
+                      onClick={handleDirectOrder}
+                      disabled={currentStock === 0 || isOrdering}
+                      className={`w-full py-3 px-6 rounded-lg font-medium text-lg transition-colors ${
+                        currentStock === 0
+                          ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                          : 'bg-primary-600 text-white hover:bg-primary-700 active:bg-primary-800'
+                      }`}
+                    >
+                      {isOrdering ? (
+                        <span className="flex items-center justify-center">
+                          <svg
+                            className="animate-spin -ml-1 mr-2 h-5 w-5 text-white"
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                          >
+                            <circle
+                              className="opacity-25"
+                              cx="12"
+                              cy="12"
+                              r="10"
+                              stroke="currentColor"
+                              strokeWidth="4"
+                            ></circle>
+                            <path
+                              className="opacity-75"
+                              fill="currentColor"
+                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                            ></path>
+                          </svg>
+                          Traitement...
+                        </span>
+                      ) : (
+                        <span className="flex items-center justify-center">
+                          <PaperAirplaneIcon className="h-5 w-5 mr-2" />
+                          Commander
+                        </span>
+                      )}
+                    </button>
+
+                    <button
+                      onClick={onClose}
+                      className="w-full py-2 px-6 rounded-lg font-medium border border-gray-300 text-gray-700 hover:bg-gray-100 transition-colors"
+                    >
+                      Continuer mes achats
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+};
+
 // Main ProductsPage Component
 const ProductsPage = () => {
   const { user: _user } = useAuth();
@@ -431,6 +902,10 @@ const ProductsPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
   const [sortOption, setSortOption] = useState('newest');
+
+  // Modals
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [showProductDetail, setShowProductDetail] = useState(false);
 
   // Load products
   useEffect(() => {
@@ -487,7 +962,7 @@ const ProductsPage = () => {
   const fetchProducts = async () => {
     try {
       setLoading(true);
-      const API_URL = process.env.REACT_APP_API_URL || 'http://hamza-aourass.ddns.net:5001';
+      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
       try {
         // Try to fetch from API
@@ -518,6 +993,11 @@ const ProductsPage = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleViewProduct = product => {
+    setSelectedProduct(product);
+    setShowProductDetail(true);
   };
 
   const clearFilters = () => {
@@ -562,10 +1042,7 @@ const ProductsPage = () => {
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-6 lg:space-y-0 lg:space-x-8">
               {/* Search avec design premium */}
               <div className="flex-1 max-w-lg">
-                <label
-                  htmlFor="search-input"
-                  className="block text-sm font-bold text-gray-700 mb-2"
-                >
+                <label htmlFor="search-input" className="block text-sm font-bold text-gray-700 mb-2">
                   Rechercher vos produits
                 </label>
                 <div className="relative">
@@ -585,12 +1062,7 @@ const ProductsPage = () => {
               <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-6">
                 {/* Category Filter */}
                 <div>
-                  <label
-                    htmlFor="category-filter"
-                    className="block text-sm font-bold text-gray-700 mb-2"
-                  >
-                    Catégorie
-                  </label>
+                  <label htmlFor="category-filter" className="block text-sm font-bold text-gray-700 mb-2">Catégorie</label>
                   <select
                     id="category-filter"
                     value={categoryFilter}
@@ -607,14 +1079,8 @@ const ProductsPage = () => {
 
                 {/* Sort */}
                 <div>
-                  <label
-                    htmlFor="sort-filter"
-                    className="block text-sm font-bold text-gray-700 mb-2"
-                  >
-                    Trier par
-                  </label>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">Trier par</label>
                   <select
-                    id="sort-filter"
                     value={sortOption}
                     onChange={e => setSortOption(e.target.value)}
                     className="px-6 py-4 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-primary-100 focus:border-primary-400 transition-all duration-300 text-lg font-medium bg-white min-w-[200px]"
@@ -665,7 +1131,11 @@ const ProductsPage = () => {
             <motion.div layout className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <AnimatePresence>
                 {filteredProducts.map(product => (
-                  <ProductCard key={product._id} product={product} />
+                  <ProductCard
+                    key={product._id}
+                    product={product}
+                    onViewProduct={handleViewProduct}
+                  />
                 ))}
               </AnimatePresence>
             </motion.div>
@@ -702,6 +1172,16 @@ const ProductsPage = () => {
           </div>
         )}
       </div>
+
+      {/* Product Detail Modal */}
+      <ProductDetailModal
+        product={selectedProduct}
+        isOpen={showProductDetail}
+        onClose={() => {
+          setShowProductDetail(false);
+          setSelectedProduct(null);
+        }}
+      />
     </div>
   );
 };

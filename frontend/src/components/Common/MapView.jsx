@@ -35,7 +35,14 @@ const createCustomIcon = (color = '#4F46E5', imgUrl = null) => {
   });
 };
 
-const MapView = ({ sessions, height = '500px', userLocation }) => {
+const MapView = ({
+  sessions,
+  professionals,
+  height = '500px',
+  userLocation,
+  onProfessionalSelect,
+  dataType = 'sessions', // 'sessions' or 'professionals'
+}) => {
   useEffect(() => {
     // Initialize map
     const mapContainer = L.DomUtil.get('map');
@@ -61,9 +68,10 @@ const MapView = ({ sessions, height = '500px', userLocation }) => {
       map.setView([userLocation.lat, userLocation.lng], 10);
     }
 
-    // Add session markers
-    if (sessions && sessions.length > 0) {
-      const bounds = L.latLngBounds();
+    const bounds = L.latLngBounds();
+
+    // Handle sessions data
+    if (dataType === 'sessions' && sessions && sessions.length > 0) {
       sessions.forEach(session => {
         if (
           session.locationCoordinates &&
@@ -94,16 +102,79 @@ const MapView = ({ sessions, height = '500px', userLocation }) => {
           bounds.extend([lat, lng]);
         }
       });
-      if (bounds.isValid()) {
-        map.fitBounds(bounds, { padding: [50, 50] });
-      }
+    }
+
+    // Handle professionals data
+    if (dataType === 'professionals' && professionals && professionals.length > 0) {
+      professionals.forEach(professional => {
+        if (
+          professional.businessAddress &&
+          professional.businessAddress.coordinates &&
+          professional.businessAddress.coordinates.lat &&
+          professional.businessAddress.coordinates.lng
+        ) {
+          const { lat, lng } = professional.businessAddress.coordinates;
+
+          // Get image URL for professional
+          let imageUrl = null;
+          if (professional.profilePhoto) {
+            imageUrl = professional.profilePhoto;
+          } else if (professional.coverImages && professional.coverImages.length > 0) {
+            imageUrl = professional.coverImages[0];
+          } else if (professional.userId?.profileImage) {
+            imageUrl = professional.userId.profileImage;
+          }
+
+          const marker = L.marker([lat, lng], {
+            icon: createCustomIcon('#10B981', imageUrl), // Green color for professionals
+          }).addTo(map);
+
+          // Create popup content
+          const popupContent = `
+            <div style="width: 250px">
+              <strong style="font-size: 16px;">${professional.businessName || professional.title}</strong>
+              <p style="margin: 5px 0; font-size: 13px; color: #666;">${professional.businessType || ''}</p>
+              <p style="margin: 5px 0; font-size: 13px; color: #666;">
+                <b>Adresse :</b> ${
+                  professional.address ||
+                  (professional.businessAddress
+                    ? `${professional.businessAddress.street || ''}, ${professional.businessAddress.city || ''}, ${professional.businessAddress.country || ''}`
+                    : '')
+                }
+              </p>
+              <p style="margin: 5px 0; font-size: 13px; color: #666;">
+                <b>Note :</b> ${professional.rating?.average || 0}/5 (${professional.rating?.totalReviews || 0} avis)
+              </p>
+              <p style="margin: 5px 0; font-size: 13px; color: #444;">
+                <b>Description :</b> ${professional.description || ''}
+              </p>
+            </div>
+          `;
+
+          marker.bindPopup(popupContent);
+
+          // Add click handler if onProfessionalSelect is provided
+          if (onProfessionalSelect) {
+            marker.on('click', () => {
+              onProfessionalSelect(professional._id);
+            });
+          }
+
+          bounds.extend([lat, lng]);
+        }
+      });
+    }
+
+    // Fit bounds if we have valid coordinates
+    if (bounds.isValid()) {
+      map.fitBounds(bounds, { padding: [50, 50] });
     }
 
     // Clean up on unmount
     return () => {
       map.remove();
     };
-  }, [sessions, userLocation]);
+  }, [sessions, professionals, userLocation, dataType, onProfessionalSelect]);
 
   return <div id="map" style={{ height, width: '100%' }} className="rounded-lg"></div>;
 };

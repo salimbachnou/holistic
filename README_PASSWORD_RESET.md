@@ -83,7 +83,7 @@ EMAIL_PORT=587
 EMAIL_USER=your-email@gmail.com
 EMAIL_PASS=your-app-password
 EMAIL_FROM_NAME=Holistic.ma
-FRONTEND_URL=http://hamza-aourass.ddns.net:3002
+FRONTEND_URL=http://localhost:3000
 ```
 
 ### Security Features

@@ -35,7 +35,7 @@ const ClientNavbar = () => {
     if (user?.profileImage) {
       const imageUrl = user.profileImage.startsWith('http')
         ? user.profileImage
-        : `${process.env.REACT_APP_API_URL || 'http://hamza-aourass.ddns.net:5001'}${user.profileImage}`;
+        : `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}${user.profileImage}`;
       setProfileImageUrl(imageUrl);
     } else {
       setProfileImageUrl(null);
@@ -210,11 +210,11 @@ const ClientNavbar = () => {
                       Mes réservations
                     </Link>
                     <Link
-                      to="/sessions"
+                      to="/messages"
                       className="flex items-center px-4 py-2.5 text-sm text-gray-700 hover:bg-pink-50 hover:text-pink-700 transition-colors duration-200"
                     >
-                      <GraduationCap className="mr-3 h-5 w-5 text-gray-500" />
-                      Mes sessions
+                      <MessageCircle className="mr-3 h-5 w-5 text-gray-500" />
+                      Messages
                     </Link>
                     <Link
                       to="/favorites"

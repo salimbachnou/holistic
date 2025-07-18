@@ -163,6 +163,7 @@ const ProfessionalSessionsPage = () => {
   const [selectedReview, setSelectedReview] = useState(null);
   const [reviewResponse, setReviewResponse] = useState('');
   const [loadingReviews, setLoadingReviews] = useState(false);
+  const [reviewsError, setReviewsError] = useState(null);
   const [submittingResponse, setSubmittingResponse] = useState(false);
 
   // Auto-refresh states
@@ -212,7 +213,7 @@ const ProfessionalSessionsPage = () => {
   const fetchProfessionalCategories = async () => {
     try {
       setLoadingCategories(true);
-      const API_URL = process.env.REACT_APP_API_URL || 'http://hamza-aourass.ddns.net:5001';
+      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
       const token = localStorage.getItem('token');
 
       const response = await axios.get(`${API_URL}/api/professionals/me/categories`, {
@@ -233,7 +234,7 @@ const ProfessionalSessionsPage = () => {
   // Add function to add a new category
   const addCategory = async categoryName => {
     try {
-      const API_URL = process.env.REACT_APP_API_URL || 'http://hamza-aourass.ddns.net:5001';
+      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
       const token = localStorage.getItem('token');
 
       const response = await axios.post(
@@ -261,7 +262,7 @@ const ProfessionalSessionsPage = () => {
   // Add function to delete a category
   const deleteCategory = async categoryName => {
     try {
-      const API_URL = process.env.REACT_APP_API_URL || 'http://hamza-aourass.ddns.net:5001';
+      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
       const token = localStorage.getItem('token');
 
       const response = await axios.delete(
@@ -287,19 +288,81 @@ const ProfessionalSessionsPage = () => {
   const fetchSessionReviews = async sessionId => {
     try {
       setLoadingReviews(true);
-      const API_URL = process.env.REACT_APP_API_URL || 'http://hamza-aourass.ddns.net:5001';
+      setReviewsError(null); // Reset error state
+      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
       const token = localStorage.getItem('token');
 
-      const response = await axios.get(`${API_URL}/api/reviews/session/${sessionId}`, {
+      // Validation des paramètres
+      if (!sessionId) {
+        console.error('Session ID is required');
+        setReviewsError('ID de session manquant');
+        toast.error('ID de session manquant');
+        return;
+      }
+
+      if (!token) {
+        console.error('Authentication token is missing');
+        setReviewsError("Token d'authentification manquant");
+        toast.error("Token d'authentification manquant");
+        return;
+      }
+
+      // Use the professional-specific endpoint for better security and error handling
+      const response = await axios.get(`${API_URL}/api/reviews/session/${sessionId}/professional`, {
         headers: { Authorization: `Bearer ${token}` },
+        timeout: 10000, // 10 secondes de timeout
       });
 
-      if (response.data.success) {
+      if (response.data?.success) {
         setSessionReviews(response.data.reviews || []);
+      } else if (response.data?.reviews) {
+        // Fallback si pas de success flag mais reviews présents
+        setSessionReviews(response.data.reviews);
+      } else {
+        setSessionReviews([]);
+        console.warn('No reviews found for session:', sessionId);
       }
     } catch (error) {
       console.error('Error fetching session reviews:', error);
-      toast.error('Erreur lors du chargement des avis');
+
+      let errorMessage = 'Erreur lors du chargement des avis';
+
+      // Gestion d'erreur spécifique selon le type d'erreur
+      if (error.response) {
+        const status = error.response.status;
+        const message =
+          error.response.data?.message || error.response.data?.error || 'Erreur inconnue';
+
+        switch (status) {
+          case 401:
+            errorMessage = 'Session expirée. Veuillez vous reconnecter.';
+            break;
+          case 403:
+            errorMessage = 'Accès refusé aux avis de cette session';
+            break;
+          case 404:
+            errorMessage = 'Session introuvable';
+            break;
+          case 500:
+            errorMessage = 'Erreur serveur lors du chargement des avis. Veuillez réessayer.';
+            console.error('Server error details:', message);
+            break;
+          default:
+            errorMessage = `Erreur lors du chargement des avis (${status})`;
+        }
+
+        toast.error(errorMessage);
+      } else if (error.request) {
+        errorMessage = 'Impossible de contacter le serveur. Vérifiez votre connexion.';
+        toast.error(errorMessage);
+      } else {
+        errorMessage = 'Erreur lors de la configuration de la requête';
+        toast.error(errorMessage);
+      }
+
+      setReviewsError(errorMessage);
+      // Initialiser avec un tableau vide pour éviter les erreurs d'affichage
+      setSessionReviews([]);
     } finally {
       setLoadingReviews(false);
     }
@@ -307,9 +370,17 @@ const ProfessionalSessionsPage = () => {
 
   // Handle opening reviews modal
   const handleOpenReviewsModal = async session => {
-    setSelectedSession(session);
-    setIsReviewsModalOpen(true);
-    await fetchSessionReviews(session._id);
+    try {
+      setSelectedSession(session);
+      setIsReviewsModalOpen(true);
+
+      // Charger les avis en arrière-plan - ne pas bloquer l'ouverture du modal
+      await fetchSessionReviews(session._id);
+    } catch (error) {
+      console.error('Error in handleOpenReviewsModal:', error);
+      // Le modal reste ouvert même si le chargement des avis échoue
+      toast.error("Erreur lors de l'ouverture du modal des avis");
+    }
   };
 
   // Handle closing reviews modal
@@ -319,6 +390,7 @@ const ProfessionalSessionsPage = () => {
     setSessionReviews([]);
     setSelectedReview(null);
     setReviewResponse('');
+    setReviewsError(null); // Reset error state
   };
 
   // Handle opening review response modal
@@ -344,7 +416,7 @@ const ProfessionalSessionsPage = () => {
 
     try {
       setSubmittingResponse(true);
-      const API_URL = process.env.REACT_APP_API_URL || 'http://hamza-aourass.ddns.net:5001';
+      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
       const token = localStorage.getItem('token');
 
       await axios.put(
@@ -377,7 +449,7 @@ const ProfessionalSessionsPage = () => {
   const fetchSessions = async () => {
     try {
       setLoading(true);
-      const API_URL = process.env.REACT_APP_API_URL || 'http://hamza-aourass.ddns.net:5001';
+      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
       const token = localStorage.getItem('token');
 
       const response = await axios.get(`${API_URL}/api/sessions/professional`, {
@@ -397,7 +469,7 @@ const ProfessionalSessionsPage = () => {
   const fetchSessionBookings = async sessionId => {
     try {
       setIsLoadingRequests(true);
-      const API_URL = process.env.REACT_APP_API_URL || 'http://hamza-aourass.ddns.net:5001';
+      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
       const token = localStorage.getItem('token');
 
       const response = await axios.get(`${API_URL}/api/sessions/${sessionId}/bookings`, {
@@ -434,7 +506,7 @@ const ProfessionalSessionsPage = () => {
 
   const fetchSpecificBooking = async bookingId => {
     try {
-      const API_URL = process.env.REACT_APP_API_URL || 'http://hamza-aourass.ddns.net:5001';
+      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
       const token = localStorage.getItem('token');
 
       const response = await axios.get(`${API_URL}/api/bookings/${bookingId}`, {
@@ -533,7 +605,7 @@ const ProfessionalSessionsPage = () => {
         return;
       }
 
-      const API_URL = process.env.REACT_APP_API_URL || 'http://hamza-aourass.ddns.net:5001';
+      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
       const token = localStorage.getItem('token');
 
       if (!token) {
@@ -715,7 +787,7 @@ const ProfessionalSessionsPage = () => {
 
   const handleDeleteConfirm = async () => {
     try {
-      const API_URL = process.env.REACT_APP_API_URL || 'http://hamza-aourass.ddns.net:5001';
+      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
       const token = localStorage.getItem('token');
 
       await axios.put(
@@ -826,7 +898,7 @@ const ProfessionalSessionsPage = () => {
 
   const handleBookingStatusChange = async (bookingId, status, reason = '') => {
     try {
-      const API_URL = process.env.REACT_APP_API_URL || 'http://hamza-aourass.ddns.net:5001';
+      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
       const token = localStorage.getItem('token');
 
       await axios.put(
@@ -855,7 +927,7 @@ const ProfessionalSessionsPage = () => {
 
   const handleCompleteSession = async sessionId => {
     try {
-      const API_URL = process.env.REACT_APP_API_URL || 'http://hamza-aourass.ddns.net:5001';
+      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
       const token = localStorage.getItem('token');
 
       const response = await axios.put(
@@ -1682,82 +1754,105 @@ const ProfessionalSessionsPage = () => {
           </div>
         ) : (
           // Stats view
-          <div className="space-y-8">
+          <div className="space-y-6 sm:space-y-8">
             {/* Overview Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              <div className="bg-gradient-to-br from-blue-500 to-cyan-600 rounded-2xl p-8 text-white shadow-2xl hover:shadow-3xl transition-all duration-300 transform hover:-translate-y-2">
-                <div className="flex items-center">
-                  <div className="bg-white/20 rounded-2xl p-4 mr-6">
-                    <CalendarIcon className="h-10 w-10" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
+              <div className="bg-gradient-to-br from-blue-500 to-cyan-600 rounded-xl sm:rounded-2xl p-4 sm:p-6 lg:p-8 text-white shadow-lg sm:shadow-2xl hover:shadow-2xl sm:hover:shadow-3xl transition-all duration-300 transform hover:-translate-y-1 sm:hover:-translate-y-2">
+                <div className="flex items-center flex-col sm:flex-row text-center sm:text-left">
+                  <div className="bg-white/20 rounded-xl sm:rounded-2xl p-2 sm:p-3 lg:p-4 mb-3 sm:mb-0 sm:mr-4 lg:mr-6 flex-shrink-0">
+                    <CalendarIcon className="h-6 w-6 sm:h-8 sm:w-8 lg:h-10 lg:w-10 mx-auto sm:mx-0" />
                   </div>
-                  <div>
-                    <p className="text-blue-100 font-medium">Sessions Totales</p>
-                    <p className="text-4xl font-bold mt-2">{sessionStats.total}</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl p-8 text-white shadow-2xl hover:shadow-3xl transition-all duration-300 transform hover:-translate-y-2">
-                <div className="flex items-center">
-                  <div className="bg-white/20 rounded-2xl p-4 mr-6">
-                    <CheckIcon className="h-10 w-10" />
-                  </div>
-                  <div>
-                    <p className="text-emerald-100 font-medium">Sessions Terminées</p>
-                    <p className="text-4xl font-bold mt-2">{sessionStats.completed}</p>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-blue-100 font-medium text-sm sm:text-base">
+                      Sessions Totales
+                    </p>
+                    <p className="text-2xl sm:text-3xl lg:text-4xl font-bold mt-1 sm:mt-2">
+                      {sessionStats.total}
+                    </p>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl p-8 text-white shadow-2xl hover:shadow-3xl transition-all duration-300 transform hover:-translate-y-2">
-                <div className="flex items-center">
-                  <div className="bg-white/20 rounded-2xl p-4 mr-6">
-                    <ClockIcon className="h-10 w-10" />
+              <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl sm:rounded-2xl p-4 sm:p-6 lg:p-8 text-white shadow-lg sm:shadow-2xl hover:shadow-2xl sm:hover:shadow-3xl transition-all duration-300 transform hover:-translate-y-1 sm:hover:-translate-y-2">
+                <div className="flex items-center flex-col sm:flex-row text-center sm:text-left">
+                  <div className="bg-white/20 rounded-xl sm:rounded-2xl p-2 sm:p-3 lg:p-4 mb-3 sm:mb-0 sm:mr-4 lg:mr-6 flex-shrink-0">
+                    <CheckIcon className="h-6 w-6 sm:h-8 sm:w-8 lg:h-10 lg:w-10 mx-auto sm:mx-0" />
                   </div>
-                  <div>
-                    <p className="text-amber-100 font-medium">Sessions Programmées</p>
-                    <p className="text-4xl font-bold mt-2">{sessionStats.scheduled}</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-gradient-to-br from-purple-500 to-pink-600 rounded-2xl p-8 text-white shadow-2xl hover:shadow-3xl transition-all duration-300 transform hover:-translate-y-2">
-                <div className="flex items-center">
-                  <div className="bg-white/20 rounded-2xl p-4 mr-6">
-                    <CurrencyEuroIcon className="h-10 w-10" />
-                  </div>
-                  <div>
-                    <p className="text-purple-100 font-medium">Revenus Totaux</p>
-                    <p className="text-4xl font-bold mt-2">{sessionStats.totalRevenue} MAD</p>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-emerald-100 font-medium text-sm sm:text-base">
+                      Sessions Terminées
+                    </p>
+                    <p className="text-2xl sm:text-3xl lg:text-4xl font-bold mt-1 sm:mt-2">
+                      {sessionStats.completed}
+                    </p>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-gradient-to-br from-yellow-500 to-amber-600 rounded-2xl p-8 text-white shadow-2xl hover:shadow-3xl transition-all duration-300 transform hover:-translate-y-2">
-                <div className="flex items-center">
-                  <div className="bg-white/20 rounded-2xl p-4 mr-6">
-                    <StarIcon className="h-10 w-10" />
+              <div className="bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl sm:rounded-2xl p-4 sm:p-6 lg:p-8 text-white shadow-lg sm:shadow-2xl hover:shadow-2xl sm:hover:shadow-3xl transition-all duration-300 transform hover:-translate-y-1 sm:hover:-translate-y-2">
+                <div className="flex items-center flex-col sm:flex-row text-center sm:text-left">
+                  <div className="bg-white/20 rounded-xl sm:rounded-2xl p-2 sm:p-3 lg:p-4 mb-3 sm:mb-0 sm:mr-4 lg:mr-6 flex-shrink-0">
+                    <ClockIcon className="h-6 w-6 sm:h-8 sm:w-8 lg:h-10 lg:w-10 mx-auto sm:mx-0" />
                   </div>
-                  <div>
-                    <p className="text-yellow-100 font-medium">Note Moyenne</p>
-                    <div className="flex items-center mt-2">
-                      <p className="text-4xl font-bold mr-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-amber-100 font-medium text-sm sm:text-base">
+                      Sessions Programmées
+                    </p>
+                    <p className="text-2xl sm:text-3xl lg:text-4xl font-bold mt-1 sm:mt-2">
+                      {sessionStats.scheduled}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl sm:rounded-2xl p-4 sm:p-6 lg:p-8 text-white shadow-lg sm:shadow-2xl hover:shadow-2xl sm:hover:shadow-3xl transition-all duration-300 transform hover:-translate-y-1 sm:hover:-translate-y-2">
+                <div className="flex items-center flex-col sm:flex-row text-center sm:text-left">
+                  <div className="bg-white/20 rounded-xl sm:rounded-2xl p-2 sm:p-3 lg:p-4 mb-3 sm:mb-0 sm:mr-4 lg:mr-6 flex-shrink-0">
+                    <CurrencyEuroIcon className="h-6 w-6 sm:h-8 sm:w-8 lg:h-10 lg:w-10 mx-auto sm:mx-0" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-purple-100 font-medium text-sm sm:text-base">
+                      Revenus Totaux
+                    </p>
+                    <p className="text-xl sm:text-2xl lg:text-3xl xl:text-4xl font-bold mt-1 sm:mt-2 break-words">
+                      {sessionStats.totalRevenue} MAD
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-gradient-to-br from-yellow-500 to-amber-600 rounded-xl sm:rounded-2xl p-4 sm:p-6 lg:p-8 text-white shadow-lg sm:shadow-2xl hover:shadow-2xl sm:hover:shadow-3xl transition-all duration-300 transform hover:-translate-y-1 sm:hover:-translate-y-2">
+                <div className="flex items-center flex-col sm:flex-row text-center sm:text-left">
+                  <div className="bg-white/20 rounded-xl sm:rounded-2xl p-2 sm:p-3 lg:p-4 mb-3 sm:mb-0 sm:mr-4 lg:mr-6 flex-shrink-0">
+                    <StarIcon className="h-6 w-6 sm:h-8 sm:w-8 lg:h-10 lg:w-10 mx-auto sm:mx-0" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-yellow-100 font-medium text-sm sm:text-base">Note Moyenne</p>
+                    <div className="flex items-center justify-center sm:justify-start mt-1 sm:mt-2 flex-wrap gap-2">
+                      <p className="text-2xl sm:text-3xl lg:text-4xl font-bold">
                         {formatNumber(sessionStats.averageRating, 1)}
                       </p>
-                      {renderStars(sessionStats.averageRating, 'h-6 w-6')}
+                      <div className="flex">
+                        {renderStars(
+                          sessionStats.averageRating,
+                          'h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6'
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl p-8 text-white shadow-2xl hover:shadow-3xl transition-all duration-300 transform hover:-translate-y-2">
-                <div className="flex items-center">
-                  <div className="bg-white/20 rounded-2xl p-4 mr-6">
-                    <UserGroupIcon className="h-10 w-10" />
+              <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl sm:rounded-2xl p-4 sm:p-6 lg:p-8 text-white shadow-lg sm:shadow-2xl hover:shadow-2xl sm:hover:shadow-3xl transition-all duration-300 transform hover:-translate-y-1 sm:hover:-translate-y-2">
+                <div className="flex items-center flex-col sm:flex-row text-center sm:text-left">
+                  <div className="bg-white/20 rounded-xl sm:rounded-2xl p-2 sm:p-3 lg:p-4 mb-3 sm:mb-0 sm:mr-4 lg:mr-6 flex-shrink-0">
+                    <UserGroupIcon className="h-6 w-6 sm:h-8 sm:w-8 lg:h-10 lg:w-10 mx-auto sm:mx-0" />
                   </div>
-                  <div>
-                    <p className="text-indigo-100 font-medium">Total Avis</p>
-                    <p className="text-4xl font-bold mt-2">{sessionStats.totalReviews}</p>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-indigo-100 font-medium text-sm sm:text-base">Total Avis</p>
+                    <p className="text-2xl sm:text-3xl lg:text-4xl font-bold mt-1 sm:mt-2">
+                      {sessionStats.totalReviews}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -1806,12 +1901,12 @@ const ProfessionalSessionsPage = () => {
 
             {/* Sessions with Reviews Details */}
             <div className="bg-white/80 backdrop-blur-xl shadow-2xl rounded-2xl border border-purple-200">
-              <div className="px-8 py-6 border-b border-purple-100 bg-gradient-to-r from-purple-50 to-pink-50">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-2xl font-bold text-gray-900 flex items-center">
-                    <div className="bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl p-3 mr-4">
+              <div className="px-4 sm:px-6 lg:px-8 py-4 sm:py-6 border-b border-purple-100 bg-gradient-to-r from-purple-50 to-pink-50">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  <h3 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 flex items-center">
+                    <div className="bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg sm:rounded-xl p-2 sm:p-3 mr-3 sm:mr-4 flex-shrink-0">
                       <svg
-                        className="h-6 w-6 text-white"
+                        className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 text-white"
                         fill="none"
                         stroke="currentColor"
                         viewBox="0 0 24 24"
@@ -1824,21 +1919,24 @@ const ProfessionalSessionsPage = () => {
                         />
                       </svg>
                     </div>
-                    Avis par Session ({sessionStats.sessionsWithReviews} sessions évaluées)
+                    <span className="break-words">
+                      Avis par Session ({sessionStats.sessionsWithReviews} sessions évaluées)
+                    </span>
                   </h3>
                   <a
                     href="/dashboard/professional/reviews?contentType=session"
-                    className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-xl transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-xl text-sm font-semibold"
+                    className="inline-flex items-center px-3 sm:px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-lg sm:rounded-xl transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-xl text-xs sm:text-sm font-semibold flex-shrink-0"
                   >
-                    <StarIcon className="h-4 w-4 mr-2" />
-                    Voir tous les avis
+                    <StarIcon className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                    <span className="hidden sm:inline">Voir tous les avis</span>
+                    <span className="sm:hidden">Tous les avis</span>
                   </a>
                 </div>
               </div>
 
-              <div className="p-8">
+              <div className="p-4 sm:p-6 lg:p-8">
                 {sessions.filter(s => s.reviews && s.reviews.length > 0).length > 0 ? (
-                  <div className="space-y-6">
+                  <div className="space-y-4 sm:space-y-6">
                     {sessions
                       .filter(s => s.reviews && s.reviews.length > 0)
                       .sort((a, b) => {
@@ -1852,31 +1950,34 @@ const ProfessionalSessionsPage = () => {
                         return (
                           <div
                             key={session._id}
-                            className="bg-gradient-to-r from-white to-purple-50 rounded-2xl p-6 border border-purple-200 hover:shadow-lg transition-all duration-300"
+                            className="bg-gradient-to-r from-white to-purple-50 rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-purple-200 hover:shadow-lg transition-all duration-300"
                           >
-                            <div className="flex items-start justify-between mb-4">
-                              <div className="flex-1">
-                                <h4 className="text-lg font-bold text-gray-900 mb-2">
+                            <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between mb-4 gap-4">
+                              <div className="flex-1 min-w-0">
+                                <h4 className="text-base sm:text-lg font-bold text-gray-900 mb-2 break-words">
                                   {session.title}
                                 </h4>
-                                <p className="text-gray-600 text-sm mb-3">
+                                <p className="text-gray-600 text-xs sm:text-sm mb-3">
                                   {formatDate(session.startTime)}
                                 </p>
 
-                                <div className="flex items-center space-x-4 mb-4">
-                                  <div className="flex items-center space-x-2">
-                                    {renderStars(reviewStats.averageRating, 'h-5 w-5')}
-                                    <span className="text-lg font-bold text-gray-900">
+                                <div className="flex flex-wrap items-center gap-2 sm:gap-4 mb-4">
+                                  <div className="flex items-center gap-1 sm:gap-2">
+                                    {renderStars(
+                                      reviewStats.averageRating,
+                                      'h-4 w-4 sm:h-5 sm:w-5'
+                                    )}
+                                    <span className="text-sm sm:text-lg font-bold text-gray-900">
                                       {reviewStats.averageRating.toFixed(1)}
                                     </span>
                                   </div>
 
-                                  <div className="text-sm text-gray-600">
+                                  <div className="text-xs sm:text-sm text-gray-600">
                                     {reviewStats.totalReviews} avis
                                   </div>
 
                                   <span
-                                    className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusClass(session.status)}`}
+                                    className={`px-2 sm:px-3 py-1 rounded-full text-xs font-semibold ${getStatusClass(session.status)}`}
                                   >
                                     {session.status === 'completed' && '✅ Terminée'}
                                     {session.status === 'scheduled' && '🕐 Programmée'}
@@ -1885,41 +1986,41 @@ const ProfessionalSessionsPage = () => {
                                 </div>
                               </div>
 
-                              <div className="flex items-center space-x-2">
+                              <div className="flex items-center gap-2 flex-shrink-0">
                                 <button
                                   onClick={() => handleOpenReviewsModal(session)}
-                                  className="px-4 py-2 bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-600 hover:to-amber-600 text-white rounded-lg transition-all duration-200 transform hover:scale-105"
+                                  className="px-3 sm:px-4 py-2 bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-600 hover:to-amber-600 text-white rounded-lg transition-all duration-200 transform hover:scale-105"
                                   title="Voir les avis"
                                 >
-                                  <StarIcon className="h-4 w-4" />
+                                  <StarIcon className="h-3 w-3 sm:h-4 sm:w-4" />
                                 </button>
                                 <button
                                   onClick={() => handleSessionSelect(session)}
-                                  className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-lg transition-all duration-200 transform hover:scale-105"
+                                  className="px-3 sm:px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-lg transition-all duration-200 transform hover:scale-105"
                                   title="Voir les détails"
                                 >
-                                  <EyeIcon className="h-4 w-4" />
+                                  <EyeIcon className="h-3 w-3 sm:h-4 sm:w-4" />
                                 </button>
                               </div>
                             </div>
 
                             {/* Rating Distribution for this session */}
                             <div className="mb-4">
-                              <h5 className="text-sm font-semibold text-gray-700 mb-2">
+                              <h5 className="text-xs sm:text-sm font-semibold text-gray-700 mb-2">
                                 Distribution des notes:
                               </h5>
-                              <div className="flex items-center space-x-4">
+                              <div className="flex flex-wrap items-center gap-2 sm:gap-4">
                                 {[5, 4, 3, 2, 1].map(rating => {
                                   const count = reviewStats.ratingDistribution[rating];
                                   const percentage =
                                     count > 0 ? (count / reviewStats.totalReviews) * 100 : 0;
 
                                   return (
-                                    <div key={rating} className="flex items-center space-x-1">
+                                    <div key={rating} className="flex items-center gap-1">
                                       <span className="text-xs text-gray-600">{rating}★</span>
-                                      <div className="w-12 bg-gray-200 rounded-full h-2">
+                                      <div className="w-8 sm:w-12 bg-gray-200 rounded-full h-1.5 sm:h-2">
                                         <div
-                                          className="bg-gradient-to-r from-yellow-400 to-amber-500 h-2 rounded-full"
+                                          className="bg-gradient-to-r from-yellow-400 to-amber-500 h-1.5 sm:h-2 rounded-full"
                                           style={{ width: `${percentage}%` }}
                                         ></div>
                                       </div>
@@ -1933,19 +2034,19 @@ const ProfessionalSessionsPage = () => {
                             {/* Latest Reviews */}
                             {reviewStats.latestReviews.length > 0 && (
                               <div>
-                                <h5 className="text-sm font-semibold text-gray-700 mb-3">
+                                <h5 className="text-xs sm:text-sm font-semibold text-gray-700 mb-3">
                                   Derniers avis:
                                 </h5>
                                 <div className="space-y-3">
                                   {reviewStats.latestReviews.map((review, index) => (
                                     <div
                                       key={index}
-                                      className="bg-white/70 rounded-lg p-4 border border-gray-200"
+                                      className="bg-white/70 rounded-lg p-3 sm:p-4 border border-gray-200"
                                     >
-                                      <div className="flex items-start justify-between mb-2">
-                                        <div className="flex items-center space-x-2">
-                                          {renderStars(review.rating, 'h-4 w-4')}
-                                          <span className="text-sm font-medium text-gray-900">
+                                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-2 gap-2">
+                                        <div className="flex items-center gap-2">
+                                          {renderStars(review.rating, 'h-3 w-3 sm:h-4 sm:w-4')}
+                                          <span className="text-xs sm:text-sm font-medium text-gray-900">
                                             {review.rating}/5
                                           </span>
                                         </div>
@@ -1959,8 +2060,8 @@ const ProfessionalSessionsPage = () => {
                                       </div>
 
                                       {review.comment && (
-                                        <p className="text-sm text-gray-700 leading-relaxed">
-                                          "{review.comment}"
+                                        <p className="text-xs sm:text-sm text-gray-700 leading-relaxed break-words">
+                                          &ldquo;{review.comment}&rdquo;
                                         </p>
                                       )}
 
@@ -1979,12 +2080,14 @@ const ProfessionalSessionsPage = () => {
                       })}
                   </div>
                 ) : (
-                  <div className="text-center py-12">
-                    <div className="bg-gradient-to-r from-gray-100 to-purple-100 rounded-full w-24 h-24 flex items-center justify-center mx-auto mb-6">
-                      <StarIcon className="h-12 w-12 text-gray-400" />
+                  <div className="text-center py-8 sm:py-12 px-4">
+                    <div className="bg-gradient-to-r from-gray-100 to-purple-100 rounded-full w-16 h-16 sm:w-24 sm:h-24 flex items-center justify-center mx-auto mb-4 sm:mb-6">
+                      <StarIcon className="h-8 w-8 sm:h-12 sm:w-12 text-gray-400" />
                     </div>
-                    <p className="text-gray-600 text-xl font-medium">Aucun avis disponible</p>
-                    <p className="text-gray-500 mt-2">
+                    <p className="text-gray-600 text-lg sm:text-xl font-medium mb-2">
+                      Aucun avis disponible
+                    </p>
+                    <p className="text-gray-500 text-sm sm:text-base break-words">
                       Les avis apparaîtront ici une fois que vos sessions seront terminées et
                       évaluées
                     </p>
@@ -3034,6 +3137,22 @@ const ProfessionalSessionsPage = () => {
                     <div className="absolute inset-0 w-16 h-16 border-4 border-amber-200 border-b-amber-600 rounded-full animate-ping"></div>
                   </div>
                   <p className="text-gray-600 mt-6 text-lg font-medium">Chargement des avis...</p>
+                </div>
+              ) : reviewsError ? (
+                <div className="text-center py-16">
+                  <div className="bg-gradient-to-r from-red-100 to-pink-100 rounded-full w-24 h-24 flex items-center justify-center mx-auto mb-6">
+                    <ExclamationTriangleIcon className="h-12 w-12 text-red-500" />
+                  </div>
+                  <p className="text-red-600 text-xl font-medium mb-4">
+                    Erreur lors du chargement des avis
+                  </p>
+                  <p className="text-gray-600 mb-6">{reviewsError}</p>
+                  <button
+                    onClick={() => fetchSessionReviews(selectedSession._id)}
+                    className="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-6 py-3 rounded-xl hover:from-blue-600 hover:to-blue-700 transition-all duration-200 font-medium shadow-lg hover:shadow-xl"
+                  >
+                    Réessayer
+                  </button>
                 </div>
               ) : sessionReviews.length > 0 ? (
                 <div className="space-y-6">

@@ -30,7 +30,7 @@ const AdminDashboardPage = () => {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.get(
-        `${process.env.REACT_APP_API_URL || 'http://hamza-aourass.ddns.net:5001'}/api/admin/dashboard/stats`,
+        `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/admin/dashboard/stats`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -267,7 +267,7 @@ const AdminDashboardPage = () => {
           <div className="p-6">
             <div className="grid grid-cols-2 gap-4">
               <Link
-                to="/admin/professionals/new"
+                to="/admin/professionals"
                 className="p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-emerald-500 hover:bg-emerald-50 transition-colors group"
               >
                 <UserGroupIcon className="h-8 w-8 text-gray-400 group-hover:text-emerald-600 mx-auto mb-2" />

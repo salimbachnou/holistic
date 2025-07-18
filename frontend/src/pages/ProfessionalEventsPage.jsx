@@ -70,7 +70,7 @@ const ProfessionalEventsPage = () => {
 
         // Fetch professional data
         const professionalResponse = await fetch(
-          `http://hamza-aourass.ddns.net:5001/api/professionals/${id}`
+          `http://localhost:5000/api/professionals/${id}`
         );
         const professionalData = await professionalResponse.json();
 
@@ -88,7 +88,7 @@ const ProfessionalEventsPage = () => {
         });
 
         const eventsResponse = await fetch(
-          `http://hamza-aourass.ddns.net:5001/api/professionals/${id}/events?${params}`
+          `http://localhost:5000/api/professionals/${id}/events?${params}`
         );
         const eventsData = await eventsResponse.json();
 
@@ -164,7 +164,7 @@ const ProfessionalEventsPage = () => {
     const isEventFavorite = isFavorite('events', event._id);
 
     const defaultImageUrl =
-      'http://hamza-aourass.ddns.net:5001/uploads/events/1749834623480-860019398.jpg';
+      'http://localhost:5000/uploads/events/1749834623480-860019398.jpg';
     let imageUrl = defaultImageUrl;
 
     // Utiliser les nouvelles données d'image de l'API
@@ -178,7 +178,7 @@ const ProfessionalEventsPage = () => {
       const coverImage = event.coverImages[0];
       imageUrl = coverImage.startsWith('http')
         ? coverImage
-        : `http://hamza-aourass.ddns.net:5001/uploads/events/${coverImage}`;
+        : `http://localhost:5000/uploads/events/${coverImage}`;
     }
 
     const locationText =

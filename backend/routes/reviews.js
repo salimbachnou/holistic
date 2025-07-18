@@ -593,32 +593,59 @@ router.get('/session/:sessionId/user', isAuthenticated, async (req, res) => {
 // Get reviews for a session
 router.get('/session/:sessionId', async (req, res) => {
   try {
+    const { sessionId } = req.params;
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
 
+    // Validate sessionId format
+    const mongoose = require('mongoose');
+    if (!mongoose.Types.ObjectId.isValid(sessionId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid session ID format'
+      });
+    }
+
+    // Find reviews for the session
     const reviews = await Review.find({
-      contentId: req.params.sessionId,
+      contentId: sessionId,
       contentType: 'session',
       status: 'approved'
     })
-    .populate('clientId', 'firstName lastName')
+    .populate('clientId', 'firstName lastName profileImage')
     .sort({ createdAt: -1 })
     .skip(skip)
-    .limit(limit);
+    .limit(limit)
+    .lean(); // Use lean() for better performance
 
+    // Count total reviews
     const total = await Review.countDocuments({
-      contentId: req.params.sessionId,
+      contentId: sessionId,
       contentType: 'session',
       status: 'approved'
     });
 
-    // Calculate average rating
-    const mongoose = require('mongoose');
-    const avgRating = await Review.aggregate([
-      { $match: { contentId: mongoose.Types.ObjectId(req.params.sessionId), contentType: 'session', status: 'approved' } },
-      { $group: { _id: null, avgRating: { $avg: '$rating' }, count: { $sum: 1 } } }
+    // Calculate average rating using the corrected syntax
+    const avgRatingResult = await Review.aggregate([
+      { 
+        $match: { 
+          contentId: new mongoose.Types.ObjectId(sessionId), 
+          contentType: 'session', 
+          status: 'approved' 
+        } 
+      },
+      { 
+        $group: { 
+          _id: null, 
+          avgRating: { $avg: '$rating' }, 
+          count: { $sum: 1 } 
+        } 
+      }
     ]);
+
+    const averageRating = avgRatingResult[0]?.avgRating || 0;
+    const totalReviews = avgRatingResult[0]?.count || 0;
 
     res.json({
       success: true,
@@ -629,15 +656,155 @@ router.get('/session/:sessionId', async (req, res) => {
         total,
         pages: Math.ceil(total / limit)
       },
-      averageRating: avgRating[0]?.avgRating || 0,
-      totalReviews: avgRating[0]?.count || 0
+      averageRating: Math.round(averageRating * 10) / 10, // Round to 1 decimal
+      totalReviews
     });
 
   } catch (error) {
     console.error('Error fetching session reviews:', error);
+    
+    // More detailed error logging
+    console.error('Error details:', {
+      message: error.message,
+      stack: error.stack,
+      sessionId: req.params.sessionId
+    });
+    
     res.status(500).json({
       success: false,
-      message: 'Server error'
+      message: 'Erreur lors du chargement des avis',
+      error: process.env.NODE_ENV === 'development' ? error.message : 'Server error'
+    });
+  }
+});
+
+// Get reviews for a session (professional access only)
+router.get('/session/:sessionId/professional', isAuthenticated, professionalAuth, async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    // Validate sessionId format
+    const mongoose = require('mongoose');
+    if (!mongoose.Types.ObjectId.isValid(sessionId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid session ID format'
+      });
+    }
+
+    // Verify that the session belongs to the authenticated professional
+    const session = await Session.findOne({
+      _id: sessionId,
+      professionalId: req.professional._id
+    });
+
+    if (!session) {
+      return res.status(403).json({
+        success: false,
+        message: 'You do not have access to reviews for this session'
+      });
+    }
+
+    // Find all reviews for the session (including pending ones for professional view)
+    const reviews = await Review.find({
+      contentId: sessionId,
+      contentType: 'session'
+    })
+    .populate('clientId', 'firstName lastName profileImage')
+    .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(limit)
+    .lean();
+
+    // Count total reviews
+    const total = await Review.countDocuments({
+      contentId: sessionId,
+      contentType: 'session'
+    });
+
+    // Calculate average rating for approved reviews only
+    const avgRatingResult = await Review.aggregate([
+      { 
+        $match: { 
+          contentId: new mongoose.Types.ObjectId(sessionId), 
+          contentType: 'session', 
+          status: 'approved' 
+        } 
+      },
+      { 
+        $group: { 
+          _id: null, 
+          avgRating: { $avg: '$rating' }, 
+          count: { $sum: 1 } 
+        } 
+      }
+    ]);
+
+    const averageRating = avgRatingResult[0]?.avgRating || 0;
+    const approvedReviews = avgRatingResult[0]?.count || 0;
+
+    // Count reviews by status
+    const statusCounts = await Review.aggregate([
+      { 
+        $match: { 
+          contentId: new mongoose.Types.ObjectId(sessionId), 
+          contentType: 'session' 
+        } 
+      },
+      { 
+        $group: { 
+          _id: '$status', 
+          count: { $sum: 1 } 
+        } 
+      }
+    ]);
+
+    const statusStats = {};
+    statusCounts.forEach(item => {
+      statusStats[item._id] = item.count;
+    });
+
+    res.json({
+      success: true,
+      reviews,
+      pagination: {
+        page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit)
+      },
+      averageRating: Math.round(averageRating * 10) / 10,
+      approvedReviews,
+      statusStats: {
+        approved: statusStats.approved || 0,
+        pending: statusStats.pending || 0,
+        rejected: statusStats.rejected || 0
+      },
+      session: {
+        id: session._id,
+        title: session.title,
+        startTime: session.startTime
+      }
+    });
+
+  } catch (error) {
+    console.error('Error fetching professional session reviews:', error);
+    
+    // Detailed error logging
+    console.error('Error details:', {
+      message: error.message,
+      stack: error.stack,
+      sessionId: req.params.sessionId,
+      professionalId: req.professional._id
+    });
+    
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors du chargement des avis',
+      error: process.env.NODE_ENV === 'development' ? error.message : 'Server error'
     });
   }
 });
@@ -700,8 +867,14 @@ async function updateSessionAverageRating(sessionId) {
   try {
     const mongoose = require('mongoose');
     
+    // Validate sessionId format
+    if (!mongoose.Types.ObjectId.isValid(sessionId)) {
+      console.error('Invalid session ID format:', sessionId);
+      return;
+    }
+    
     const avgRating = await Review.aggregate([
-      { $match: { contentId: mongoose.Types.ObjectId(sessionId), contentType: 'session', status: 'approved' } },
+      { $match: { contentId: new mongoose.Types.ObjectId(sessionId), contentType: 'session', status: 'approved' } },
       { $group: { _id: null, avgRating: { $avg: '$rating' }, count: { $sum: 1 } } }
     ]);
 
@@ -709,12 +882,16 @@ async function updateSessionAverageRating(sessionId) {
     const reviewCount = avgRating[0]?.count || 0;
 
     await Session.findByIdAndUpdate(sessionId, {
-      averageRating: rating,
+      averageRating: Math.round(rating * 10) / 10, // Round to 1 decimal
       reviewCount: reviewCount
     });
 
+    console.log(`Updated session ${sessionId} average rating: ${rating}, count: ${reviewCount}`);
+
   } catch (error) {
     console.error('Error updating session average rating:', error);
+    console.error('Session ID:', sessionId);
+    console.error('Error details:', error.message);
   }
 }
 

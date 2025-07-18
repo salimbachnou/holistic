@@ -43,6 +43,7 @@ const notificationSchema = new mongoose.Schema({
       'session_review_request',
       'session_review_reminder',
       'new_review',
+      'contact_response',
       'system'
     ],
     default: 'system'

@@ -79,8 +79,6 @@ router.post('/create-default', async (req, res) => {
 
 router.get('/dashboard/stats', requireAdmin, async (req, res) => {
   try {
-    const now = new Date();
-    
     const [
       totalUsers,
       totalProfessionals,
@@ -95,13 +93,7 @@ router.get('/dashboard/stats', requireAdmin, async (req, res) => {
       Professional.countDocuments({ isActive: true }),
       Order.countDocuments(),
       Booking.countDocuments(),
-      Event.countDocuments({
-        $or: [
-          { date: { $gte: now } },
-          { endDate: { $gte: now } },
-          { 'schedule.endDate': { $gte: now } }
-        ]
-      }),
+      Event.countDocuments(),
       Contact.countDocuments({ status: 'pending' }),
       Order.aggregate([
         {
@@ -223,16 +215,11 @@ router.get('/analytics', requireAdmin, async (req, res) => {
       { $sort: { _id: 1 } }
     ]);
     
-    // Get event data (only future events)
+    // Get event data
     const eventData = await Event.aggregate([
       {
         $match: {
-          createdAt: { $gte: startDate, $lte: endDate },
-          $or: [
-            { date: { $gte: new Date() } },
-            { endDate: { $gte: new Date() } },
-            { 'schedule.endDate': { $gte: new Date() } }
-          ]
+          createdAt: { $gte: startDate, $lte: endDate }
         }
       },
       {
@@ -421,13 +408,7 @@ router.get('/analytics', requireAdmin, async (req, res) => {
       Professional.countDocuments({ isActive: true }),
       Order.countDocuments(),
       Booking.countDocuments(),
-      Event.countDocuments({
-        $or: [
-          { date: { $gte: new Date() } },
-          { endDate: { $gte: new Date() } },
-          { 'schedule.endDate': { $gte: new Date() } }
-        ]
-      }),
+      Event.countDocuments(),
       Order.aggregate([
         {
           $match: {
@@ -873,6 +854,161 @@ router.delete('/contacts/:id', requireAdmin, async (req, res) => {
     res.json({ message: 'Contact deleted successfully' });
   } catch (error) {
     console.error('Delete contact error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Respond to contact
+router.post('/contacts/:id/respond', requireAdmin, async (req, res) => {
+  try {
+    const { message, responseType = 'email' } = req.body;
+    
+    if (!message || message.trim().length === 0) {
+      return res.status(400).json({ message: 'Message is required' });
+    }
+
+    const contact = await Contact.findById(req.params.id);
+    
+    if (!contact) {
+      return res.status(404).json({ message: 'Contact not found' });
+    }
+
+    // Create response object
+    const response = {
+      adminId: req.user._id,
+      message: message.trim(),
+      responseType,
+      sentAt: new Date(),
+      isSent: false
+    };
+
+    // Add response to contact
+    contact.responses.push(response);
+    
+    // Mark as processed if not already
+    if (!contact.isProcessed) {
+      contact.isProcessed = true;
+      contact.processedBy = req.user._id;
+      contact.processedAt = new Date();
+    }
+
+    await contact.save();
+
+    // Send email if response type is email
+    if (responseType === 'email') {
+      try {
+        const nodemailer = require('nodemailer');
+        
+        const transporter = nodemailer.createTransport({
+          service: 'gmail',
+          auth: {
+            user: process.env.EMAIL_USER,
+            pass: process.env.EMAIL_PASS
+          }
+        });
+
+        const mailOptions = {
+          from: process.env.EMAIL_USER,
+          to: contact.email,
+          subject: `Réponse à votre demande - Holistic.ma`,
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <h2 style="color: #2d5a87;">Réponse à votre demande</h2>
+              <p>Bonjour ${contact.type === 'professional' ? contact.businessName : `${contact.firstName} ${contact.lastName}`},</p>
+              <p>Nous avons bien reçu votre demande et nous vous répondons ci-dessous :</p>
+              <div style="background: #f5f5f5; padding: 15px; border-left: 4px solid #2d5a87; margin: 15px 0;">
+                <p style="margin: 0; white-space: pre-wrap;">${message}</p>
+              </div>
+              <p>Si vous avez d'autres questions, n'hésitez pas à nous contacter.</p>
+              <p>Cordialement,<br/>L'équipe Holistic.ma</p>
+            </div>
+          `
+        };
+        
+        await transporter.sendMail(mailOptions);
+        
+        // Update response as sent
+        const lastResponse = contact.responses[contact.responses.length - 1];
+        lastResponse.isSent = true;
+        lastResponse.sentAt = new Date();
+        await contact.save();
+        
+      } catch (emailError) {
+        console.error('Error sending email response:', emailError);
+        response.errorMessage = emailError.message;
+        await contact.save();
+      }
+    }
+
+    // Create notification for the user if they have an account
+    try {
+      const User = require('../models/User');
+      const Notification = require('../models/Notification');
+      
+      // Find user by email
+      const user = await User.findOne({ email: contact.email });
+      
+      if (user) {
+        // Create notification
+        const notification = new Notification({
+          userId: user._id,
+          title: 'Réponse à votre demande',
+          message: `L'équipe Holistic.ma a répondu à votre demande de contact.`,
+          type: 'contact_response',
+          data: {
+            contactId: contact._id,
+            adminResponse: message.trim(),
+            responseType: responseType,
+            originalMessage: contact.message || contact.activityType || 'Pas de message'
+          },
+          link: '/contact'
+        });
+        
+        await notification.save();
+        
+        // Emit socket event for real-time notification
+        const io = req.app.get('io');
+        if (io) {
+          io.to(`user_${user._id}`).emit('receive-notification', {
+            type: 'contact_response',
+            title: 'Réponse à votre demande',
+            message: `L'équipe Holistic.ma a répondu à votre demande de contact.`,
+            data: notification.data
+          });
+        }
+      }
+    } catch (notificationError) {
+      console.error('Error creating notification:', notificationError);
+      // Don't fail the request if notification creation fails
+    }
+
+    // Populate the response with admin info
+    await contact.populate('responses.adminId', 'firstName lastName');
+
+    res.json({ 
+      message: 'Response sent successfully', 
+      contact,
+      response: contact.responses[contact.responses.length - 1]
+    });
+  } catch (error) {
+    console.error('Respond to contact error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get contact responses
+router.get('/contacts/:id/responses', requireAdmin, async (req, res) => {
+  try {
+    const contact = await Contact.findById(req.params.id)
+      .populate('responses.adminId', 'firstName lastName');
+    
+    if (!contact) {
+      return res.status(404).json({ message: 'Contact not found' });
+    }
+
+    res.json({ responses: contact.responses });
+  } catch (error) {
+    console.error('Get contact responses error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });

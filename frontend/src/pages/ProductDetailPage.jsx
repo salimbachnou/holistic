@@ -70,7 +70,7 @@ const ProductDetailPage = () => {
       setLoading(true);
       setError(null);
 
-      const response = await axios.get(`http://hamza-aourass.ddns.net:5001/api/products/${id}`);
+      const response = await axios.get(`http://localhost:5000/api/products/${id}`);
 
       // Handle both wrapped and direct response formats
       const productData = response.data.data || response.data;
@@ -93,7 +93,7 @@ const ProductDetailPage = () => {
       setReviewsLoading(true);
 
       const response = await axios.get(
-        `http://hamza-aourass.ddns.net:5001/api/products/${product._id}/reviews`,
+        `http://localhost:5000/api/products/${product._id}/reviews`,
         {
           params: {
             page,

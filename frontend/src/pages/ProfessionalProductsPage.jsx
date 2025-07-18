@@ -70,7 +70,7 @@ const ProfessionalProductsPage = () => {
 
         // Fetch professional data
         const professionalResponse = await fetch(
-          `http://hamza-aourass.ddns.net:5001/api/professionals/${id}`
+          `http://localhost:5000/api/professionals/${id}`
         );
         const professionalData = await professionalResponse.json();
 
@@ -87,7 +87,7 @@ const ProfessionalProductsPage = () => {
         });
 
         const productsResponse = await fetch(
-          `http://hamza-aourass.ddns.net:5001/api/professionals/${id}/products?${params}`
+          `http://localhost:5000/api/professionals/${id}/products?${params}`
         );
         const productsData = await productsResponse.json();
 
@@ -176,7 +176,7 @@ const ProfessionalProductsPage = () => {
     const isProductFavorite = isFavorite('products', product._id);
 
     const defaultImageUrl =
-      'http://hamza-aourass.ddns.net:5001/uploads/products/1748711983894-578098072.jpg';
+      'http://localhost:5000/uploads/products/1748711983894-578098072.jpg';
     let imageUrl = defaultImageUrl;
 
     // Utiliser les nouvelles données d'image de l'API
@@ -187,7 +187,7 @@ const ProfessionalProductsPage = () => {
         const img = product.images[0];
         imageUrl = img.startsWith('http')
           ? img
-          : `http://hamza-aourass.ddns.net:5001/uploads/products/${img}`;
+          : `http://localhost:5000/uploads/products/${img}`;
       }
     }
 
@@ -348,7 +348,7 @@ const ProfessionalProductsPage = () => {
     const isProductFavorite = isFavorite('products', product._id);
 
     const defaultImageUrl =
-      'http://hamza-aourass.ddns.net:5001/uploads/products/1748711983894-578098072.jpg';
+      'http://localhost:5000/uploads/products/1748711983894-578098072.jpg';
     let imageUrl = defaultImageUrl;
 
     // Utiliser les nouvelles données d'image de l'API
@@ -359,7 +359,7 @@ const ProfessionalProductsPage = () => {
         const img = product.images[0];
         imageUrl = img.startsWith('http')
           ? img
-          : `http://hamza-aourass.ddns.net:5001/uploads/products/${img}`;
+          : `http://localhost:5000/uploads/products/${img}`;
       }
     }
 

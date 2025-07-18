@@ -227,7 +227,7 @@ const ProfessionalMessagesPage = () => {
         formData.append('file', attachment.file);
 
         const response = await axios.post(
-          `${process.env.REACT_APP_API_URL || 'http://hamza-aourass.ddns.net:5001'}/api/uploads/message`,
+          `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/uploads/message`,
           formData,
           {
             headers: {
@@ -265,7 +265,7 @@ const ProfessionalMessagesPage = () => {
       return;
     }
 
-    const SOCKET_URL = process.env.REACT_APP_API_URL || 'http://hamza-aourass.ddns.net:5001';
+    const SOCKET_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
     socketRef.current = io(SOCKET_URL, {
       reconnectionAttempts: 5,
       reconnectionDelay: 1000,
@@ -306,7 +306,7 @@ const ProfessionalMessagesPage = () => {
           const token = localStorage.getItem('token');
           axios
             .post(
-              `${process.env.REACT_APP_API_URL || 'http://hamza-aourass.ddns.net:5001'}/api/messages/mark-read/${selectedConversation._id}`,
+              `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/messages/mark-read/${selectedConversation._id}`,
               {},
               {
                 headers: { Authorization: `Bearer ${token}` },
@@ -365,7 +365,7 @@ const ProfessionalMessagesPage = () => {
         try {
           const token = localStorage.getItem('token');
           await axios.post(
-            `${process.env.REACT_APP_API_URL || 'http://hamza-aourass.ddns.net:5001'}/api/messages/mark-read/${selectedConversation._id}`,
+            `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/messages/mark-read/${selectedConversation._id}`,
             {},
             {
               headers: { Authorization: `Bearer ${token}` },
@@ -444,7 +444,7 @@ const ProfessionalMessagesPage = () => {
         return;
       }
 
-      const API_URL = process.env.REACT_APP_API_URL || 'http://hamza-aourass.ddns.net:5001';
+      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
       const response = await axios.get(`${API_URL}/api/messages/conversations`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -482,7 +482,7 @@ const ProfessionalMessagesPage = () => {
       const userId = user?._id || user?.id;
 
       const response = await axios.get(
-        `${process.env.REACT_APP_API_URL || 'http://hamza-aourass.ddns.net:5001'}/api/messages/${conversationPartnerId}`,
+        `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/messages/${conversationPartnerId}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -554,7 +554,7 @@ const ProfessionalMessagesPage = () => {
       };
 
       const response = await axios.post(
-        `${process.env.REACT_APP_API_URL || 'http://hamza-aourass.ddns.net:5001'}/api/messages`,
+        `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/messages`,
         messageData,
         {
           headers: { Authorization: `Bearer ${token}` },
@@ -708,7 +708,7 @@ const ProfessionalMessagesPage = () => {
         const size = orderInfo.size ? encodeURIComponent(orderInfo.size) : '';
 
         const stockResponse = await axios.get(
-          `${process.env.REACT_APP_API_URL || 'http://hamza-aourass.ddns.net:5001'}/api/products/check-stock?productName=${productName}${size ? `&size=${size}` : ''}`,
+          `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/products/check-stock?productName=${productName}${size ? `&size=${size}` : ''}`,
           {
             headers: { Authorization: `Bearer ${token}` },
           }
@@ -770,7 +770,7 @@ const ProfessionalMessagesPage = () => {
       };
 
       const response = await axios.post(
-        `${process.env.REACT_APP_API_URL || 'http://hamza-aourass.ddns.net:5001'}/api/orders/accept`,
+        `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/orders/accept`,
         requestData,
         {
           headers: { Authorization: `Bearer ${token}` },
@@ -782,7 +782,7 @@ const ProfessionalMessagesPage = () => {
         const confirmationMessage = `✅ Commande acceptée !\n\nVotre commande pour ${orderInfo.quantity}x ${orderInfo.product}${sizeInfo} a été acceptée.\n\nTotal: ${orderInfo.total} ${orderInfo.currency}\n\nNous vous contacterons prochainement pour organiser la livraison.`;
 
         await axios.post(
-          `${process.env.REACT_APP_API_URL || 'http://hamza-aourass.ddns.net:5001'}/api/messages`,
+          `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/messages`,
           {
             receiverId: clientId,
             text: confirmationMessage,
@@ -857,7 +857,7 @@ const ProfessionalMessagesPage = () => {
       };
 
       const response = await axios.post(
-        `${process.env.REACT_APP_API_URL || 'http://hamza-aourass.ddns.net:5001'}/api/orders/reject`,
+        `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/orders/reject`,
         requestData,
         {
           headers: { Authorization: `Bearer ${token}` },
@@ -868,7 +868,7 @@ const ProfessionalMessagesPage = () => {
         const rejectionMessage = `❌ Commande refusée\n\nNous sommes désolés, mais votre commande pour ${orderInfo.product} ne peut pas être traitée pour le moment.\n\nRaison: ${response.data.reason || 'Stock insuffisant ou produit indisponible'}\n\nN'hésitez pas à nous contacter pour plus d'informations.`;
 
         await axios.post(
-          `${process.env.REACT_APP_API_URL || 'http://hamza-aourass.ddns.net:5001'}/api/messages`,
+          `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/messages`,
           {
             receiverId: clientId,
             text: rejectionMessage,

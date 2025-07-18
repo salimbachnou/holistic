@@ -4,7 +4,7 @@ require('dotenv').config();
 
 // Test the homepage API endpoints
 async function testHomepageAPI() {
-  const baseURL = process.env.API_URL || 'http://hamza-aourass.ddns.net:5001';
+  const baseURL = process.env.API_URL || 'http://localhost:5000';
   
   console.log('🚀 Testing Homepage API endpoints...');
   console.log(`Base URL: ${baseURL}`);

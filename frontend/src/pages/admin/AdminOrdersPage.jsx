@@ -34,7 +34,7 @@ const AdminOrdersPage = () => {
       });
 
       const response = await axios.get(
-        `${process.env.REACT_APP_API_URL || 'http://hamza-aourass.ddns.net:5001'}/api/admin/orders?${queryParams}`,
+        `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/admin/orders?${queryParams}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -74,7 +74,7 @@ const AdminOrdersPage = () => {
     try {
       const token = localStorage.getItem('token');
       await axios.put(
-        `${process.env.REACT_APP_API_URL || 'http://hamza-aourass.ddns.net:5001'}/api/admin/orders/${orderId}/status`,
+        `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/admin/orders/${orderId}/status`,
         { status: newStatus, adminNotes },
         {
           headers: {

@@ -115,7 +115,7 @@ const ProfessionalDetailPage = () => {
           if (!imagePath) return getDefaultFallbackImage();
           return imagePath.startsWith('http')
             ? imagePath
-            : `${process.env.REACT_APP_API_URL || 'http://hamza-aourass.ddns.net:5001'}${imagePath}`;
+            : `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}${imagePath}`;
         });
         setCoverImageUrls(urls);
       } else {
@@ -126,12 +126,12 @@ const ProfessionalDetailPage = () => {
       if (professional.profilePhoto) {
         const imageUrl = professional.profilePhoto.startsWith('http')
           ? professional.profilePhoto
-          : `${process.env.REACT_APP_API_URL || 'http://hamza-aourass.ddns.net:5001'}${professional.profilePhoto}`;
+          : `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}${professional.profilePhoto}`;
         setProfileImageUrl(imageUrl);
       } else if (professional.userId?.profileImage) {
         const imageUrl = professional.userId.profileImage.startsWith('http')
           ? professional.userId.profileImage
-          : `${process.env.REACT_APP_API_URL || 'http://hamza-aourass.ddns.net:5001'}${professional.userId.profileImage}`;
+          : `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}${professional.userId.profileImage}`;
         setProfileImageUrl(imageUrl);
       } else {
         setProfileImageUrl(null);
@@ -770,47 +770,6 @@ const ProfessionalDetailPage = () => {
                 </div>
               )}
             </div>
-            {/* Subscription Info */}
-            {professional.subscription && (
-              <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl p-8 transform hover:shadow-2xl transition-all duration-500 border border-white/20">
-                <h3 className="text-2xl font-bold text-gray-900 mb-8 flex items-center">
-                  <div className="h-1.5 w-10 bg-gradient-to-r from-pink-500 via-purple-500 to-violet-500 rounded-full mr-4 animate-pulse"></div>
-                  Abonnement
-                </h3>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between p-4 bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl border border-gray-200 hover:shadow-lg transition-all duration-300">
-                    <span className="text-gray-700 font-semibold">Plan actuel</span>
-                    <span className="text-gray-900 font-bold capitalize bg-white px-4 py-2 rounded-full border border-gray-300">
-                      {professional.subscription.plan || 'Basic'}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between p-4 bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl border border-gray-200 hover:shadow-lg transition-all duration-300">
-                    <span className="text-gray-700 font-semibold">Statut</span>
-                    <span
-                      className={`font-bold px-4 py-2 rounded-full border ${
-                        professional.subscription.isActive
-                          ? 'text-emerald-600 bg-emerald-50 border-emerald-200'
-                          : 'text-red-600 bg-red-50 border-red-200'
-                      }`}
-                    >
-                      {professional.subscription.isActive ? 'Actif' : 'Inactif'}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between p-4 bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl border border-gray-200 hover:shadow-lg transition-all duration-300">
-                    <span className="text-gray-700 font-semibold">Paiement activé</span>
-                    <span
-                      className={`font-bold px-4 py-2 rounded-full border ${
-                        professional.paymentEnabled
-                          ? 'text-emerald-600 bg-emerald-50 border-emerald-200'
-                          : 'text-gray-600 bg-gray-50 border-gray-200'
-                      }`}
-                    >
-                      {professional.paymentEnabled ? 'Oui' : 'Non'}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            )}
 
             {/* Professional Content Links */}
             <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl p-8 transform hover:shadow-2xl transition-all duration-500 border border-white/20">

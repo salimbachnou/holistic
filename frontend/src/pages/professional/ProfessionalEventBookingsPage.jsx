@@ -54,7 +54,7 @@ const ProfessionalEventBookingsPage = () => {
       setLoading(true);
       const token = localStorage.getItem('token');
       const response = await axios.get(
-        'http://hamza-aourass.ddns.net:5001/api/events/professional',
+        'http://localhost:5000/api/events/professional',
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -77,7 +77,7 @@ const ProfessionalEventBookingsPage = () => {
       setLoadingParticipants(true);
       const token = localStorage.getItem('token');
       const response = await axios.get(
-        `http://hamza-aourass.ddns.net:5001/api/events/${eventId}/participants`,
+        `http://localhost:5000/api/events/${eventId}/participants`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -121,7 +121,7 @@ const ProfessionalEventBookingsPage = () => {
       const token = localStorage.getItem('token');
 
       await axios.put(
-        `http://hamza-aourass.ddns.net:5001/api/events/${eventId}/participants/${participantId}`,
+        `http://localhost:5000/api/events/${eventId}/participants/${participantId}`,
         { status: newStatus, reason },
         { headers: { Authorization: `Bearer ${token}` } }
       );

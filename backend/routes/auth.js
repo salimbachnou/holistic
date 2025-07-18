@@ -26,7 +26,7 @@ const convertImageUrl = (imagePath) => {
   if (imagePath.startsWith('http') || imagePath.startsWith('data:')) {
     return imagePath;
   }
-  const baseUrl = process.env.BASE_URL || 'http://hamza-aourass.ddns.net:5001';
+  const baseUrl = process.env.BASE_URL || 'http://localhost:5000';
   return imagePath.startsWith('/uploads') ? `${baseUrl}${imagePath}` : `${baseUrl}/uploads/profiles/${imagePath}`;
 };
 
@@ -270,7 +270,7 @@ router.get('/google/url', (req, res) => {
     const state = Math.random().toString(36).substring(7);
     
     // Create the Google auth URL
-    const googleAuthUrl = `${process.env.BASE_URL || 'http://hamza-aourass.ddns.net:5001'}/api/auth/google?role=${isProfessional ? 'professional' : 'client'}&state=${state}`;
+    const googleAuthUrl = `${process.env.BASE_URL || 'http://localhost:5000'}/api/auth/google?role=${isProfessional ? 'professional' : 'client'}&state=${state}`;
     
     res.json({ url: googleAuthUrl, state });
   } catch (error) {
@@ -302,7 +302,7 @@ router.get('/google',
 );
 
 router.get('/google/callback',
-  passport.authenticate('google', { failureRedirect: `${process.env.FRONTEND_URL || 'http://hamza-aourass.ddns.net:3002'}/login?error=auth_failed` }),
+  passport.authenticate('google', { failureRedirect: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/login?error=auth_failed` }),
   async (req, res) => {
     try {
       // Log user info for debugging
@@ -352,10 +352,10 @@ router.get('/google/callback',
       );
       
       // Redirect to frontend with token
-      res.redirect(`${process.env.FRONTEND_URL || 'http://hamza-aourass.ddns.net:3002'}/auth/callback?token=${token}`);
+      res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/auth/callback?token=${token}`);
     } catch (error) {
       console.error('Error in Google callback:', error);
-      res.redirect(`${process.env.FRONTEND_URL || 'http://hamza-aourass.ddns.net:3002'}/login?error=server_error`);
+      res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/login?error=server_error`);
     }
   }
 );
@@ -552,7 +552,7 @@ router.post('/forgot-password', [
     });
 
     // Send reset email
-    const resetUrl = `${process.env.FRONTEND_URL || 'http://hamza-aourass.ddns.net:3002'}/reset-password/${resetToken}`;
+    const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password/${resetToken}`;
     
     try {
       const mailOptions = {

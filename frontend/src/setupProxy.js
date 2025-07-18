@@ -6,7 +6,7 @@ module.exports = function (app) {
   app.use(
     '/api',
     createProxyMiddleware({
-      target: 'http://hamza-aourass.ddns.net:5001',
+      target: 'http://localhost:5000',
       changeOrigin: true,
       secure: false,
       logLevel: 'debug',

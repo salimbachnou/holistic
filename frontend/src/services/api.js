@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Create an instance of axios with a base URL for API calls
 const api = axios.create({
-  baseURL: 'http://hamza-aourass.ddns.net:5001/api',
+  baseURL: 'http://localhost:5000/api',
   headers: {
     'Content-Type': 'application/json',
   },

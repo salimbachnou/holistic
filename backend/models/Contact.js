@@ -99,6 +99,34 @@ const contactSchema = new mongoose.Schema({
     type: Date
   },
   
+  // Contact response system
+  responses: [{
+    adminId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true
+    },
+    message: {
+      type: String,
+      required: true,
+      maxlength: 1000
+    },
+    responseType: {
+      type: String,
+      enum: ['email', 'sms', 'internal_note'],
+      default: 'email'
+    },
+    sentAt: {
+      type: Date,
+      default: Date.now
+    },
+    isSent: {
+      type: Boolean,
+      default: false
+    },
+    errorMessage: String
+  }],
+  
   // Contact source and metadata
   source: {
     type: String,
@@ -123,6 +151,14 @@ contactSchema.virtual('fullName').get(function() {
     return `${this.firstName} ${this.lastName}`;
   }
   return this.businessName;
+});
+
+// Virtual for last response
+contactSchema.virtual('lastResponse').get(function() {
+  if (this.responses && this.responses.length > 0) {
+    return this.responses[this.responses.length - 1];
+  }
+  return null;
 });
 
 // Ensure virtual fields are serialized

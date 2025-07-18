@@ -68,7 +68,7 @@ const ProfessionalEventsPage = () => {
         return;
       }
 
-      const BASE_URL = process.env.REACT_APP_API_URL || 'http://hamza-aourass.ddns.net:5001/api';
+      const BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
       const response = await axios.get(`${BASE_URL}/events/professional`, {
         headers: {
@@ -128,7 +128,7 @@ const ProfessionalEventsPage = () => {
       const token = localStorage.getItem('token');
 
       // Get the base API URL
-      const BASE_URL = process.env.REACT_APP_API_URL || 'http://hamza-aourass.ddns.net:5001';
+      const BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
       // Préparer les données de l'événement
       const eventData = {
@@ -230,7 +230,7 @@ const ProfessionalEventsPage = () => {
         return;
       }
 
-      const API_URL = process.env.REACT_APP_API_URL || 'http://hamza-aourass.ddns.net:5001';
+      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
       const response = await axios.post(`${API_URL}/api/uploads/events`, formData, {
         headers: {

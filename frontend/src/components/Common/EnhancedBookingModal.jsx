@@ -1,4 +1,3 @@
-import axios from 'axios';
 import { format, parseISO } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import React, { useState } from 'react';
@@ -14,6 +13,7 @@ import {
 } from 'react-icons/fa';
 
 import { useAuth } from '../../contexts/AuthContext';
+import { apiService } from '../../services/axiosConfig';
 
 import PaymentModal from './PaymentModal';
 
@@ -43,7 +43,7 @@ const EnhancedBookingModal = ({ session, professional, onClose, onSuccess }) => 
         bookingType: bookingType,
       };
 
-      const response = await axios.post('/api/bookings', bookingData);
+      const response = await apiService.post('/bookings', bookingData);
 
       setBookingId(response.data.booking._id);
 
@@ -76,7 +76,7 @@ const EnhancedBookingModal = ({ session, professional, onClose, onSuccess }) => 
 
   const handlePaymentSubmit = async paymentMethod => {
     try {
-      await axios.post(`/api/bookings/${bookingId}/payment`, {
+      await apiService.post(`/bookings/${bookingId}/payment`, {
         paymentMethod: paymentMethod,
       });
 

@@ -114,7 +114,7 @@ const EventsPage = () => {
         setLoading(true);
 
         // Fetch events
-        const eventsResponse = await _axios.get('http://hamza-aourass.ddns.net:5001/api/events');
+        const eventsResponse = await _axios.get('http://localhost:5000/api/events');
         const fetchedEvents = eventsResponse.data.events || [];
         setEvents(fetchedEvents);
         setFilteredEvents(fetchedEvents);
@@ -129,7 +129,7 @@ const EventsPage = () => {
 
         // Fetch stats
         const statsResponse = await _axios.get(
-          'http://hamza-aourass.ddns.net:5001/api/events/stats'
+          'http://localhost:5000/api/events/stats'
         );
         setStats(statsResponse.data.stats);
         setGrowth(statsResponse.data.stats.growth);
@@ -275,7 +275,7 @@ const EventsPage = () => {
 
         // Get event image URL
         const defaultImageUrl =
-          'http://hamza-aourass.ddns.net:5001/uploads/events/1749834623480-860019398.jpg';
+          'http://localhost:5000/uploads/events/1749834623480-860019398.jpg';
         let imageUrl = defaultImageUrl;
 
         if (event.images && event.images.length > 0) {
@@ -428,7 +428,7 @@ const EventsPage = () => {
 
     // Utiliser directement l'image de la carte bancaire comme image par défaut
     const defaultImageUrl =
-      'http://hamza-aourass.ddns.net:5001/uploads/events/1749834623480-860019398.jpg';
+      'http://localhost:5000/uploads/events/1749834623480-860019398.jpg';
 
     // Amélioration de la logique pour trouver l'URL de l'image
     let imageUrl = defaultImageUrl;

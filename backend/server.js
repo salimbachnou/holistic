@@ -50,7 +50,7 @@ const app = express();
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: {
-    origin: process.env.FRONTEND_URL || "http://hamza-aourass.ddns.net:3002",
+    origin: process.env.FRONTEND_URL || "http://localhost:3000",
     methods: ["GET", "POST"],
     credentials: true
   }
@@ -92,7 +92,7 @@ if (!fs.existsSync(productImagesDir)) {
 
 // Configure CORS middleware with more permissive settings
 const corsOptions = {
-  origin: process.env.FRONTEND_URL || "http://hamza-aourass.ddns.net:3002",
+  origin: process.env.FRONTEND_URL || "http://localhost:3000",
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
@@ -124,7 +124,7 @@ app.options('*', cors(corsOptions));
 // Serve static files from uploads directory
 app.use('/uploads', (req, res, next) => {
   // Set CORS headers specifically for static files
-  res.setHeader('Access-Control-Allow-Origin', process.env.FRONTEND_URL || 'http://hamza-aourass.ddns.net:3002');
+  res.setHeader('Access-Control-Allow-Origin', process.env.FRONTEND_URL || 'http://localhost:3000');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   res.setHeader('Access-Control-Allow-Credentials', 'true');
@@ -149,12 +149,23 @@ app.use(passport.session());
 
 // MongoDB connection
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/holistic')
-.then(() => console.log('MongoDB connected successfully'))
+.then(async () => {
+  console.log('MongoDB connected successfully');
+  
+  // Create admin account if it doesn't exist
+  try {
+    const createAdminAccount = require('./scripts/createAdminAccount');
+    await createAdminAccount();
+    console.log('admin creating successfully');
+  } catch (error) {
+    console.error('Error creating admin account:', error);
+  }
+})
 .catch(err => console.error('MongoDB connection error:', err));
 
 // Special CORS handling for auth endpoint
 app.use('/api/auth/me/jwt', process.env.NODE_ENV === 'production' ? authJwtLimiter : (req, res, next) => next(), (req, res, next) => {
-  res.setHeader('Access-Control-Allow-Origin', process.env.FRONTEND_URL || 'http://hamza-aourass.ddns.net:3002');
+  res.setHeader('Access-Control-Allow-Origin', process.env.FRONTEND_URL || 'http://localhost:3000');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   res.setHeader('Access-Control-Allow-Credentials', 'true');
@@ -168,7 +179,7 @@ app.use('/api/auth/me/jwt', process.env.NODE_ENV === 'production' ? authJwtLimit
 
 // Global middleware to ensure CORS headers are always sent
 app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', process.env.FRONTEND_URL || 'http://hamza-aourass.ddns.net:3002');
+  res.header('Access-Control-Allow-Origin', process.env.FRONTEND_URL || 'http://localhost:3000');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
   res.header('Access-Control-Allow-Credentials', 'true');

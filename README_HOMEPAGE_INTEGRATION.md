@@ -172,7 +172,7 @@ Spinner de chargement pendant la récupération des données.
 ### Variables d'Environnement
 ```env
 # Frontend (.env)
-REACT_APP_API_URL=http://hamza-aourass.ddns.net:5001
+REACT_APP_API_URL=http://localhost:5000
 
 # Backend (.env)
 MONGODB_URI=mongodb://localhost:27017/holistic

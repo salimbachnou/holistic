@@ -39,7 +39,7 @@ ChartJS.register(
 );
 
 // URL du backend - à ajuster selon votre configuration
-const API_URL = 'http://hamza-aourass.ddns.net:5001';
+const API_URL = 'http://localhost:5000';
 
 const AdminAnalyticsPage = () => {
   const [loading, setLoading] = useState(true);

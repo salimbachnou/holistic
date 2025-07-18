@@ -2171,7 +2171,7 @@ router.get('/:id', async (req, res) => {
     }
 
     // Convert relative image paths to absolute URLs
-    const baseUrl = process.env.BASE_URL || 'http://hamza-aourass.ddns.net:5001';
+    const baseUrl = process.env.BASE_URL || 'http://localhost:5000';
     
     // Convert profile photo URL if it exists
     if (professional.profilePhoto && !professional.profilePhoto.startsWith('http')) {

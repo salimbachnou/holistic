@@ -121,7 +121,7 @@ const ClientSessionsPage = () => {
 
   const fetchUserBookedSessions = async () => {
     try {
-      const API_URL = process.env.REACT_APP_API_URL || 'http://hamza-aourass.ddns.net:5001';
+      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
       const token = localStorage.getItem('token');
 
       const response = await axios.get(`${API_URL}/api/sessions/my-sessions`, {
@@ -139,7 +139,7 @@ const ClientSessionsPage = () => {
 
   const fetchAvailableSessions = async () => {
     try {
-      const API_URL = process.env.REACT_APP_API_URL || 'http://hamza-aourass.ddns.net:5001';
+      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
       const response = await axios.get(`${API_URL}/api/sessions`, {
         params: {
           status: 'scheduled',
@@ -333,7 +333,7 @@ const ClientSessionsPage = () => {
 
     setBookingInProgress(true);
     try {
-      const API_URL = process.env.REACT_APP_API_URL || 'http://hamza-aourass.ddns.net:5001';
+      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
       const token = localStorage.getItem('token');
 
       if (!session.professionalId) {

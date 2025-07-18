@@ -5,7 +5,7 @@ const api = axios.create({
   baseURL:
     process.env.NODE_ENV === 'production'
       ? '/api' // In production, use relative path
-      : 'http://hamza-aourass.ddns.net:5001/api', // In development, use absolute URL
+      : 'http://localhost:5000/api', // In development, use absolute URL
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',

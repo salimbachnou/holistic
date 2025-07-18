@@ -96,7 +96,11 @@ const createTestProfessional = async () => {
             street: '123 Avenue Mohammed V',
             city: 'Casablanca',
             postalCode: '20000',
-            country: 'Morocco'
+            country: 'Morocco',
+            coordinates: {
+              lat: 33.5731,
+              lng: -7.5898
+            }
           },
           isVerified: true,
           isActive: true
@@ -134,7 +138,11 @@ const createTestProfessional = async () => {
         street: '123 Avenue Mohammed V',
         city: 'Casablanca',
         postalCode: '20000',
-        country: 'Morocco'
+        country: 'Morocco',
+        coordinates: {
+          lat: 33.5731,
+          lng: -7.5898
+        }
       },
       services: [
         {

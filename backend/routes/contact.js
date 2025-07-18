@@ -3,6 +3,7 @@ const { body, validationResult } = require('express-validator');
 const Contact = require('../models/Contact');
 const nodemailer = require('nodemailer');
 const router = express.Router();
+const { isAuthenticated } = require('../middleware/auth');
 
 // Email transporter configuration
 const createEmailTransporter = () => {
@@ -358,5 +359,71 @@ router.post('/', [
     });
   }
 });
+
+// Get user's contact responses
+router.get('/responses', isAuthenticated, async (req, res) => {
+  try {
+    const Contact = require('../models/Contact');
+    
+    // Find all contacts for this user by email
+    const contacts = await Contact.find({ 
+      email: req.user.email 
+    }).populate('responses.adminId', 'firstName lastName');
+    
+    // Filter contacts that have responses
+    const contactsWithResponses = contacts.filter(contact => 
+      contact.responses && contact.responses.length > 0
+    );
+    
+    res.json({
+      success: true,
+      contacts: contactsWithResponses
+    });
+  } catch (error) {
+    console.error('Get contact responses error:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Erreur lors de la récupération des réponses' 
+    });
+  }
+});
+
+// Get single contact with responses
+router.get('/responses/:contactId', isAuthenticated, async (req, res) => {
+  try {
+    const Contact = require('../models/Contact');
+    
+    const contact = await Contact.findById(req.params.contactId)
+      .populate('responses.adminId', 'firstName lastName');
+    
+    if (!contact) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Contact non trouvé' 
+      });
+    }
+    
+    // Check if this contact belongs to the user
+    if (contact.email !== req.user.email) {
+      return res.status(403).json({ 
+        success: false, 
+        message: 'Accès non autorisé' 
+      });
+    }
+    
+    res.json({
+      success: true,
+      contact
+    });
+  } catch (error) {
+    console.error('Get contact response error:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Erreur lors de la récupération de la réponse' 
+    });
+  }
+});
+
+// ===================== CONTACT MANAGEMENT =====================
 
 module.exports = router; 
