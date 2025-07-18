@@ -1042,7 +1042,10 @@ const ProductsPage = () => {
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-6 lg:space-y-0 lg:space-x-8">
               {/* Search avec design premium */}
               <div className="flex-1 max-w-lg">
-                <label htmlFor="search-input" className="block text-sm font-bold text-gray-700 mb-2">
+                <label
+                  htmlFor="search-input"
+                  className="block text-sm font-bold text-gray-700 mb-2"
+                >
                   Rechercher vos produits
                 </label>
                 <div className="relative">
@@ -1062,7 +1065,12 @@ const ProductsPage = () => {
               <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-6">
                 {/* Category Filter */}
                 <div>
-                  <label htmlFor="category-filter" className="block text-sm font-bold text-gray-700 mb-2">Catégorie</label>
+                  <label
+                    htmlFor="category-filter"
+                    className="block text-sm font-bold text-gray-700 mb-2"
+                  >
+                    Catégorie
+                  </label>
                   <select
                     id="category-filter"
                     value={categoryFilter}

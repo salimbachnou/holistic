@@ -53,12 +53,9 @@ const ProfessionalEventBookingsPage = () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
-      const response = await axios.get(
-        'http://localhost:5000/api/events/professional',
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+      const response = await axios.get('http://localhost:5000/api/events/professional', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
       if (response.data && response.data.events) {
         setEvents(response.data.events);
@@ -76,12 +73,9 @@ const ProfessionalEventBookingsPage = () => {
     try {
       setLoadingParticipants(true);
       const token = localStorage.getItem('token');
-      const response = await axios.get(
-        `http://localhost:5000/api/events/${eventId}/participants`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+      const response = await axios.get(`http://localhost:5000/api/events/${eventId}/participants`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
       if (response.data) {
         const participantsList = response.data.participants || [];

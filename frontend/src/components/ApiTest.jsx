@@ -43,9 +43,7 @@ const ApiTest = () => {
 
       // Try with absolute URL if all else fails
       try {
-        const fullResponse = await axios.get(
-          'http://localhost:5000/api/professionals'
-        );
+        const fullResponse = await axios.get('http://localhost:5000/api/professionals');
         console.log('API success with absolute URL:', fullResponse);
         setApiResponse(
           'Success with absolute URL: ' +

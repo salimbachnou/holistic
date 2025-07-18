@@ -18,7 +18,7 @@ EMAIL_PASS=votre_mot_de_passe_application
 # Autres variables nécessaires
 MONGODB_URI=mongodb://localhost:27017/holistic
 JWT_SECRET=votre_clé_secrète_jwt
-FRONTEND_URL=http://localhost:3000
+FRONTEND_URL=https://holistic-maroc.vercel.app
 PORT=5000
 NODE_ENV=development
 ```

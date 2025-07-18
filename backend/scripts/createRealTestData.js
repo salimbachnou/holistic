@@ -191,8 +191,8 @@ async function createEventsForProfessional() {
 
     console.log(`\n🎉 SUCCÈS ! ${events.length} événements et ${products.length} produits créés`);
     console.log(`\n📱 Testez maintenant :`);
-    console.log(`- Événements: http://localhost:3000/professionals/${professionalId}/events`);
-    console.log(`- Produits: http://localhost:3000/professionals/${professionalId}/products`);
+    console.log(`- Événements: https://holistic-maroc.vercel.app/professionals/${professionalId}/events`);
+    console.log(`- Produits: https://holistic-maroc.vercel.app/professionals/${professionalId}/products`);
 
   } catch (error) {
     console.error('❌ Erreur:', error);

@@ -69,9 +69,7 @@ const ProfessionalProductsPage = () => {
         setLoading(true);
 
         // Fetch professional data
-        const professionalResponse = await fetch(
-          `http://localhost:5000/api/professionals/${id}`
-        );
+        const professionalResponse = await fetch(`http://localhost:5000/api/professionals/${id}`);
         const professionalData = await professionalResponse.json();
 
         if (!professionalData.success) {
@@ -175,8 +173,7 @@ const ProfessionalProductsPage = () => {
   const ProductCard = ({ product }) => {
     const isProductFavorite = isFavorite('products', product._id);
 
-    const defaultImageUrl =
-      'http://localhost:5000/uploads/products/1748711983894-578098072.jpg';
+    const defaultImageUrl = 'http://localhost:5000/uploads/products/1748711983894-578098072.jpg';
     let imageUrl = defaultImageUrl;
 
     // Utiliser les nouvelles données d'image de l'API
@@ -185,9 +182,7 @@ const ProfessionalProductsPage = () => {
         imageUrl = product.images[0].url;
       } else if (typeof product.images[0] === 'string') {
         const img = product.images[0];
-        imageUrl = img.startsWith('http')
-          ? img
-          : `http://localhost:5000/uploads/products/${img}`;
+        imageUrl = img.startsWith('http') ? img : `http://localhost:5000/uploads/products/${img}`;
       }
     }
 
@@ -347,8 +342,7 @@ const ProfessionalProductsPage = () => {
   const ProductListCard = ({ product }) => {
     const isProductFavorite = isFavorite('products', product._id);
 
-    const defaultImageUrl =
-      'http://localhost:5000/uploads/products/1748711983894-578098072.jpg';
+    const defaultImageUrl = 'http://localhost:5000/uploads/products/1748711983894-578098072.jpg';
     let imageUrl = defaultImageUrl;
 
     // Utiliser les nouvelles données d'image de l'API
@@ -357,9 +351,7 @@ const ProfessionalProductsPage = () => {
         imageUrl = product.images[0].url;
       } else if (typeof product.images[0] === 'string') {
         const img = product.images[0];
-        imageUrl = img.startsWith('http')
-          ? img
-          : `http://localhost:5000/uploads/products/${img}`;
+        imageUrl = img.startsWith('http') ? img : `http://localhost:5000/uploads/products/${img}`;
       }
     }
 

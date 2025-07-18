@@ -16,7 +16,7 @@ npm install
 npm start
 ```
 
-L'application sera accessible à l'adresse [http://localhost:3000](http://localhost:3000).
+L'application sera accessible à l'adresse [https://holistic-maroc.vercel.app](https://holistic-maroc.vercel.app).
 
 ## Problèmes courants et solutions
 
@@ -24,7 +24,7 @@ L'application sera accessible à l'adresse [http://localhost:3000](http://localh
 
 Si vous rencontrez des erreurs comme:
 ```
-GET http://localhost:3000/api/professionals? 404 (Not Found)
+GET https://holistic-maroc.vercel.app/api/professionals? 404 (Not Found)
 ```
 
 #### Solutions:
@@ -61,7 +61,7 @@ Error getting location: GeolocationPositionError {code: 1, message: 'User denied
 Pour masquer les erreurs dans la console qui ne sont pas critiques:
 
 1. **Mode silencieux en développement**:
-   - Ajoutez `?silent=true` à l'URL: http://localhost:3000/?silent=true
+   - Ajoutez `?silent=true` à l'URL: https://holistic-maroc.vercel.app/?silent=true
    - Cela désactive tous les logs dans la console
 
 2. **Restaurer les logs si nécessaire**:
