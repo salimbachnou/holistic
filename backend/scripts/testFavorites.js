@@ -46,14 +46,14 @@ async function testFavorites() {
         if (favoriteData.coverImages && favoriteData.coverImages.length > 0) {
           favoriteData.coverImages = favoriteData.coverImages.map(img => 
             img && !img.startsWith('http') ? 
-            `https://holistic-maroc-backend.onrender.com${img.startsWith('/uploads') ? img : '/uploads/professionals/' + img}` : 
+            `http://localhost:5000${img.startsWith('/uploads') ? img : '/uploads/professionals/' + img}` : 
             img
           );
         }
         
         // Convert profile photo to full URL
         if (favoriteData.profilePhoto && !favoriteData.profilePhoto.startsWith('http')) {
-          favoriteData.profilePhoto = `https://holistic-maroc-backend.onrender.com${favoriteData.profilePhoto.startsWith('/uploads') ? favoriteData.profilePhoto : '/uploads/professionals/' + favoriteData.profilePhoto}`;
+          favoriteData.profilePhoto = `http://localhost:5000${favoriteData.profilePhoto.startsWith('/uploads') ? favoriteData.profilePhoto : '/uploads/professionals/' + favoriteData.profilePhoto}`;
         }
         
         return favoriteData;

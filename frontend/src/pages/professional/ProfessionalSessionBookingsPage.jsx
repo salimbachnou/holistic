@@ -2,7 +2,6 @@ import {
   CalendarIcon,
   CheckCircleIcon,
   ClockIcon,
-  CurrencyEuroIcon,
   EyeIcon,
   FunnelIcon,
   MagnifyingGlassIcon,
@@ -24,7 +23,7 @@ import { format, parseISO, isAfter, isBefore, startOfDay, endOfDay } from 'date-
 import { fr } from 'date-fns/locale';
 import React, { useCallback, useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
-import { FaVideo, FaMapMarkerAlt, FaUser, FaUsers, FaClock, FaEuroSign } from 'react-icons/fa';
+import { FaVideo, FaMapMarkerAlt, FaUser, FaUsers, FaClock } from 'react-icons/fa';
 
 import LoadingSpinner from '../../components/Common/LoadingSpinner';
 import { useAuth } from '../../contexts/AuthContext';
@@ -78,8 +77,7 @@ const ProfessionalSessionBookingsPage = () => {
   const fetchBookings = async () => {
     try {
       setLoading(true);
-      const API_URL =
-        process.env.REACT_APP_API_URL || 'https://holistic-maroc-backend.onrender.com';
+      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
       const token = localStorage.getItem('token');
 
       // Include all bookings by default (includeAll=true)
@@ -225,8 +223,7 @@ const ProfessionalSessionBookingsPage = () => {
   const handleStatusUpdate = async (bookingId, newStatus, reason = '') => {
     try {
       setUpdatingStatus(true);
-      const API_URL =
-        process.env.REACT_APP_API_URL || 'https://holistic-maroc-backend.onrender.com';
+      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
       const token = localStorage.getItem('token');
 
       await axios.put(
@@ -363,9 +360,7 @@ const ProfessionalSessionBookingsPage = () => {
                 <button
                   onClick={async () => {
                     try {
-                      const API_URL =
-                        process.env.REACT_APP_API_URL ||
-                        'https://holistic-maroc-backend.onrender.com';
+                      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
                       const token = localStorage.getItem('token');
                       const response = await axios.get(
                         `${API_URL}/api/bookings/professional/debug`,
@@ -471,7 +466,7 @@ const ProfessionalSessionBookingsPage = () => {
                 </p>
               </div>
               <div className="bg-emerald-100 rounded-full p-2 sm:p-3">
-                <CurrencyEuroIcon className="h-4 w-4 sm:h-6 sm:w-6 text-emerald-600" />
+                <span className="text-emerald-600 font-medium text-sm">MAD</span>
               </div>
             </div>
           </div>
@@ -681,7 +676,7 @@ const ProfessionalSessionBookingsPage = () => {
                         {/* Prix */}
                         <div className="col-span-1">
                           <div className="flex items-center space-x-1">
-                            <FaEuroSign className="h-3 w-3 text-green-500" />
+                            <span className="text-green-500 font-medium text-xs">MAD</span>
                             <span className="font-medium text-gray-900">
                               {booking.service.price || 0}
                             </span>
@@ -784,7 +779,7 @@ const ProfessionalSessionBookingsPage = () => {
                         {/* Price & Status */}
                         <div className="flex items-center justify-between">
                           <div className="flex items-center space-x-1">
-                            <FaEuroSign className="h-3 w-3 text-green-500" />
+                            <span className="text-green-500 font-medium text-xs">MAD</span>
                             <span className="font-medium text-gray-900">
                               {booking.service.price || 0} MAD
                             </span>

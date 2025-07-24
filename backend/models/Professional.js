@@ -61,14 +61,7 @@ const professionalSchema = new mongoose.Schema({
   },
   businessType: {
     type: String,
-    required: true,
-    enum: [
-      'yoga', 'meditation', 'naturopathy', 'massage', 'acupuncture',
-      'osteopathy', 'chiropractic', 'nutrition', 'psychology', 'coaching',
-      'reiki', 'aromatherapy', 'reflexology', 'ayurveda', 'hypnotherapy',
-      'sophrology', 'spa', 'beauty', 'wellness', 'fitness', 'therapist',
-      'nutritionist', 'other'
-    ]
+    required: true
   },
   certifications: [{
     name: String,

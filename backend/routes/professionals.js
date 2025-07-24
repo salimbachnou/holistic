@@ -676,13 +676,43 @@ router.patch('/orders/:id/status', isAuthenticated, isProfessional, async (req, 
 // Get current professional profile
 router.get('/me/profile', isAuthenticated, isProfessional, async (req, res) => {
   try {
+    console.log('🔍 Professional Profile Route - User ID:', req.user._id);
+    console.log('🔍 Professional Profile Route - User role:', req.user.role);
+    
     const professional = await Professional.findOne({ userId: req.user._id })
       .populate('userId', 'firstName lastName email profileImage');
 
+    console.log('🔍 Professional Profile Route - Found professional:', professional ? 'Yes' : 'No');
+
     if (!professional) {
-      return res.status(404).json({
-        success: false,
-        message: 'Professional profile not found'
+      console.log('🔍 Professional Profile Route - Profile not found, creating one...');
+      
+      // Create professional profile if it doesn't exist
+      const newProfessional = new Professional({
+        userId: req.user._id,
+        businessName: `${req.user.firstName} ${req.user.lastName}`,
+        businessType: 'other',
+        title: `${req.user.firstName} ${req.user.lastName}`,
+        description: '',
+        address: "À définir",
+        contactInfo: { 
+          email: req.user.email,
+          phone: ''
+        },
+        isVerified: false,
+        isActive: false
+      });
+      
+      await newProfessional.save();
+      console.log('🔍 Professional Profile Route - Created new profile for user:', req.user._id);
+      
+      // Return the newly created profile
+      const createdProfessional = await Professional.findOne({ userId: req.user._id })
+        .populate('userId', 'firstName lastName email profileImage');
+        
+      return res.json({
+        success: true,
+        professional: createdProfessional
       });
     }
 
@@ -972,6 +1002,7 @@ router.get('/clients', isAuthenticated, isProfessional, async (req, res) => {
       limit = 10,
       search,
       status = 'all',
+      type = 'all',
       sortBy = 'lastVisit',
       sortOrder = 'desc'
     } = req.query;
@@ -995,6 +1026,11 @@ router.get('/clients', isAuthenticated, isProfessional, async (req, res) => {
       .populate('participants', 'firstName lastName email phone profileImage')
       .sort({ startTime: -1 });
       
+    // Find all events for this professional
+    const events = await Event.find({ professional: req.user._id })
+      .populate('participants.user', 'firstName lastName email phone profileImage')
+      .sort({ date: -1 });
+      
     // Find all products for this professional
     const products = await Product.find({ professionalId: professional._id });
     const productIds = products.map(product => product._id);
@@ -1004,6 +1040,7 @@ router.get('/clients', isAuthenticated, isProfessional, async (req, res) => {
       'items.product': { $in: productIds }
     })
     .populate('clientId', 'firstName lastName email phone profileImage')
+    .populate('items.product', 'name title price images')
     .sort({ createdAt: -1 });
 
     // Create a map of clients with their booking/session/order history
@@ -1014,37 +1051,42 @@ router.get('/clients', isAuthenticated, isProfessional, async (req, res) => {
       const clientId = booking.client._id.toString();
       const client = booking.client;
       
-      if (!clientsMap.has(clientId)) {
-        clientsMap.set(clientId, {
-          id: clientId,
-          name: `${client.firstName} ${client.lastName}`,
-          email: client.email,
-          phone: client.phone || '',
-          image: client.profileImage || '',
-          lastVisit: booking.appointmentDate,
-          totalSessions: 0,
-          totalSpent: 0,
-          status: booking.status === 'cancelled' || booking.status === 'no_show' ? 'inactive' : 'active',
-          tags: [],
-          notes: booking.clientNotes || '',
-          upcomingSessions: [],
-          pastSessions: [],
-          orders: []
-        });
-      }
+              if (!clientsMap.has(clientId)) {
+          clientsMap.set(clientId, {
+            id: clientId,
+            name: `${client.firstName} ${client.lastName}`,
+            email: client.email,
+            phone: client.phone || '',
+            image: client.profileImage || '',
+            lastVisit: booking.appointmentDate,
+            totalSessions: 0,
+            totalSpent: 0,
+            status: booking.status === 'cancelled' || booking.status === 'no_show' ? 'inactive' : 'active',
+            tags: ['Client Réservation'],
+            notes: booking.clientNotes || '',
+            upcomingSessions: [],
+            pastSessions: [],
+            orders: []
+          });
+        }
 
-      const clientData = clientsMap.get(clientId);
-      
-      // Update last visit if this booking is more recent
-      if (new Date(booking.appointmentDate) > new Date(clientData.lastVisit)) {
-        clientData.lastVisit = booking.appointmentDate;
-      }
+              const clientData = clientsMap.get(clientId);
+        
+        // Update last visit if this booking is more recent
+        if (new Date(booking.appointmentDate) > new Date(clientData.lastVisit)) {
+          clientData.lastVisit = booking.appointmentDate;
+        }
 
-      // Increment total sessions and spent amount
-      if (booking.status === 'completed') {
-        clientData.totalSessions += 1;
-        clientData.totalSpent += booking.totalAmount ? booking.totalAmount.amount || 0 : 0;
-      }
+        // Increment total sessions and spent amount
+        if (booking.status === 'completed') {
+          clientData.totalSessions += 1;
+          clientData.totalSpent += booking.totalAmount ? booking.totalAmount.amount || 0 : 0;
+        }
+
+        // Add tag if not already present
+        if (!clientData.tags.includes('Client Réservation')) {
+          clientData.tags.push('Client Réservation');
+        }
 
       // Add to upcoming or past sessions
       const sessionInfo = {
@@ -1081,7 +1123,7 @@ router.get('/clients', isAuthenticated, isProfessional, async (req, res) => {
             totalSessions: 0,
             totalSpent: 0,
             status: 'active',
-            tags: [],
+            tags: ['Client Session'],
             notes: '',
             upcomingSessions: [],
             pastSessions: [],
@@ -1100,6 +1142,11 @@ router.get('/clients', isAuthenticated, isProfessional, async (req, res) => {
         if (session.status === 'completed') {
           clientData.totalSessions += 1;
           clientData.totalSpent += session.price || 0;
+        }
+
+        // Add tag if not already present
+        if (!clientData.tags.includes('Client Session')) {
+          clientData.tags.push('Client Session');
         }
 
         // Add to upcoming or past sessions
@@ -1121,6 +1168,68 @@ router.get('/clients', isAuthenticated, isProfessional, async (req, res) => {
         }
       });
     });
+
+    // Process events
+    events.forEach(event => {
+      event.participants.forEach(participant => {
+        const clientId = participant.user._id.toString();
+        
+        if (!clientsMap.has(clientId)) {
+          clientsMap.set(clientId, {
+            id: clientId,
+            name: `${participant.user.firstName} ${participant.user.lastName}`,
+            email: participant.user.email,
+            phone: participant.user.phone || '',
+            image: participant.user.profileImage || '',
+            lastVisit: event.date,
+            totalSessions: 0,
+            totalSpent: 0,
+            status: participant.status === 'cancelled' ? 'inactive' : 'active',
+            tags: ['Client Événement'],
+            notes: '',
+            upcomingSessions: [],
+            pastSessions: [],
+            orders: []
+          });
+        }
+
+        const clientData = clientsMap.get(clientId);
+        
+        // Update last visit if this event is more recent
+        if (new Date(event.date) > new Date(clientData.lastVisit)) {
+          clientData.lastVisit = event.date;
+        }
+
+        // Increment total sessions and spent amount
+        if (participant.status === 'confirmed') {
+          clientData.totalSessions += 1;
+          clientData.totalSpent += (event.price || 0) * (participant.quantity || 1);
+        }
+
+        // Add to upcoming or past sessions
+        const sessionInfo = {
+          id: event._id,
+          type: 'event',
+          date: event.date,
+          time: event.time || new Date(event.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          service: event.title,
+          payment: (event.price || 0) * (participant.quantity || 1),
+          status: participant.status,
+          location: event.eventType === 'online' ? { type: 'online', onlineLink: event.onlineLink } : { type: 'in_person', address: { street: event.address } }
+        };
+
+        if (new Date(event.date) > new Date()) {
+          clientData.upcomingSessions.push(sessionInfo);
+        } else {
+          clientData.pastSessions.push(sessionInfo);
+        }
+
+        // Add tag if not already present
+        if (!clientData.tags.includes('Client Événement')) {
+          clientData.tags.push('Client Événement');
+        }
+      });
+    });
     
     // Process orders
     orders.forEach(order => {
@@ -1137,9 +1246,10 @@ router.get('/clients', isAuthenticated, isProfessional, async (req, res) => {
       if (professionalItems.length === 0) return; // Skip if no items from this professional
       
       // Calculate total spent on this professional's products
-      const totalSpentOnProducts = professionalItems.reduce((sum, item) => 
-        sum + ((item.price || 0) * (item.quantity || 1)), 0
-      );
+      const totalSpentOnProducts = professionalItems.reduce((sum, item) => {
+        const itemPrice = item.price && item.price.amount ? item.price.amount : (item.price || 0);
+        return sum + (itemPrice * (item.quantity || 1));
+      }, 0);
       
       if (!clientsMap.has(clientId)) {
         clientsMap.set(clientId, {
@@ -1185,7 +1295,7 @@ router.get('/clients', isAuthenticated, isProfessional, async (req, res) => {
         items: professionalItems.map(item => ({
           product: item.product,
           quantity: item.quantity,
-          price: item.price
+          price: item.price && item.price.amount ? item.price.amount : (item.price || 0)
         }))
       });
     });
@@ -1206,6 +1316,29 @@ router.get('/clients', isAuthenticated, isProfessional, async (req, res) => {
     // Apply status filter if provided
     if (status !== 'all') {
       clients = clients.filter(client => client.status === status);
+    }
+
+    // Apply type filter if provided
+    if (type !== 'all') {
+      clients = clients.filter(client => {
+        const hasSessions = client.tags.some(tag => tag === 'Client Session' || client.totalSessions > 0);
+        const hasEvents = client.tags.some(tag => tag === 'Client Événement');
+        const hasBoutique = client.tags.some(tag => tag === 'Client Boutique');
+        
+        switch (type) {
+          case 'session':
+            return hasSessions && !hasEvents && !hasBoutique;
+          case 'event':
+            return hasEvents && !hasSessions && !hasBoutique;
+          case 'boutique':
+            return hasBoutique && !hasSessions && !hasEvents;
+          case 'mixed':
+            const activityTypes = [hasSessions, hasEvents, hasBoutique].filter(Boolean);
+            return activityTypes.length > 1;
+          default:
+            return true;
+        }
+      });
     }
 
     // Apply sorting
@@ -1301,6 +1434,12 @@ router.get('/clients/:id', isAuthenticated, isProfessional, async (req, res) => 
       professionalId: professional._id,
       participants: { $in: [clientId] }
     }).sort({ startTime: -1 });
+
+    // Check if this client has participated in events with this professional
+    const events = await Event.find({
+      professional: req.user._id,
+      'participants.user': clientId
+    }).sort({ date: -1 });
     
     // Find all products for this professional
     const products = await Product.find({ professionalId: professional._id });
@@ -1312,8 +1451,8 @@ router.get('/clients/:id', isAuthenticated, isProfessional, async (req, res) => 
       'items.product': { $in: productIds }
     }).populate('items.product', 'name title price images').sort({ createdAt: -1 });
 
-    // If no bookings, sessions, or orders, this client doesn't belong to this professional
-    if (bookings.length === 0 && sessions.length === 0 && orders.length === 0) {
+    // If no bookings, sessions, events, or orders, this client doesn't belong to this professional
+    if (bookings.length === 0 && sessions.length === 0 && events.length === 0 && orders.length === 0) {
       return res.status(403).json({
         success: false,
         message: 'This client has no history with you'
@@ -1386,6 +1525,38 @@ router.get('/clients/:id', isAuthenticated, isProfessional, async (req, res) => 
         pastSessions.push(sessionInfo);
       }
     });
+
+    // Process events
+    events.forEach(event => {
+      const participant = event.participants.find(p => p.user.toString() === clientId);
+      if (!participant) return;
+
+      if (participant.status === 'confirmed') {
+        totalSessions += 1;
+        totalSpent += (event.price || 0) * (participant.quantity || 1);
+      }
+
+      if (!lastVisit || new Date(event.date) > new Date(lastVisit)) {
+        lastVisit = event.date;
+      }
+
+      const sessionInfo = {
+        id: event._id,
+        type: 'event',
+        date: event.date,
+        time: event.time || new Date(event.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        service: event.title,
+        payment: (event.price || 0) * (participant.quantity || 1),
+        status: participant.status,
+        location: event.eventType === 'online' ? { type: 'online', onlineLink: event.onlineLink } : { type: 'in_person', address: { street: event.address } }
+      };
+
+      if (new Date(event.date) > new Date()) {
+        upcomingSessions.push(sessionInfo);
+      } else {
+        pastSessions.push(sessionInfo);
+      }
+    });
     
     // Process orders
     orders.forEach(order => {
@@ -1397,9 +1568,10 @@ router.get('/clients/:id', isAuthenticated, isProfessional, async (req, res) => 
       if (professionalItems.length === 0) return; // Skip if no items from this professional
       
       // Calculate total spent on this professional's products
-      const totalSpentOnProducts = professionalItems.reduce((sum, item) => 
-        sum + ((item.price || 0) * (item.quantity || 1)), 0
-      );
+      const totalSpentOnProducts = professionalItems.reduce((sum, item) => {
+        const itemPrice = item.price && item.price.amount ? item.price.amount : (item.price || 0);
+        return sum + (itemPrice * (item.quantity || 1));
+      }, 0);
       
       // Add to total spent
       totalSpent += totalSpentOnProducts || 0;
@@ -1418,7 +1590,7 @@ router.get('/clients/:id', isAuthenticated, isProfessional, async (req, res) => 
         items: professionalItems.map(item => ({
           product: item.product,
           quantity: item.quantity,
-          price: item.price
+          price: item.price && item.price.amount ? item.price.amount : (item.price || 0)
         }))
       });
     });
@@ -2171,7 +2343,7 @@ router.get('/:id', async (req, res) => {
     }
 
     // Convert relative image paths to absolute URLs
-    const baseUrl = process.env.BASE_URL || 'https://holistic-maroc-backend.onrender.com';
+    const baseUrl = process.env.BASE_URL || 'http://localhost:5000';
     
     // Convert profile photo URL if it exists
     if (professional.profilePhoto && !professional.profilePhoto.startsWith('http')) {
@@ -2376,13 +2548,7 @@ router.get('/:id/stats', async (req, res) => {
 // Create professional profile
 router.post('/profile', isAuthenticated, [
   body('businessName').notEmpty().withMessage('Business name is required'),
-  body('businessType').isIn([
-    'yoga', 'meditation', 'naturopathy', 'massage', 'acupuncture',
-    'osteopathy', 'chiropractic', 'nutrition', 'psychology', 'coaching',
-    'reiki', 'aromatherapy', 'reflexology', 'ayurveda', 'hypnotherapy',
-    'sophrology', 'spa', 'beauty', 'wellness', 'fitness', 'therapist',
-    'nutritionist', 'other'
-  ]).withMessage('Valid business type is required'),
+  body('businessType').notEmpty().withMessage('Valid business type is required'),
   body('contactInfo.phone').notEmpty().withMessage('Phone number is required'),
   body('businessAddress.city').notEmpty().withMessage('City is required')
 ], async (req, res) => {
@@ -2448,7 +2614,7 @@ router.put('/profile', isAuthenticated, isProfessional, async (req, res) => {
     const allowedFields = [
       'businessName', 'businessType', 'description', 'certifications',
       'businessAddress', 'contactInfo', 'businessHours', 'address', 'title', 'activities',
-      'coverImages', 'categories'
+      'coverImages', 'categories', 'bookingMode'
     ];
 
     const updateData = {};
@@ -3633,6 +3799,74 @@ router.get('/debug/list', async (req, res) => {
     res.status(500).json({
       success: false,
       message: error.message
+    });
+  }
+});
+
+// Get professional profile statistics
+router.get('/me/profile-stats', isAuthenticated, isProfessional, async (req, res) => {
+  try {
+    const professional = await Professional.findOne({ userId: req.user._id });
+    if (!professional) {
+      return res.status(404).json({
+        success: false,
+        message: 'Professional profile not found'
+      });
+    }
+
+    const professionalId = professional._id;
+    
+    // Get total sessions count
+    const totalSessions = await Session.countDocuments({
+      professionalId: professionalId
+    });
+
+    // Get unique clients count from sessions and bookings
+    const sessionClients = await Session.distinct('participants', {
+      professionalId: professionalId
+    });
+    
+    const bookingClients = await Booking.distinct('client', {
+      professional: professionalId
+    });
+    
+    // Combine and count unique clients
+    const allClientIds = new Set([
+      ...sessionClients.map(id => id.toString()),
+      ...bookingClients.map(id => id.toString())
+    ]);
+    const totalClients = allClientIds.size;
+
+    // Get products count
+    const productsCount = await Product.countDocuments({
+      professionalId: professionalId,
+      status: 'approved'
+    });
+
+    // Get upcoming events count
+    const upcomingEvents = await Event.countDocuments({
+      professional: professional.userId,
+      eventDate: { $gte: new Date() },
+      status: 'active'
+    });
+
+    const stats = {
+      totalSessions,
+      totalClients,
+      productsCount,
+      upcomingEvents
+    };
+
+    res.json({
+      success: true,
+      stats
+    });
+
+  } catch (error) {
+    console.error('Error fetching professional profile stats:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
     });
   }
 });

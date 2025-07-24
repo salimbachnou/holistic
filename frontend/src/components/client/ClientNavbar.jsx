@@ -35,7 +35,7 @@ const ClientNavbar = () => {
     if (user?.profileImage) {
       const imageUrl = user.profileImage.startsWith('http')
         ? user.profileImage
-        : `${process.env.REACT_APP_API_URL || 'https://holistic-maroc-backend.onrender.com'}${user.profileImage}`;
+        : `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}${user.profileImage}`;
       setProfileImageUrl(imageUrl);
     } else {
       setProfileImageUrl(null);
@@ -210,13 +210,6 @@ const ClientNavbar = () => {
                       Mes réservations
                     </Link>
                     <Link
-                      to="/messages"
-                      className="flex items-center px-4 py-2.5 text-sm text-gray-700 hover:bg-pink-50 hover:text-pink-700 transition-colors duration-200"
-                    >
-                      <MessageCircle className="mr-3 h-5 w-5 text-gray-500" />
-                      Messages
-                    </Link>
-                    <Link
                       to="/favorites"
                       className="flex items-center px-4 py-2.5 text-sm text-gray-700 hover:bg-pink-50 hover:text-pink-700 transition-colors duration-200"
                     >
@@ -318,14 +311,6 @@ const ClientNavbar = () => {
               >
                 <CalendarDays className="mr-3 h-5 w-5 text-gray-400" />
                 Mes réservations
-              </Link>
-              <Link
-                to="/sessions"
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="flex items-center px-3 py-3 rounded-lg text-base font-medium text-gray-600 hover:bg-white hover:text-pink-600 transition-all duration-200"
-              >
-                <GraduationCap className="mr-3 h-5 w-5 text-gray-400" />
-                Mes sessions
               </Link>
               <Link
                 to="/favorites"

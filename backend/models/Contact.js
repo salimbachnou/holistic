@@ -71,14 +71,7 @@ const contactSchema = new mongoose.Schema({
   },
   activityType: {
     type: String,
-    required: function() { return this.type === 'professional'; },
-    enum: [
-      'yoga', 'meditation', 'naturopathy', 'massage', 'acupuncture',
-      'osteopathy', 'chiropractic', 'nutrition', 'psychology', 'coaching',
-      'reiki', 'aromatherapy', 'reflexology', 'ayurveda', 'hypnotherapy',
-      'sophrology', 'spa', 'beauty', 'wellness', 'fitness', 'therapist',
-      'nutritionist', 'other'
-    ]
+    required: function() { return this.type === 'professional'; }
   },
   selectedPlan: {
     type: String,

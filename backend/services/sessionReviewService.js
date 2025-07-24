@@ -108,10 +108,95 @@ class SessionReviewService {
   }
 
   /**
+   * Send review requests for a specific session (used by auto-completion)
+   * @param {string} sessionId - Session ID
+   * @param {string} professionalUserId - Professional user ID
+   */
+  static async sendReviewRequestsForSession(sessionId, professionalUserId) {
+    try {
+      console.log('=== SENDING REVIEW REQUESTS FOR SESSION ===');
+      console.log('Session ID:', sessionId);
+      console.log('Professional User ID:', professionalUserId);
+
+      // Find the session
+      const session = await Session.findById(sessionId);
+      if (!session) {
+        throw new Error('Session not found');
+      }
+
+      // Verify professional ownership
+      const professional = await Professional.findOne({ userId: professionalUserId });
+      if (!professional || !session.professionalId.equals(professional._id)) {
+        throw new Error('Access denied. You are not the owner of this session.');
+      }
+
+      // Find all confirmed bookings for this session
+      const confirmedBookings = await Booking.find({
+        'service.sessionId': sessionId,
+        status: 'confirmed'
+      }).populate('client', 'firstName lastName email');
+
+      console.log(`Found ${confirmedBookings.length} confirmed bookings to process`);
+
+      // Update booking statuses and send review requests
+      const reviewRequests = [];
+      for (const booking of confirmedBookings) {
+        try {
+          // Update booking status to completed
+          booking.status = 'completed';
+          await booking.save();
+
+          // Send review request notification
+          await this.sendReviewRequest(booking, session, professional);
+          reviewRequests.push({
+            bookingId: booking._id,
+            clientId: booking.client._id,
+            clientName: `${booking.client.firstName} ${booking.client.lastName}`,
+            status: 'sent'
+          });
+
+          console.log(`Review request sent to ${booking.client.firstName} ${booking.client.lastName}`);
+        } catch (error) {
+          console.error(`Error processing booking ${booking._id}:`, error);
+          reviewRequests.push({
+            bookingId: booking._id,
+            clientId: booking.client._id,
+            clientName: booking.client ? `${booking.client.firstName} ${booking.client.lastName}` : 'Unknown',
+            status: 'error',
+            error: error.message
+          });
+        }
+      }
+
+      return {
+        success: true,
+        message: 'Review requests sent for session',
+        reviewRequests: reviewRequests,
+        totalParticipants: confirmedBookings.length
+      };
+
+    } catch (error) {
+      console.error('Error sending review requests for session:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Automatically complete sessions that have passed their end time
    */
   static async autoCompleteExpiredSessions() {
     try {
+      // Check if MongoDB is connected
+      const mongoose = require('mongoose');
+      if (mongoose.connection.readyState !== 1) {
+        console.log('⚠️ [SESSION-REVIEW-AUTO-COMPLETE] Skipping - MongoDB not connected');
+        return {
+          success: true,
+          message: 'MongoDB not connected',
+          results: []
+        };
+      }
+
       console.log('=== AUTO COMPLETING EXPIRED SESSIONS ===');
       
       const now = new Date();

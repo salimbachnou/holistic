@@ -6,7 +6,7 @@ module.exports = function (app) {
   app.use(
     '/api',
     createProxyMiddleware({
-      target: 'https://holistic-maroc-backend.onrender.com',
+      target: 'http://localhost:5000',
       changeOrigin: true,
       secure: false,
       logLevel: 'debug',

@@ -12,6 +12,7 @@ const Order = require('./Order');
 const Contact = require('./Contact');
 const Message = require('./Message');
 const Notification = require('./Notification');
+const ActivityType = require('./ActivityType');
 
 // Video Call Access Log Schema
 const videoCallAccessLogSchema = new mongoose.Schema({
@@ -79,5 +80,6 @@ module.exports = {
   Contact,
   Message,
   Notification,
+  ActivityType,
   VideoCallAccessLog
 }; 

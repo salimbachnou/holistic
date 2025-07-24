@@ -21,7 +21,7 @@ const Header = () => {
     if (user?.profileImage) {
       const imageUrl = user.profileImage.startsWith('http')
         ? user.profileImage
-        : `${process.env.REACT_APP_API_URL || 'https://holistic-maroc-backend.onrender.com'}${user.profileImage}`;
+        : `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}${user.profileImage}`;
       setProfileImageUrl(imageUrl);
     } else {
       setProfileImageUrl(null);

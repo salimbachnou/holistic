@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { toast } from 'react-hot-toast';
 import { FaMapMarkerAlt, FaStar, FaSearch, FaHeart } from 'react-icons/fa';
 import { Link, useNavigate } from 'react-router-dom';
@@ -19,6 +19,7 @@ const ProfessionalsPage = () => {
   const [selectedCategory, setSelectedCategory] = useState('');
   const [showMap, setShowMap] = useState(false);
   const [location] = useState(null); // Remove geolocation functionality
+  const searchTimeout = useRef(null); // Add ref for debouncing search
 
   // Use a constant instead of state since we're not changing it
   const categories = [
@@ -46,6 +47,7 @@ const ProfessionalsPage = () => {
       try {
         const queryParams = {};
 
+        // Enhanced search parameters
         if (filters.search) queryParams.search = filters.search;
         if (filters.category) queryParams.businessType = filters.category;
 
@@ -90,6 +92,15 @@ const ProfessionalsPage = () => {
     fetchProfessionals();
   }, [fetchProfessionals]);
 
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (searchTimeout.current) {
+        clearTimeout(searchTimeout.current);
+      }
+    };
+  }, []);
+
   const handleSearch = e => {
     e.preventDefault();
     fetchProfessionals({
@@ -104,6 +115,24 @@ const ProfessionalsPage = () => {
       search: searchTerm,
       category: category === selectedCategory ? '' : category,
     });
+  };
+
+  // Add real-time search functionality
+  const handleSearchInputChange = e => {
+    const value = e.target.value;
+    setSearchTerm(value);
+
+    // Debounce search to avoid too many API calls
+    if (searchTimeout.current) {
+      clearTimeout(searchTimeout.current);
+    }
+
+    searchTimeout.current = setTimeout(() => {
+      fetchProfessionals({
+        search: value,
+        category: selectedCategory,
+      });
+    }, 500); // 500ms delay
   };
 
   const toggleMap = () => {
@@ -141,10 +170,10 @@ const ProfessionalsPage = () => {
               </div>
               <input
                 type="text"
-                placeholder="Rechercher par titre, description..."
+                placeholder="Rechercher par nom, description, services..."
                 className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                 value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
+                onChange={handleSearchInputChange}
               />
             </div>
             <button
@@ -240,9 +269,7 @@ const ProfessionalsPage = () => {
                           if (imagePath.startsWith('http') || imagePath.startsWith('data:')) {
                             return imagePath;
                           }
-                          const apiUrl =
-                            process.env.REACT_APP_API_URL ||
-                            'https://holistic-maroc-backend.onrender.com';
+                          const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
                           return `${apiUrl}${imagePath}`;
                         };
 

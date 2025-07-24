@@ -36,7 +36,7 @@ const ProfessionalNavbar = () => {
     if (user?.profileImage) {
       const imageUrl = user.profileImage.startsWith('http')
         ? user.profileImage
-        : `${process.env.REACT_APP_API_URL || 'https://holistic-maroc-backend.onrender.com'}${user.profileImage}`;
+        : `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}${user.profileImage}`;
       setProfileImageUrl(imageUrl);
     } else {
       setProfileImageUrl(null);
@@ -63,17 +63,17 @@ const ProfessionalNavbar = () => {
       current: location.pathname.includes('/dashboard/professional/products'),
     },
     {
+      name: 'Événements',
+      href: '/dashboard/professional/events',
+      icon: ClipboardList,
+      current: location.pathname === '/dashboard/professional/events',
+    },
+    {
       name: 'Messages',
       href: '/dashboard/professional/messages',
       icon: MessageCircle,
       current: location.pathname.includes('/dashboard/professional/messages'),
       badge: 0, // This should be updated dynamically with unread message count
-    },
-    {
-      name: 'Événements',
-      href: '/dashboard/professional/events',
-      icon: ClipboardList,
-      current: location.pathname === '/dashboard/professional/events',
     },
     {
       name: 'Réservations Sessions',

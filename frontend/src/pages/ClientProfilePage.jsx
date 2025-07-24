@@ -49,6 +49,9 @@ const ClientProfilePage = () => {
   });
   const [editMode, setEditMode] = useState(false);
   const [contactForm, setContactForm] = useState({
+    firstName: user?.firstName || '',
+    lastName: user?.lastName || '',
+    email: user?.email || '',
     subject: '',
     message: '',
   });
@@ -133,7 +136,7 @@ const ClientProfilePage = () => {
         setPreviewImage(
           user.profileImage.startsWith('http')
             ? user.profileImage
-            : `${process.env.REACT_APP_API_URL || 'https://holistic-maroc-backend.onrender.com'}${user.profileImage}`
+            : `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}${user.profileImage}`
         );
       }
 
@@ -237,7 +240,13 @@ const ClientProfilePage = () => {
 
       if (response.data.success) {
         toast.success('Votre message a été envoyé avec succès');
-        setContactForm({ subject: '', message: '' });
+        setContactForm({
+          firstName: user?.firstName || '',
+          lastName: user?.lastName || '',
+          email: user?.email || '',
+          subject: '',
+          message: '',
+        });
       }
     } catch (error) {
       toast.error(error.response?.data?.message || "Erreur lors de l'envoi du message");
@@ -319,7 +328,7 @@ const ClientProfilePage = () => {
                 {user?.firstName} {user?.lastName}
               </h2>
               <p className="text-gray-600 mt-1 text-sm sm:text-base break-all">{user?.email}</p>
-              <div className="flex items-center justify-center md:justify-start mt-2">
+              {/* <div className="flex items-center justify-center md:justify-start mt-2">
                 <span
                   className={`px-2 py-1 rounded-full text-xs font-medium ${
                     user?.isVerified
@@ -329,7 +338,7 @@ const ClientProfilePage = () => {
                 >
                   {user?.isVerified ? 'Compte vérifié' : 'Compte non vérifié'}
                 </span>
-              </div>
+              </div> */}
             </div>
           </div>
 
@@ -418,7 +427,7 @@ const ClientProfilePage = () => {
                           : user?.role}
                   </p>
                 </div>
-
+                {/* 
                 <div>
                   <span className="text-sm font-medium text-gray-500">Membre depuis</span>
                   <p className="text-sm sm:text-base text-gray-900">
@@ -426,7 +435,7 @@ const ClientProfilePage = () => {
                       ? new Date(user.createdAt).toLocaleDateString('fr-FR')
                       : 'Non disponible'}
                   </p>
-                </div>
+                </div> */}
               </div>
             </div>
           </div>
@@ -467,7 +476,7 @@ const ClientProfilePage = () => {
           )}
 
           {/* Statistiques du compte */}
-          <div className="mt-6 pt-6 border-t border-gray-200">
+          {/* <div className="mt-6 pt-6 border-t border-gray-200">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Statistiques du compte</h3>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="text-center p-3 bg-gray-50 rounded-lg">
@@ -498,7 +507,7 @@ const ClientProfilePage = () => {
                 <p className="text-xs text-gray-500">Méthode de connexion</p>
               </div>
             </div>
-          </div>
+          </div> */}
         </>
       ) : (
         <form onSubmit={handleSubmit}>
@@ -1015,7 +1024,7 @@ const ClientProfilePage = () => {
                     <span>{new Date(item.startTime).toLocaleDateString()}</span>
                   </div>
                   <div className="flex items-center">
-                    <FaEuroSign className="mr-2" />
+                    <span className="mr-2 text-sm font-medium">MAD</span>
                     <span>{item.price?.amount || item.price} MAD</span>
                   </div>
                 </div>
@@ -1345,6 +1354,11 @@ const ClientProfilePage = () => {
       <h2 className="text-lg sm:text-xl font-semibold mb-4 sm:mb-6">Nous contacter</h2>
 
       <form onSubmit={handleContactSubmit} className="space-y-3 sm:space-y-4">
+        {/* Hidden inputs for user details */}
+        <input type="hidden" name="firstName" value={contactForm.firstName} />
+        <input type="hidden" name="lastName" value={contactForm.lastName} />
+        <input type="hidden" name="email" value={contactForm.email} />
+
         <div>
           <label
             htmlFor="subject"
@@ -1377,6 +1391,8 @@ const ClientProfilePage = () => {
             value={contactForm.message}
             onChange={handleContactInputChange}
             required
+            minLength={10}
+            maxLength={1000}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm sm:text-base resize-y"
           ></textarea>
         </div>

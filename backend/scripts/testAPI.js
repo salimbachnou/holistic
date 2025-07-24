@@ -1,108 +1,34 @@
-const http = require('http');
+const axios = require('axios');
 
-async function testDebugAPI() {
-  return new Promise((resolve, reject) => {
-    console.log('Testing debug API to list professionals...');
-    
-    const options = {
-      hostname: 'localhost',
-      port: 5000,
-      path: '/api/professionals/debug/list',
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      }
-    };
-
-    const req = http.request(options, (res) => {
-      let data = '';
-
-      res.on('data', (chunk) => {
-        data += chunk;
-      });
-
-      res.on('end', () => {
-        try {
-          const jsonData = JSON.parse(data);
-          console.log('Response status:', res.statusCode);
-          console.log('Response data:', JSON.stringify(jsonData, null, 2));
-          resolve();
-        } catch (error) {
-          console.error('JSON parse error:', error);
-          console.log('Raw response:', data);
-          reject(error);
-        }
-      });
-    });
-
-    req.on('error', (error) => {
-      console.error('Request error:', error);
-      reject(error);
-    });
-
-    req.end();
-  });
-}
-
-async function testEventsAPI(professionalId) {
-  return new Promise((resolve, reject) => {
-    console.log(`\nTesting events API for professional ${professionalId}...`);
-    
-    const options = {
-      hostname: 'localhost',
-      port: 5000,
-      path: `/api/professionals/${professionalId}/events`,
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      }
-    };
-
-    const req = http.request(options, (res) => {
-      let data = '';
-
-      res.on('data', (chunk) => {
-        data += chunk;
-      });
-
-      res.on('end', () => {
-        try {
-          const jsonData = JSON.parse(data);
-          console.log('Response status:', res.statusCode);
-          console.log('Response data:', JSON.stringify(jsonData, null, 2));
-          
-          if (jsonData.success) {
-            console.log(`✅ Success! Found ${jsonData.events.length} events`);
-          } else {
-            console.log('❌ Error:', jsonData.message);
-          }
-          resolve();
-        } catch (error) {
-          console.error('JSON parse error:', error);
-          console.log('Raw response:', data);
-          reject(error);
-        }
-      });
-    });
-
-    req.on('error', (error) => {
-      console.error('Request error:', error);
-      reject(error);
-    });
-
-    req.end();
-  });
-}
-
-async function runTests() {
+async function testAPI() {
   try {
-    await testDebugAPI();
+    console.log('🔍 Test de l\'API des événements...\n');
+
+    // Test de l'API des événements
+    const eventsResponse = await axios.get('http://localhost:5000/api/events');
+    console.log('📊 Réponse API événements:');
+    console.log(JSON.stringify(eventsResponse.data, null, 2));
+
+    // Test de l'API des statistiques
+    const statsResponse = await axios.get('http://localhost:5000/api/events/stats');
+    console.log('\n📈 Réponse API statistiques:');
+    console.log(JSON.stringify(statsResponse.data, null, 2));
+
+    // Analyse
+    console.log('\n🔍 === ANALYSE ===');
+    console.log(`📊 Événements retournés: ${eventsResponse.data.events?.length || 0}`);
+    console.log(`📈 Total événements (stats): ${statsResponse.data.stats?.totalEvents || 0}`);
     
-    // Tester avec l'ID du professionnel "Centre Bien-être Harmonie"
-    await testEventsAPI('684334cc016361b53a41404d');
+    if (eventsResponse.data.events?.length === 0 && statsResponse.data.stats?.totalEvents > 0) {
+      console.log('\n❌ PROBLÈME DÉTECTÉ:');
+      console.log('   - Les statistiques montrent des événements');
+      console.log('   - Mais l\'API ne retourne aucun événement');
+      console.log('   - Cela indique un problème de filtrage côté API');
+    }
+
   } catch (error) {
-    console.error('Tests failed:', error);
+    console.error('❌ Erreur lors du test:', error.response?.data || error.message);
   }
 }
 
-runTests();
+testAPI();

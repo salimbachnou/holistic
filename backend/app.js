@@ -6,6 +6,9 @@ const path = require('path');
 const helmet = require('helmet');
 require('dotenv').config();
 
+// Import database connection middleware
+const { connectWithRetry, ensureDbConnected } = require('./middleware/dbConnection');
+
 // Import routes
 const authRoutes = require('./routes/auth');
 const usersRoutes = require('./routes/users');
@@ -33,14 +36,17 @@ app.use(helmet({
   contentSecurityPolicy: false,
 }));
 
-// Connect to MongoDB
-mongoose.connect(process.env.MONGODB_URI || 'mongodb+srv://salimbachnou:sasaSASA13%40%40@cluster0.b01i0ev.mongodb.net/holistic?retryWrites=true&w=majority&appName=Cluster0/holistic')
+// Connect to MongoDB using the enhanced connection function
+connectWithRetry()
   .then(() => {
-    console.log('MongoDB connected successfully');
+    console.log('MongoDB connected successfully via middleware');
   })
   .catch(err => {
     console.error('MongoDB connection error:', err);
   });
+
+// Apply database connection check middleware to all API routes
+app.use('/api', ensureDbConnected);
 
 // Routes
 app.use('/api/auth', authRoutes);

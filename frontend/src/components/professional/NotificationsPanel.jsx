@@ -34,6 +34,8 @@ const NOTIFICATIONS_TYPES = {
   NEW_CONTACT: 'new_contact',
   NEW_PROFESSIONAL: 'new_professional',
   NEW_EVENT: 'new_event',
+  EVENT_BOOKING_REQUEST: 'event_booking_request',
+  EVENT_BOOKING_CANCELLED: 'event_booking_cancelled',
 };
 
 const NotificationsPanel = ({ user }) => {
@@ -43,7 +45,7 @@ const NotificationsPanel = ({ user }) => {
   const [loading, setLoading] = useState(false);
   const socketRef = useRef(null);
   const panelRef = useRef(null);
-  const apiUrl = process.env.REACT_APP_API_URL || 'https://holistic-maroc-backend.onrender.com';
+  const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
   // Handle click outside to close panel
   useEffect(() => {
@@ -288,54 +290,78 @@ const NotificationsPanel = ({ user }) => {
                 </div>
               ) : (
                 <div className="divide-y divide-gray-100">
-                  {notifications.map(notification => (
-                    <Link
-                      key={notification._id}
-                      to={notification.link || '/dashboard/professional/notifications'}
-                      className={`block p-4 hover:bg-gray-50 transition-colors duration-150 ${
-                        !notification.read ? 'bg-primary-50' : ''
-                      }`}
-                      onClick={() => {
-                        if (!notification.read) {
-                          markAsRead(notification._id);
-                        }
-                        setIsOpen(false);
-                      }}
-                    >
-                      <div className="flex space-x-3">
-                        <div className="flex-shrink-0 mt-1">
-                          <div className="p-2 rounded-full bg-white shadow-sm">
-                            {getNotificationIcon(notification.type)}
+                  {notifications.map(notification => {
+                    // Déterminer la route de redirection selon le type de notification
+                    let redirectTo = notification.link || '/dashboard/professional/notifications';
+
+                    // Rediriger vers les réservations de sessions pour les notifications de réservation
+                    if (
+                      notification.type === NOTIFICATIONS_TYPES.BOOKING_REQUEST ||
+                      notification.type === NOTIFICATIONS_TYPES.BOOKING_CONFIRMED ||
+                      notification.type === NOTIFICATIONS_TYPES.BOOKING_CANCELLED ||
+                      notification.type === NOTIFICATIONS_TYPES.APPOINTMENT_SCHEDULED ||
+                      notification.type === NOTIFICATIONS_TYPES.APPOINTMENT_CANCELLED
+                    ) {
+                      redirectTo = '/dashboard/professional/session-bookings';
+                    }
+
+                    // Rediriger vers les réservations d'événements pour les notifications d'événements
+                    if (
+                      notification.type === 'event_booking_request' ||
+                      notification.type === 'event_booking_cancelled'
+                    ) {
+                      redirectTo = '/dashboard/professional/event-bookings';
+                    }
+
+                    return (
+                      <Link
+                        key={notification._id}
+                        to={redirectTo}
+                        className={`block p-4 hover:bg-gray-50 transition-colors duration-150 ${
+                          !notification.read ? 'bg-primary-50' : ''
+                        }`}
+                        onClick={() => {
+                          if (!notification.read) {
+                            markAsRead(notification._id);
+                          }
+                          setIsOpen(false);
+                        }}
+                      >
+                        <div className="flex space-x-3">
+                          <div className="flex-shrink-0 mt-1">
+                            <div className="p-2 rounded-full bg-white shadow-sm">
+                              {getNotificationIcon(notification.type)}
+                            </div>
                           </div>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between">
-                            <p className="text-sm font-medium text-gray-900">
-                              {notification.title}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between">
+                              <p className="text-sm font-medium text-gray-900">
+                                {notification.title}
+                              </p>
+                              <p className="text-xs text-gray-500 font-medium">
+                                {formatTime(notification.createdAt)}
+                              </p>
+                            </div>
+                            <p className="text-sm text-gray-500 truncate mt-1">
+                              {notification.message}
                             </p>
-                            <p className="text-xs text-gray-500 font-medium">
-                              {formatTime(notification.createdAt)}
-                            </p>
-                          </div>
-                          <p className="text-sm text-gray-500 truncate mt-1">
-                            {notification.message}
-                          </p>
-                          {notification.data && notification.data.clientName && (
-                            <div className="flex items-center mt-2">
-                              <div className="h-6 w-6 rounded-full bg-gradient-lotus flex items-center justify-center mr-2 shadow-sm text-white">
-                                <span className="text-xs">
-                                  {notification.data.clientName.charAt(0)}
+                            {notification.data && notification.data.clientName && (
+                              <div className="flex items-center mt-2">
+                                <div className="h-6 w-6 rounded-full bg-gradient-lotus flex items-center justify-center mr-2 shadow-sm text-white">
+                                  <span className="text-xs">
+                                    {notification.data.clientName.charAt(0)}
+                                  </span>
+                                </div>
+                                <span className="text-xs text-gray-600 font-medium">
+                                  {notification.data.clientName}
                                 </span>
                               </div>
-                              <span className="text-xs text-gray-600 font-medium">
-                                {notification.data.clientName}
-                              </span>
-                            </div>
-                          )}
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    </Link>
-                  ))}
+                      </Link>
+                    );
+                  })}
                 </div>
               )}
             </div>

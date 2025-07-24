@@ -69,7 +69,7 @@ const ProfilePage = () => {
         setPreviewImage(
           user.profileImage.startsWith('http')
             ? user.profileImage
-            : `${process.env.REACT_APP_API_URL || 'https://holistic-maroc-backend.onrender.com'}${user.profileImage}`
+            : `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}${user.profileImage}`
         );
       }
     }
@@ -134,8 +134,7 @@ const ProfilePage = () => {
       }
 
       // Get API URL and token
-      const API_URL =
-        process.env.REACT_APP_API_URL || 'https://holistic-maroc-backend.onrender.com';
+      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
       const token = localStorage.getItem('token');
 
       console.log('API URL:', API_URL);
@@ -189,8 +188,7 @@ const ProfilePage = () => {
 
     try {
       // Get API URL and token
-      const API_URL =
-        process.env.REACT_APP_API_URL || 'https://holistic-maroc-backend.onrender.com';
+      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
       const token = localStorage.getItem('token');
 
       // Change password

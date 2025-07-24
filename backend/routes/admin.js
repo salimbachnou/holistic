@@ -14,6 +14,7 @@ const Booking = require('../models/Booking');
 const Event = require('../models/Event');
 const Notification = require('../models/Notification');
 const Settings = require('../models/Settings');
+const ActivityType = require('../models/ActivityType');
 
 // Import middleware
 const { isAuthenticated } = require('../middleware/auth');
@@ -502,7 +503,7 @@ router.post('/professionals', requireAdmin, [
   body('firstName').notEmpty().trim(),
   body('lastName').notEmpty().trim(),
   body('businessName').notEmpty().trim(),
-  body('businessType').notEmpty(),
+  body('businessType').notEmpty().trim(),
   body('phone').notEmpty().trim()
 ], async (req, res) => {
   try {
@@ -1352,6 +1353,66 @@ router.put('/bookings/:id/status', requireAdmin, async (req, res) => {
   }
 });
 
+// Cancel a booking (admin only)
+router.put('/bookings/:bookingId/cancel', requireAdmin, async (req, res) => {
+  try {
+    const Booking = require('../models/Booking');
+    const Session = require('../models/Session');
+    
+    const booking = await Booking.findById(req.params.bookingId)
+      .populate('client', 'firstName lastName email')
+      .populate('professional', 'businessName');
+    
+    if (!booking) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'Réservation non trouvée' 
+      });
+    }
+    
+    // Update booking status to cancelled
+    booking.status = 'cancelled';
+    booking.cancellation = {
+      reason: req.body.reason || 'Annulée par l\'administrateur',
+      cancelledBy: req.user._id,
+      cancelledAt: new Date()
+    };
+    
+    await booking.save();
+    
+    // If the booking is for a session, remove the client from session participants
+    if (booking.service.sessionId) {
+      const session = await Session.findById(booking.service.sessionId);
+      if (session) {
+        session.participants = session.participants.filter(
+          participant => !participant.equals(booking.client._id)
+        );
+        await session.save();
+      }
+    }
+    
+    // Send notification to client about cancellation
+    try {
+      const NotificationService = require('../services/notificationService');
+      await NotificationService.notifyClientBookingCancelled(booking, req.body.reason);
+    } catch (error) {
+      console.error('Erreur lors de la notification client:', error);
+    }
+    
+    res.json({
+      success: true,
+      message: 'Réservation annulée avec succès',
+      booking
+    });
+  } catch (error) {
+    console.error('Error cancelling booking:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Erreur serveur lors de l\'annulation de la réservation' 
+    });
+  }
+});
+
 // ===================== EVENT MANAGEMENT =====================
 
 // Fetch events for admin
@@ -1416,10 +1477,13 @@ router.get('/sessions', requireAdmin, async (req, res) => {
     if (category) {
       query.category = category;
     }
+    if (req.query.confirmationStatus) {
+      query.confirmationStatus = req.query.confirmationStatus;
+    }
 
     // Import Session model
     const Session = require('../models/Session');
-
+    
     // Populate professional details
     const sessions = await Session.find(query)
       .populate('professionalId', 'businessName firstName lastName email userId')
@@ -1487,8 +1551,42 @@ router.put('/sessions/:id/status', requireAdmin, async (req, res) => {
   }
 });
 
-// Delete session
-router.delete('/sessions/:id', requireAdmin, async (req, res) => {
+// Approve a session (admin)
+router.put('/sessions/:id/approve', requireAdmin, async (req, res) => {
+  try {
+    const Session = require('../models/Session');
+    const session = await Session.findById(req.params.id);
+    if (!session) {
+      return res.status(404).json({ message: 'Session not found' });
+    }
+    session.confirmationStatus = 'approved';
+    await session.save();
+    res.json({ success: true, message: 'Session approved', session });
+  } catch (error) {
+    console.error('Approve session error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Reject a session (admin)
+router.put('/sessions/:id/reject', requireAdmin, async (req, res) => {
+  try {
+    const Session = require('../models/Session');
+    const session = await Session.findById(req.params.id);
+    if (!session) {
+      return res.status(404).json({ message: 'Session not found' });
+    }
+    session.confirmationStatus = 'rejected';
+    await session.save();
+    res.json({ success: true, message: 'Session rejected', session });
+  } catch (error) {
+    console.error('Reject session error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get bookings for a session
+router.get('/sessions/:id/bookings', requireAdmin, async (req, res) => {
   try {
     const Session = require('../models/Session');
     const Booking = require('../models/Booking');
@@ -1498,11 +1596,61 @@ router.delete('/sessions/:id', requireAdmin, async (req, res) => {
       return res.status(404).json({ message: 'Session not found' });
     }
     
-    // Check if there are any bookings for this session
-    const bookings = await Booking.find({ 'service.sessionId': session._id });
-    if (bookings.length > 0) {
+    // Get all bookings for this session (including cancelled for display)
+    const allBookings = await Booking.find({ 'service.sessionId': session._id })
+      .populate('client', 'firstName lastName email')
+      .populate('professional', 'businessName firstName lastName');
+    
+    // Get only active bookings (excluding cancelled)
+    const activeBookings = allBookings.filter(booking => booking.status !== 'cancelled');
+    
+    const bookings = allBookings; // Show all bookings in modal for transparency
+    
+    res.json({
+      success: true,
+      bookings: bookings,
+      count: bookings.length,
+      activeCount: activeBookings.length
+    });
+  } catch (error) {
+    console.error('Get session bookings error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Delete session
+router.delete('/sessions/:id', requireAdmin, async (req, res) => {
+  try {
+    const Session = require('../models/Session');
+    const Booking = require('../models/Booking');
+    
+    const session = await Session.findById(req.params.id);
+    if (!session) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'Session non trouvée' 
+      });
+    }
+    
+    // Check if there are any active bookings for this session (excluding cancelled)
+    const activeBookings = await Booking.find({ 
+      'service.sessionId': session._id,
+      status: { $ne: 'cancelled' }
+    }).populate('client', 'firstName lastName');
+    
+    if (activeBookings.length > 0) {
+      const bookingDetails = activeBookings.map(booking => ({
+        id: booking._id,
+        clientName: booking.client ? `${booking.client.firstName} ${booking.client.lastName}` : 'Client inconnu',
+        status: booking.status,
+        createdAt: booking.createdAt
+      }));
+      
       return res.status(400).json({ 
-        message: 'Cannot delete session with existing bookings' 
+        success: false,
+        message: `Impossible de supprimer cette session. Elle a ${activeBookings.length} réservation(s) active(s). Veuillez d'abord annuler toutes les réservations.`,
+        activeBookings: bookingDetails,
+        sessionTitle: session.title
       });
     }
     
@@ -1510,11 +1658,14 @@ router.delete('/sessions/:id', requireAdmin, async (req, res) => {
     
     res.json({
       success: true,
-      message: 'Session deleted successfully'
+      message: 'Session supprimée avec succès'
     });
   } catch (error) {
     console.error('Delete session error:', error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ 
+      success: false,
+      message: 'Erreur serveur lors de la suppression de la session' 
+    });
   }
 });
 
@@ -2074,6 +2225,195 @@ router.get('/events/:eventId/review-stats', isAuthenticated, requireAdmin, async
     res.status(500).json({
       success: false,
       message: error.message
+    });
+  }
+});
+
+// ===================== ACTIVITY TYPES MANAGEMENT =====================
+
+// Get all activity types
+router.get('/activity-types', requireAdmin, async (req, res) => {
+  try {
+    const activityTypes = await ActivityType.find().sort({ order: 1, label: 1 });
+    
+    res.json({
+      success: true,
+      data: activityTypes
+    });
+  } catch (error) {
+    console.error('Error fetching activity types:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la récupération des types d\'activité'
+    });
+  }
+});
+
+// Create new activity type
+router.post('/activity-types', requireAdmin, [
+  body('value').notEmpty().withMessage('La valeur est requise'),
+  body('label').notEmpty().withMessage('Le libellé est requis'),
+  body('description').optional(),
+  body('category').optional().isIn(['wellness', 'fitness', 'therapy', 'beauty', 'other']).withMessage('Catégorie invalide'),
+  body('color').optional(),
+  body('icon').optional(),
+  body('order').optional().isInt({ min: 0 })
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Erreurs de validation',
+        errors: errors.array()
+      });
+    }
+
+    const { value, label, description, category, color, icon, order } = req.body;
+
+    // Check if activity type already exists
+    const existingType = await ActivityType.findOne({ value: value.toLowerCase() });
+    if (existingType) {
+      return res.status(400).json({
+        success: false,
+        message: 'Un type d\'activité avec cette valeur existe déjà'
+      });
+    }
+
+    const activityType = new ActivityType({
+      value,
+      label,
+      description: description || '',
+      category: category || 'wellness',
+      color: color || '#059669',
+      icon: icon || 'default',
+      order: order || 0,
+      createdBy: req.user._id
+    });
+
+    await activityType.save();
+
+    res.status(201).json({
+      success: true,
+      message: 'Type d\'activité créé avec succès',
+      data: activityType
+    });
+  } catch (error) {
+    console.error('Error creating activity type:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la création du type d\'activité'
+    });
+  }
+});
+
+// Update activity type
+router.put('/activity-types/:id', requireAdmin, [
+  body('label').optional().notEmpty().withMessage('Le libellé ne peut pas être vide'),
+  body('description').optional(),
+  body('category').optional().isIn(['wellness', 'fitness', 'therapy', 'beauty', 'other']).withMessage('Catégorie invalide'),
+  body('color').optional(),
+  body('icon').optional(),
+  body('order').optional().isInt({ min: 0 }),
+  body('isActive').optional().isBoolean()
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Erreurs de validation',
+        errors: errors.array()
+      });
+    }
+
+    const activityType = await ActivityType.findById(req.params.id);
+    if (!activityType) {
+      return res.status(404).json({
+        success: false,
+        message: 'Type d\'activité non trouvé'
+      });
+    }
+
+    const updateData = { ...req.body };
+    delete updateData.value; // Don't allow updating the value field
+
+    Object.assign(activityType, updateData);
+    await activityType.save();
+
+    res.json({
+      success: true,
+      message: 'Type d\'activité mis à jour avec succès',
+      data: activityType
+    });
+  } catch (error) {
+    console.error('Error updating activity type:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la mise à jour du type d\'activité'
+    });
+  }
+});
+
+// Delete activity type
+router.delete('/activity-types/:id', requireAdmin, async (req, res) => {
+  try {
+    const activityType = await ActivityType.findById(req.params.id);
+    if (!activityType) {
+      return res.status(404).json({
+        success: false,
+        message: 'Type d\'activité non trouvé'
+      });
+    }
+
+    // Check if this activity type is being used by any professionals
+    const professionalsUsingType = await Professional.countDocuments({ businessType: activityType.value });
+    if (professionalsUsingType > 0) {
+      return res.status(400).json({
+        success: false,
+        message: `Ce type d'activité est utilisé par ${professionalsUsingType} professionnel(s). Impossible de le supprimer.`
+      });
+    }
+
+    await ActivityType.findByIdAndDelete(req.params.id);
+
+    res.json({
+      success: true,
+      message: 'Type d\'activité supprimé avec succès'
+    });
+  } catch (error) {
+    console.error('Error deleting activity type:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la suppression du type d\'activité'
+    });
+  }
+});
+
+// Toggle activity type status
+router.patch('/activity-types/:id/toggle', requireAdmin, async (req, res) => {
+  try {
+    const activityType = await ActivityType.findById(req.params.id);
+    if (!activityType) {
+      return res.status(404).json({
+        success: false,
+        message: 'Type d\'activité non trouvé'
+      });
+    }
+
+    activityType.isActive = !activityType.isActive;
+    await activityType.save();
+
+    res.json({
+      success: true,
+      message: `Type d'activité ${activityType.isActive ? 'activé' : 'désactivé'} avec succès`,
+      data: activityType
+    });
+  } catch (error) {
+    console.error('Error toggling activity type status:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la modification du statut'
     });
   }
 });

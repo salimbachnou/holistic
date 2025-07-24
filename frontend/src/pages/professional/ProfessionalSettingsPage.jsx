@@ -32,6 +32,7 @@ const ProfessionalSettingsPage = () => {
   const [activeTab, setActiveTab] = useState('account');
   const [isLoading, setIsLoading] = useState(false);
   const [professionalData, setProfessionalData] = useState(null);
+  const [activityTypes, setActivityTypes] = useState([]);
   const [businessAddress, setBusinessAddress] = useState({
     address: '',
     country: 'Morocco',
@@ -135,6 +136,24 @@ const ProfessionalSettingsPage = () => {
       loadNotificationSettings();
     }
   }, [user, loadProfessionalData, loadNotificationSettings]);
+
+  const fetchActivityTypes = async () => {
+    try {
+      const response = await fetch(
+        `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/contact/activity-types`
+      );
+      const data = await response.json();
+      if (data.success) {
+        setActivityTypes(data.activityTypes);
+      }
+    } catch (error) {
+      console.error('Error fetching activity types:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchActivityTypes();
+  }, []);
 
   const onAccountSubmit = async data => {
     try {
@@ -523,26 +542,11 @@ const ProfessionalSettingsPage = () => {
                         className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm sm:text-base"
                       >
                         <option value="">Sélectionner un type</option>
-                        <option value="coach">Coach</option>
-                        <option value="therapist">Thérapeute</option>
-                        <option value="nutritionist">Nutritionniste</option>
-                        <option value="psychologist">Psychologue</option>
-                        <option value="fitness">Fitness</option>
-                        <option value="yoga">Yoga</option>
-                        <option value="meditation">Méditation</option>
-                        <option value="massage">Massage</option>
-                        <option value="acupuncture">Acupuncture</option>
-                        <option value="naturopathy">Naturopathie</option>
-                        <option value="osteopathy">Ostéopathie</option>
-                        <option value="beauty">Beauté</option>
-                        <option value="wellness">Bien-être</option>
-                        <option value="reiki">Reiki</option>
-                        <option value="hypnotherapy">Hypnothérapie</option>
-                        <option value="aromatherapy">Aromathérapie</option>
-                        <option value="reflexology">Réflexologie</option>
-                        <option value="sophrology">Sophrologie</option>
-                        <option value="spa">Spa</option>
-                        <option value="other">Autre</option>
+                        {activityTypes.map(type => (
+                          <option key={type.value} value={type.value}>
+                            {type.label}
+                          </option>
+                        ))}
                       </select>
                     </div>
 

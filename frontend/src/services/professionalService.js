@@ -71,6 +71,27 @@ export class ProfessionalService {
   }
 
   /**
+   * Get current professional profile information
+   * @returns {Promise<Object>} Professional profile data
+   */
+  static async getProfessionalProfile() {
+    try {
+      const response = await apiService.get('/api/professionals/me/profile');
+      return {
+        success: true,
+        data: response.data.professional,
+      };
+    } catch (error) {
+      console.error('Error fetching professional profile:', error);
+      return {
+        success: false,
+        error: error.message || 'Erreur lors du chargement du profil professionnel',
+        data: null,
+      };
+    }
+  }
+
+  /**
    * Get mock data for fallback when API is unavailable
    * @returns {Object} Mock dashboard statistics
    */

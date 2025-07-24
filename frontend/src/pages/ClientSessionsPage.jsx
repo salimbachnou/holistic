@@ -6,7 +6,6 @@ import { toast } from 'react-hot-toast';
 import {
   FaClock,
   FaLocationDot,
-  FaEuroSign,
   FaCalendar,
   FaVideo,
   FaUser,
@@ -121,8 +120,7 @@ const ClientSessionsPage = () => {
 
   const fetchUserBookedSessions = async () => {
     try {
-      const API_URL =
-        process.env.REACT_APP_API_URL || 'https://holistic-maroc-backend.onrender.com';
+      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
       const token = localStorage.getItem('token');
 
       const response = await axios.get(`${API_URL}/api/sessions/my-sessions`, {
@@ -140,8 +138,7 @@ const ClientSessionsPage = () => {
 
   const fetchAvailableSessions = async () => {
     try {
-      const API_URL =
-        process.env.REACT_APP_API_URL || 'https://holistic-maroc-backend.onrender.com';
+      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
       const response = await axios.get(`${API_URL}/api/sessions`, {
         params: {
           status: 'scheduled',
@@ -157,10 +154,16 @@ const ClientSessionsPage = () => {
         return;
       }
 
-      // Filtrer uniquement sur la date future et les places disponibles
+      // Filtrer uniquement sur la date future, les places disponibles et les sessions approuvées
       const sessions = response.data.sessions
         .filter(session => session.availableSpots > 0)
-        .filter(session => new Date(session.startTime) >= new Date());
+        .filter(session => new Date(session.startTime) >= new Date())
+        .filter(session => session.confirmationStatus === 'approved') // Vérification supplémentaire
+        .map(session => ({
+          ...session,
+          // Modifier le statut pour afficher seulement "présentiel" ou "en ligne"
+          status: session.category === 'online' ? 'en ligne' : 'présentiel',
+        }));
 
       setAvailableSessions(sessions);
       calculateStatistics(sessions);
@@ -335,8 +338,7 @@ const ClientSessionsPage = () => {
 
     setBookingInProgress(true);
     try {
-      const API_URL =
-        process.env.REACT_APP_API_URL || 'https://holistic-maroc-backend.onrender.com';
+      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
       const token = localStorage.getItem('token');
 
       if (!session.professionalId) {
@@ -378,15 +380,15 @@ const ClientSessionsPage = () => {
       case 'online':
         return <FaVideo className="text-blue-500" />;
       case 'group':
-        return <FaUsers className="text-green-500" />;
+        return <FaLocationDot className="text-green-500" />;
       case 'individual':
-        return <FaUser className="text-purple-500" />;
+        return <FaLocationDot className="text-green-500" />;
       case 'workshop':
-        return <FaGraduationCap className="text-orange-500" />;
+        return <FaLocationDot className="text-green-500" />;
       case 'consultation':
-        return <FaHandshake className="text-indigo-500" />;
+        return <FaLocationDot className="text-green-500" />;
       default:
-        return <FaLayerGroup className="text-gray-500" />;
+        return <FaLocationDot className="text-green-500" />;
     }
   };
 
@@ -395,15 +397,15 @@ const ClientSessionsPage = () => {
       case 'online':
         return 'En ligne';
       case 'group':
-        return 'Groupe';
+        return 'Présentiel';
       case 'individual':
-        return 'Individuel';
+        return 'Présentiel';
       case 'workshop':
-        return 'Atelier';
+        return 'Présentiel';
       case 'consultation':
-        return 'Consultation';
+        return 'Présentiel';
       default:
-        return 'Autre';
+        return 'Présentiel';
     }
   };
 
@@ -426,7 +428,7 @@ const ClientSessionsPage = () => {
       {
         title: 'Prix moyen',
         value: `${Math.round(statistics.averagePrice)} MAD`,
-        icon: <FaEuroSign className="text-purple-500" />,
+        icon: <span className="text-purple-500 font-medium">MAD</span>,
         color: 'bg-purple-50 border-purple-200',
         trend: '+5%',
       },
@@ -896,25 +898,29 @@ const ClientSessionsPage = () => {
             </div>
             <h3 className="text-2xl font-semibold text-gray-900 mb-3">Aucune session trouvée</h3>
             <p className="text-gray-600 mb-6 text-lg">
-              Essayez de modifier vos critères de recherche ou vos filtres
+              {searchTerm || selectedCity || selectedCategory || filters.selectedDate
+                ? 'Essayez de modifier vos critères de recherche ou vos filtres'
+                : "Aucune session approuvée n'est actuellement disponible. Veuillez revenir plus tard."}
             </p>
-            <button
-              onClick={() => {
-                setSelectedCity('');
-                setSelectedCategory('');
-                setSearchTerm('');
-                setFilters({
-                  selectedDate: null,
-                  maxPrice: statistics.priceRange.max,
-                  sortBy: 'date',
-                  priceRange: [statistics.priceRange.min, statistics.priceRange.max],
-                });
-              }}
-              className="inline-flex items-center px-6 py-3 text-base font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 transition-colors"
-            >
-              <FaFilter className="mr-2" />
-              Réinitialiser les filtres
-            </button>
+            {(searchTerm || selectedCity || selectedCategory || filters.selectedDate) && (
+              <button
+                onClick={() => {
+                  setSelectedCity('');
+                  setSelectedCategory('');
+                  setSearchTerm('');
+                  setFilters({
+                    selectedDate: null,
+                    maxPrice: statistics.priceRange.max,
+                    sortBy: 'date',
+                    priceRange: [statistics.priceRange.min, statistics.priceRange.max],
+                  });
+                }}
+                className="inline-flex items-center px-6 py-3 text-base font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 transition-colors"
+              >
+                <FaFilter className="mr-2" />
+                Réinitialiser les filtres
+              </button>
+            )}
           </div>
         )}
       </div>

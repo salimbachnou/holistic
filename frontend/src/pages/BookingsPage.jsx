@@ -5,7 +5,6 @@ import { toast } from 'react-hot-toast';
 import {
   FaClock,
   FaMapMarkerAlt,
-  FaEuroSign,
   FaCalendarAlt,
   FaUsers,
   FaStar,
@@ -558,7 +557,7 @@ const BookingsPage = () => {
                     </p>
                   </div>
                   <div className="bg-purple-100 p-3 rounded-full">
-                    <FaEuroSign className="text-purple-600 text-xl" />
+                    <span className="text-purple-600 text-xl font-bold">MAD</span>
                   </div>
                 </div>
               </div>
@@ -648,7 +647,7 @@ const BookingsPage = () => {
                     <p className="text-3xl font-bold text-gray-900">{eventStats.totalSpent} MAD</p>
                   </div>
                   <div className="bg-purple-100 p-3 rounded-full">
-                    <FaEuroSign className="text-purple-600 text-xl" />
+                    <span className="text-purple-600 text-xl font-bold">MAD</span>
                   </div>
                 </div>
               </div>
@@ -822,7 +821,7 @@ const BookingsPage = () => {
                           </div>
                           <div className="flex items-center bg-gray-50 p-4 rounded-lg">
                             <div className="bg-yellow-100 p-2 rounded-full mr-4">
-                              <FaEuroSign className="text-yellow-600" />
+                              <span className="text-yellow-600 font-bold">MAD</span>
                             </div>
                             <div>
                               <p className="text-sm text-gray-500">Prix</p>
@@ -1016,7 +1015,7 @@ const BookingsPage = () => {
                         </div>
                         <div className="flex items-center bg-gray-50 p-4 rounded-lg">
                           <div className="bg-yellow-100 p-2 rounded-full mr-4">
-                            <FaEuroSign className="text-yellow-600" />
+                            <span className="text-yellow-600 font-bold">MAD</span>
                           </div>
                           <div>
                             <p className="text-sm text-gray-500">Prix</p>

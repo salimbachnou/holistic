@@ -127,7 +127,7 @@ const apiService = {
 
 export const getGlobalStats = async () => {
   try {
-    const response = await axios.get('/api/stats/global');
+    const response = await apiClient.get('/stats/global');
     return response.data;
   } catch (error) {
     console.error('Error fetching global stats:', error);

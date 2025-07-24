@@ -29,7 +29,7 @@ async function checkCoverImageUrls() {
     // Test de conversion d'URL
     console.log('\n🧪 Test de conversion d\'URL:');
     const testUrls = [
-      'https://holistic-maroc-backend.onrender.com/uploads/profiles/test.jpg',
+      'http://localhost:5000/uploads/profiles/test.jpg',
       '/uploads/profiles/test.jpg',
       'https://example.com/uploads/profiles/test.jpg'
     ];

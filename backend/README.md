@@ -39,7 +39,7 @@ GOOGLE_CLIENT_ID=your-google-client-id
 GOOGLE_CLIENT_SECRET=your-google-client-secret
 
 # Frontend URL
-FRONTEND_URL=https://holistic-maroc.vercel.app
+FRONTEND_URL=http://localhost:3000
 
 # Email Configuration
 EMAIL_USER=your-email@gmail.com
@@ -50,7 +50,7 @@ PORT=5000
 NODE_ENV=development
 
 # Base URL for backend
-BASE_URL=https://holistic-maroc-backend.onrender.com
+BASE_URL=http://localhost:5000
 ```
 
 ### 3. Google OAuth Setup
@@ -59,7 +59,7 @@ BASE_URL=https://holistic-maroc-backend.onrender.com
 3. Enable Google+ API
 4. Create OAuth 2.0 credentials
 5. Add authorized redirect URIs:
-   - `https://holistic-maroc-backend.onrender.com/api/auth/google/callback` (development)
+   - `http://localhost:5000/api/auth/google/callback` (development)
    - Your production callback URL
 6. Copy Client ID and Client Secret to your `.env` file
 
@@ -84,7 +84,7 @@ npm run dev
 npm start
 ```
 
-The server will run on `https://holistic-maroc-backend.onrender.com`
+The server will run on `http://localhost:5000`
 
 ## API Endpoints
 

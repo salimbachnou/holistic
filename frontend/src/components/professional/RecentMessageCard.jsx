@@ -72,11 +72,6 @@ const RecentMessagesSection = ({ messages = [], onViewAll, onMessageClick }) => 
           Les messages de vos clients apparaîtront ici. Ils pourront vous contacter pour poser des
           questions ou réserver vos services.
         </p>
-        <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-          <p className="text-xs text-yellow-800">
-            <strong>Debug:</strong> Messages = {JSON.stringify(messages)}
-          </p>
-        </div>
       </div>
     );
   }
@@ -105,7 +100,7 @@ const RecentMessagesSection = ({ messages = [], onViewAll, onMessageClick }) => 
             </button>
           ) : (
             <Link
-              to="/professional/messages"
+              to="/dashboard/professional/messages"
               className="w-full btn-secondary text-sm flex justify-center items-center hover:bg-primary-50 hover:text-primary-700 transition-colors"
             >
               <ChatBubbleLeftRightIcon className="h-4 w-4 mr-2" />

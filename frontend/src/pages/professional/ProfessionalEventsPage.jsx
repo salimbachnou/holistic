@@ -8,7 +8,6 @@ import {
   UserGroupIcon,
   CurrencyDollarIcon,
   PhotoIcon,
-  ChatBubbleLeftRightIcon,
   CreditCardIcon,
   TicketIcon,
   MagnifyingGlassIcon,
@@ -68,8 +67,7 @@ const ProfessionalEventsPage = () => {
         return;
       }
 
-      const BASE_URL =
-        process.env.REACT_APP_API_URL || 'https://holistic-maroc-backend.onrender.com/api';
+      const BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
       const response = await axios.get(`${BASE_URL}/events/professional`, {
         headers: {
@@ -129,8 +127,7 @@ const ProfessionalEventsPage = () => {
       const token = localStorage.getItem('token');
 
       // Get the base API URL
-      const BASE_URL =
-        process.env.REACT_APP_API_URL || 'https://holistic-maroc-backend.onrender.com';
+      const BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
       // Préparer les données de l'événement
       const eventData = {
@@ -186,7 +183,9 @@ const ProfessionalEventsPage = () => {
       setLoading(true);
       const token = localStorage.getItem('token');
 
-      await axios.delete(`${process.env.REACT_APP_API_URL}/api/events/${selectedEvent._id}`, {
+      const BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
+      await axios.delete(`${BASE_URL}/api/events/${selectedEvent._id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -232,8 +231,7 @@ const ProfessionalEventsPage = () => {
         return;
       }
 
-      const API_URL =
-        process.env.REACT_APP_API_URL || 'https://holistic-maroc-backend.onrender.com';
+      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
       const response = await axios.post(`${API_URL}/api/uploads/events`, formData, {
         headers: {
@@ -383,8 +381,6 @@ const ProfessionalEventsPage = () => {
 
   const getBookingTypeLabel = type => {
     switch (type) {
-      case 'message_only':
-        return 'Par messages uniquement';
       case 'in_person_payment':
         return 'En ligne avec paiement en personne';
       default:
@@ -420,8 +416,6 @@ const ProfessionalEventsPage = () => {
 
   const getBookingTypeIcon = type => {
     switch (type) {
-      case 'message_only':
-        return <ChatBubbleLeftRightIcon className="h-5 w-5 text-blue-500" />;
       case 'in_person_payment':
         return <TicketIcon className="h-5 w-5 text-orange-500" />;
       default:
@@ -747,7 +741,7 @@ const ProfessionalEventsPage = () => {
                           className="block text-sm font-semibold text-gray-700 flex items-center"
                         >
                           <MapPinIcon className="h-4 w-4 mr-2" />
-                          Localisation de l&apos;événement *
+                          Localisation de l&apos;événement
                         </label>
                         <button
                           type="button"
@@ -763,10 +757,7 @@ const ProfessionalEventsPage = () => {
                         <input
                           id="address"
                           type="text"
-                          {...register('address', {
-                            required:
-                              eventTypeValue === 'in_person' ? 'Ce champ est requis' : false,
-                          })}
+                          {...register('address')}
                           className="input-field w-full"
                           placeholder="Adresse complète de l'événement"
                         />
@@ -918,53 +909,31 @@ const ProfessionalEventsPage = () => {
                   </div>
                 </div>
 
-                {/* Type de réservation amélioré */}
+                {/* Type de réservation */}
                 <div className="space-y-3">
                   <label className="block text-sm font-medium text-gray-700 mb-3">
                     Type de réservation *
                   </label>
-                  <div className="space-y-3">
-                    <div className="flex items-start">
-                      <input
-                        id="message_only"
-                        type="radio"
-                        value="message_only"
-                        {...register('bookingType', { required: 'Ce champ est requis' })}
-                        className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 mt-1"
-                      />
-                      <label htmlFor="message_only" className="ml-3 flex items-start">
-                        <ChatBubbleLeftRightIcon className="h-5 w-5 text-gray-400 mr-2 mt-0.5" />
-                        <div>
-                          <span className="text-sm font-medium text-gray-900">
-                            Par messages uniquement
-                          </span>
-                          <p className="text-xs text-gray-500">
-                            Les clients vous contactent directement par message
-                          </p>
-                        </div>
-                      </label>
-                    </div>
-
-                    <div className="flex items-start">
-                      <input
-                        id="in_person_payment"
-                        type="radio"
-                        value="in_person_payment"
-                        {...register('bookingType', { required: 'Ce champ est requis' })}
-                        className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 mt-1"
-                      />
-                      <label htmlFor="in_person_payment" className="ml-3 flex items-start">
-                        <TicketIcon className="h-5 w-5 text-gray-400 mr-2 mt-0.5" />
-                        <div>
-                          <span className="text-sm font-medium text-gray-900">
-                            Réservation en ligne, paiement en personne
-                          </span>
-                          <p className="text-xs text-gray-500">
-                            Les clients réservent en ligne et paient sur place
-                          </p>
-                        </div>
-                      </label>
-                    </div>
+                  <div className="flex items-start">
+                    <input
+                      id="in_person_payment"
+                      type="radio"
+                      value="in_person_payment"
+                      {...register('bookingType', { required: 'Ce champ est requis' })}
+                      className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 mt-1"
+                      defaultChecked
+                    />
+                    <label htmlFor="in_person_payment" className="ml-3 flex items-start">
+                      <TicketIcon className="h-5 w-5 text-gray-400 mr-2 mt-0.5" />
+                      <div>
+                        <span className="text-sm font-medium text-gray-900">
+                          Réservation en ligne, paiement en personne
+                        </span>
+                        <p className="text-xs text-gray-500">
+                          Les clients réservent en ligne et paient sur place
+                        </p>
+                      </div>
+                    </label>
                   </div>
                   {errors.bookingType && (
                     <p className="text-red-600 text-sm mt-1">{errors.bookingType.message}</p>
@@ -1008,9 +977,9 @@ const ProfessionalEventsPage = () => {
                     </div>
                   </div>
 
-                  {getValues('coverImages') && getValues('coverImages').length > 0 && (
+                  {watch('coverImages') && watch('coverImages').length > 0 && (
                     <div className="mt-4 grid grid-cols-2 gap-4">
-                      {getValues('coverImages').map((image, index) => (
+                      {watch('coverImages').map((image, index) => (
                         <div key={index} className="relative">
                           <img
                             src={image}

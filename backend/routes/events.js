@@ -144,8 +144,10 @@ router.get('/stats', async (req, res) => {
     let totalReviews = 0;
 
     events.forEach(event => {
-      // Compter les participants confirmés
-      totalParticipants += event.participants.filter(p => p.status === 'confirmed').length;
+      // Compter les participants confirmés (en tenant compte des quantités)
+      totalParticipants += event.participants
+        .filter(p => p.status === 'confirmed')
+        .reduce((total, p) => total + (p.quantity || 1), 0);
       
       // Calculer la moyenne des notes
       if (event.stats.totalReviews > 0) {
@@ -198,10 +200,20 @@ router.get('/stats', async (req, res) => {
 router.get('/', async (req, res) => {
   try {
     const events = await Event.find({ status: 'approved' })
-      .populate('professional', 'firstName lastName profileImage')
+      .populate({
+        path: 'professional',
+        select: 'firstName lastName profileImage isVerified isActive'
+      })
       .sort({ date: 1 });
     
-    res.json({ events });
+    // Filter out events with unverified or inactive professionals
+    const filteredEvents = events.filter(event => 
+      event.professional && 
+      event.professional.isVerified && 
+      event.professional.isActive
+    );
+    
+    res.json({ events: filteredEvents });
   } catch (error) {
     console.error('Error fetching events:', error);
     res.status(500).json({ message: 'Erreur lors de la récupération des événements' });
@@ -327,31 +339,34 @@ router.put('/:eventId/participants/:participantId', isAuthenticated, isProfessio
     try {
       const NotificationService = require('../services/notificationService');
       const participant = event.participants[participantIndex];
+      const quantityText = participant.quantity > 1 ? `${participant.quantity} places` : '1 place';
       
       if (status === 'confirmed') {
         await NotificationService.createClientNotification(
           participant.user._id,
           'Inscription confirmée',
-          `Votre inscription à l'événement "${event.title}" a été confirmée !`,
+          `Votre inscription à l'événement "${event.title}" pour ${quantityText} a été confirmée !`,
           'event_confirmed',
           `/events/${event._id}`,
           {
             eventId: event._id,
             eventTitle: event.title,
-            eventDate: event.date
+            eventDate: event.date,
+            quantity: participant.quantity
           }
         );
       } else if (status === 'cancelled') {
         await NotificationService.createClientNotification(
           participant.user._id,
           'Inscription refusée',
-          `Votre inscription à l'événement "${event.title}" a été refusée.${reason ? ` Raison: ${reason}` : ''}`,
+          `Votre inscription à l'événement "${event.title}" pour ${quantityText} a été refusée.${reason ? ` Raison: ${reason}` : ''}`,
           'event_cancelled',
           `/events/${event._id}`,
           {
             eventId: event._id,
             eventTitle: event.title,
-            reason: reason || 'Aucune raison spécifiée'
+            reason: reason || 'Aucune raison spécifiée',
+            quantity: participant.quantity
           }
         );
       }
@@ -593,10 +608,14 @@ router.delete('/:id', isAuthenticated, isProfessional, async (req, res) => {
 // S'inscrire à un événement
 router.post('/:id/register', isAuthenticated, async (req, res) => {
   try {
+    const { quantity = 1, note = '' } = req.body;
+    
     console.log('🔍 [REGISTER] Event registration request:', {
       eventId: req.params.id,
       userId: req.user._id,
-      userEmail: req.user.email
+      userEmail: req.user.email,
+      quantity: quantity,
+      note: note
     });
     
     const event = await Event.findById(req.params.id);
@@ -610,6 +629,7 @@ router.post('/:id/register', isAuthenticated, async (req, res) => {
     console.log('🔍 [REGISTER] Event participants:', event.participants.map(p => ({
       userId: p.user.toString(),
       status: p.status,
+      quantity: p.quantity,
       _id: p._id
     })));
     
@@ -617,6 +637,11 @@ router.post('/:id/register', isAuthenticated, async (req, res) => {
     if (event.status !== 'approved') {
       console.log('❌ [REGISTER] Event not approved:', event.status);
       return res.status(400).json({ message: 'Cet événement n\'est pas disponible pour inscription' });
+    }
+    
+    // Validation de la quantité
+    if (quantity < 1) {
+      return res.status(400).json({ message: 'La quantité doit être d\'au moins 1' });
     }
     
     // Vérifier si l'utilisateur est déjà inscrit (avec statut non annulé)
@@ -642,30 +667,83 @@ router.post('/:id/register', isAuthenticated, async (req, res) => {
     
     console.log('🔍 [REGISTER] Most recent cancelled participation:', cancelledParticipation);
     
-    // Vérifier si l'événement est complet
-    const activeParticipants = event.participants.filter(p => p.status !== 'cancelled').length;
-    console.log('🔍 [REGISTER] Active participants:', activeParticipants, '/', event.maxParticipants);
+    // Calculer le nombre total de places occupées (en tenant compte des quantités)
+    const totalOccupiedPlaces = event.participants
+      .filter(p => p.status !== 'cancelled')
+      .reduce((total, p) => total + (p.quantity || 1), 0);
     
-    if (activeParticipants >= event.maxParticipants) {
-      console.log('❌ [REGISTER] Event is full');
-      return res.status(400).json({ message: 'Cet événement est complet' });
+    console.log('🔍 [REGISTER] Total occupied places:', totalOccupiedPlaces, '/', event.maxParticipants);
+    
+    // Vérifier si l'événement a assez de places disponibles
+    if (totalOccupiedPlaces + quantity > event.maxParticipants) {
+      console.log('❌ [REGISTER] Event does not have enough places');
+      return res.status(400).json({ 
+        message: `Il ne reste que ${event.maxParticipants - totalOccupiedPlaces} place(s) disponible(s) pour cet événement` 
+      });
     }
     
     // Si l'utilisateur a une participation annulée, la réactiver au lieu de créer une nouvelle
     if (cancelledParticipation) {
       console.log('🔄 [REGISTER] Reactivating cancelled participation');
-      cancelledParticipation.status = 'pending';
+      // Fetch the Professional by userId (event.professional)
+      const Professional = require('../models/Professional');
+      const professional = await Professional.findOne({ userId: event.professional });
+      const bookingMode = professional?.bookingMode || 'manual';
+      cancelledParticipation.status = bookingMode === 'auto' ? 'confirmed' : 'pending';
+      cancelledParticipation.quantity = quantity;
+      cancelledParticipation.note = note;
       cancelledParticipation.createdAt = new Date();
     } else {
       console.log('➕ [REGISTER] Adding new participation');
       // Ajouter l'utilisateur aux participants
+      // Fetch the Professional by userId (event.professional)
+      const Professional = require('../models/Professional');
+      const professional = await Professional.findOne({ userId: event.professional });
+      const bookingMode = professional?.bookingMode || 'manual';
       event.participants.push({
         user: req.user._id,
-        status: 'pending',
+        status: bookingMode === 'auto' ? 'confirmed' : 'pending',
+        quantity: quantity,
+        note: note
       });
     }
     
     await event.save();
+    
+    // Envoyer une notification au professionnel
+    try {
+      console.log('🔔 [REGISTER] Sending notification to professional');
+      const NotificationService = require('../services/notificationService');
+      
+      // Récupérer les informations du client
+      const clientName = `${req.user.firstName} ${req.user.lastName}`;
+      
+      const quantityText = quantity > 1 ? `${quantity} places` : '1 place';
+      const noteText = note ? `\nNote: ${note}` : '';
+      
+      await NotificationService.createClientNotification(
+        event.professional,
+        'Nouvelle réservation d\'événement',
+        `${clientName} s'est inscrit(e) à votre événement "${event.title}" pour ${quantityText}.${noteText}`,
+        'event_booking_request',
+        `/dashboard/professional/event-bookings`,
+        {
+          eventId: event._id,
+          eventTitle: event.title,
+          eventDate: event.date,
+          clientId: req.user._id,
+          clientName: clientName,
+          clientEmail: req.user.email,
+          quantity: quantity,
+          note: note
+        }
+      );
+      
+      console.log('✅ [REGISTER] Notification sent to professional');
+    } catch (notificationError) {
+      console.error('❌ [REGISTER] Error sending notification:', notificationError);
+      // Ne pas faire échouer l'inscription si la notification échoue
+    }
     
     console.log('✅ [REGISTER] Registration successful');
     res.json({ message: 'Inscription réussie', event });
@@ -697,6 +775,36 @@ router.post('/:id/cancel', isAuthenticated, async (req, res) => {
     event.participants[participantIndex].status = 'cancelled';
     
     await event.save();
+    
+    // Envoyer une notification au professionnel
+    try {
+      console.log('🔔 [CANCEL] Sending cancellation notification to professional');
+      const NotificationService = require('../services/notificationService');
+      
+      // Récupérer les informations du client
+      const clientName = `${req.user.firstName} ${req.user.lastName}`;
+      
+      await NotificationService.createClientNotification(
+        event.professional,
+        'Annulation de réservation d\'événement',
+        `${clientName} a annulé son inscription à votre événement "${event.title}".`,
+        'event_booking_cancelled',
+        `/dashboard/professional/event-bookings`,
+        {
+          eventId: event._id,
+          eventTitle: event.title,
+          eventDate: event.date,
+          clientId: req.user._id,
+          clientName: clientName,
+          clientEmail: req.user.email
+        }
+      );
+      
+      console.log('✅ [CANCEL] Cancellation notification sent to professional');
+    } catch (notificationError) {
+      console.error('❌ [CANCEL] Error sending cancellation notification:', notificationError);
+      // Ne pas faire échouer l'annulation si la notification échoue
+    }
     
     res.json({ message: 'Inscription annulée avec succès' });
   } catch (error) {

@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Create an instance of axios with a base URL for API calls
 const api = axios.create({
-  baseURL: 'https://holistic-maroc-backend.onrender.com/api',
+  baseURL: 'http://localhost:5000/api',
   headers: {
     'Content-Type': 'application/json',
   },

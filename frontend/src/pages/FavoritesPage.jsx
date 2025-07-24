@@ -10,7 +10,6 @@ import {
   FaBagShopping,
   FaUser,
   FaVideo,
-  FaEuroSign,
   FaTrash,
   FaFilter,
 } from 'react-icons/fa6';
@@ -124,7 +123,7 @@ const FavoritesPage = () => {
                   <span>{new Date(item.startTime).toLocaleDateString()}</span>
                 </div>
                 <div className="flex items-center">
-                  <FaEuroSign className="mr-2" />
+                  <span className="mr-2 text-sm font-medium">MAD</span>
                   <span>{item.price?.amount || item.price} MAD</span>
                 </div>
                 <div className="flex items-center">
@@ -222,8 +221,7 @@ const FavoritesPage = () => {
                   if (imagePath.startsWith('http') || imagePath.startsWith('data:')) {
                     return imagePath;
                   }
-                  const apiUrl =
-                    process.env.REACT_APP_API_URL || 'https://holistic-maroc-backend.onrender.com';
+                  const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
                   return `${apiUrl}${imagePath}`;
                 };
 
@@ -319,7 +317,7 @@ const FavoritesPage = () => {
               {(() => {
                 // Utiliser directement l'image par défaut des événements
                 const defaultImageUrl =
-                  'https://holistic-maroc-backend.onrender.com/uploads/events/1749834623480-860019398.jpg';
+                  'http://localhost:5000/uploads/events/1749834623480-860019398.jpg';
 
                 // Amélioration de la logique pour trouver l'URL de l'image
                 let imageUrl = defaultImageUrl;
@@ -367,7 +365,7 @@ const FavoritesPage = () => {
                 </div>
                 {item.pricing && (
                   <div className="flex items-center">
-                    <FaEuroSign className="mr-2" />
+                    <span className="mr-2 text-sm font-medium">MAD</span>
                     <span>
                       {item.pricing.amount} {item.pricing.currency}
                     </span>

@@ -213,18 +213,25 @@ router.get('/approved', async (req, res) => {
 
     // Execute query with pagination
     const products = await Product.find(query)
-      .populate('professionalId', 'businessName location profileImage')
+      .populate({
+        path: 'professionalId',
+        select: 'businessName location profileImage',
+        match: { isVerified: true, isActive: true }
+      })
       .sort(sort)
       .skip(skip)
       .limit(parseInt(limit))
       .lean();
 
+    // Filter out products with unverified professionals
+    const filteredProducts = products.filter(product => product.professionalId);
+
     // Get total count for pagination
-    const totalProducts = await Product.countDocuments(query);
+    const totalProducts = filteredProducts.length;
     const totalPages = Math.ceil(totalProducts / parseInt(limit));
 
     // Transform products for frontend compatibility
-    const transformedProducts = products.map(product => ({
+    const transformedProducts = filteredProducts.map(product => ({
       _id: product._id,
       id: product._id, // Add id field for compatibility
       name: product.name || product.title,

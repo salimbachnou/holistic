@@ -26,7 +26,7 @@ const convertImageUrl = (imagePath) => {
   if (imagePath.startsWith('http') || imagePath.startsWith('data:')) {
     return imagePath;
   }
-  const baseUrl = process.env.BASE_URL || 'https://holistic-maroc-backend.onrender.com';
+  const baseUrl = process.env.BASE_URL || 'http://localhost:5000';
   return imagePath.startsWith('/uploads') ? `${baseUrl}${imagePath}` : `${baseUrl}/uploads/profiles/${imagePath}`;
 };
 
@@ -186,7 +186,6 @@ router.post('/register/professional', [
   body('password').isLength({ min: 6 }),
   body('firstName').notEmpty().trim(),
   body('lastName').notEmpty().trim(),
-  body('profession').notEmpty().trim(),
   body('phone').optional().trim(),
   body('businessName').optional().trim(),
   body('businessType').optional().trim(),
@@ -199,8 +198,8 @@ router.post('/register/professional', [
     }
 
     const { 
-      email, password, firstName, lastName, profession, 
-      specializations, phone, name, businessName, businessType, address 
+      email, password, firstName, lastName, 
+      specializations, phone, name, businessName, businessType, address, coordinates 
     } = req.body;
     
     // Check if user already exists
@@ -219,7 +218,7 @@ router.post('/register/professional', [
       phone,
       role: 'professional', // Professional role
       provider: 'local',
-      isVerified: true // Définir l'utilisateur professionnel comme vérifié
+      isVerified: false // Le compte doit être vérifié par l'admin
     });
 
     await user.save();
@@ -228,17 +227,26 @@ router.post('/register/professional', [
     const Professional = require('../models/Professional');
     const professional = new Professional({
       userId: user._id,
-      businessType: businessType || profession,
+      businessType: businessType || 'wellness',
       businessName: businessName || '',
-      title: businessName || profession,
+      title: businessName || 'Professionnel du bien-être',
       address: address || '',
+      businessAddress: coordinates ? {
+        coordinates: {
+          lat: coordinates.lat,
+          lng: coordinates.lng
+        },
+        street: address || '',
+        city: '',
+        country: 'Morocco'
+      } : null,
       specializations: specializations ? specializations.split(',').map(s => s.trim()) : [],
       contactInfo: { 
         phone: phone || '',
         email: email
       },
-      isVerified: true, // Définir le profil professionnel comme vérifié
-      isActive: true
+      isVerified: false, // Le profil doit être vérifié par l'admin
+      isActive: false // Le profil n'est pas actif tant qu'il n'est pas vérifié
     });
 
     await professional.save();
@@ -270,7 +278,7 @@ router.get('/google/url', (req, res) => {
     const state = Math.random().toString(36).substring(7);
     
     // Create the Google auth URL
-    const googleAuthUrl = `${process.env.BASE_URL || 'https://holistic-maroc-backend.onrender.com'}/api/auth/google?role=${isProfessional ? 'professional' : 'client'}&state=${state}`;
+    const googleAuthUrl = `${process.env.BASE_URL || 'http://localhost:5000'}/api/auth/google?role=${isProfessional ? 'professional' : 'client'}&state=${state}`;
     
     res.json({ url: googleAuthUrl, state });
   } catch (error) {
@@ -281,14 +289,20 @@ router.get('/google/url', (req, res) => {
 
 router.get('/google',
   (req, res, next) => {
+    console.log('🔍 Google Auth Route - Query params:', req.query);
+    console.log('🔍 Google Auth Route - Session before:', req.session);
+    
     // Store role in session if provided
     if (req.query.role) {
       req.session = req.session || {};
       req.session.userRole = req.query.role;
+      console.log('🔍 Google Auth Route - Set userRole in session:', req.query.role);
     }
     
     // Utiliser l'état fourni ou en générer un nouveau
     const state = req.query.state || Math.random().toString(36).substring(7);
+    
+    console.log('🔍 Google Auth Route - Session after:', req.session);
     
     // Passer à l'authentification avec les options correctes
     passport.authenticate('google', {
@@ -302,7 +316,7 @@ router.get('/google',
 );
 
 router.get('/google/callback',
-  passport.authenticate('google', { failureRedirect: `${process.env.FRONTEND_URL || 'https://holistic-maroc.vercel.app'}/login?error=auth_failed` }),
+  passport.authenticate('google', { failureRedirect: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/login?error=auth_failed` }),
   async (req, res) => {
     try {
       // Log user info for debugging
@@ -312,37 +326,16 @@ router.get('/google/callback',
         name: req.user.firstName + ' ' + req.user.lastName
       });
       
-      // Update user role if needed
-      if (req.session && req.session.userRole === 'professional') {
-        // Update user role
-        await User.findByIdAndUpdate(req.user._id, { role: 'professional' });
-        console.log('Updated user role to professional');
-        
-        // Check if professional profile already exists
-        const Professional = require('../models/Professional');
-        const existingProfile = await Professional.findOne({ userId: req.user._id });
-        
-        if (!existingProfile) {
-          // Create a professional profile
-          const newProfessional = new Professional({
-            userId: req.user._id,
-            businessName: `${req.user.firstName} ${req.user.lastName}`,
-            businessType: 'other', // Default business type
-            title: `${req.user.firstName} ${req.user.lastName}`,
-            description: '',
-            address: "À définir",
-            contactInfo: { 
-              email: req.user.email,
-              phone: ''
-            },
-            isVerified: true,
-            isActive: true
-          });
-          
-          await newProfessional.save();
-          console.log('Created professional profile for user:', req.user._id);
-        }
-      }
+      // Log user info for debugging
+      console.log('Google authentication successful', {
+        userId: req.user._id,
+        email: req.user.email,
+        name: req.user.firstName + ' ' + req.user.lastName,
+        role: req.user.role
+      });
+      
+      // The professional profile is now created in the Passport strategy
+      // No need to create it here anymore
       
       // Generate JWT token
       const token = jwt.sign(
@@ -351,11 +344,15 @@ router.get('/google/callback',
         { expiresIn: '7d' }
       );
       
-      // Redirect to frontend with token
-      res.redirect(`${process.env.FRONTEND_URL || 'https://holistic-maroc.vercel.app'}/auth/callback?token=${token}`);
+      // Redirect to frontend with token and role info
+      const redirectUrl = req.session && req.session.userRole === 'professional' 
+        ? `${process.env.FRONTEND_URL || 'http://localhost:3000'}/auth/callback?token=${token}&role=professional`
+        : `${process.env.FRONTEND_URL || 'http://localhost:3000'}/auth/callback?token=${token}`;
+      
+      res.redirect(redirectUrl);
     } catch (error) {
       console.error('Error in Google callback:', error);
-      res.redirect(`${process.env.FRONTEND_URL || 'https://holistic-maroc.vercel.app'}/login?error=server_error`);
+      res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/login?error=server_error`);
     }
   }
 );
@@ -552,7 +549,7 @@ router.post('/forgot-password', [
     });
 
     // Send reset email
-    const resetUrl = `${process.env.FRONTEND_URL || 'https://holistic-maroc.vercel.app'}/reset-password/${resetToken}`;
+    const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password/${resetToken}`;
     
     try {
       const mailOptions = {

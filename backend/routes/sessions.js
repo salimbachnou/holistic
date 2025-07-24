@@ -75,25 +75,35 @@ router.get('/', async (req, res) => {
       query.status = 'scheduled';
     }
 
+    // Only show approved sessions to clients
+    query.confirmationStatus = 'approved';
+
     const sort = {};
     sort[sortBy] = sortOrder === 'desc' ? -1 : 1;
 
     const sessions = await Session.find(query)
-      .populate('professionalId', 'businessName businessType profileImage')
+      .populate({
+        path: 'professionalId',
+        select: 'businessName businessType profileImage',
+        match: { isVerified: true, isActive: true }
+      })
       .sort(sort)
       .limit(parseInt(limit))
       .skip((parseInt(page) - 1) * parseInt(limit));
+
+    // Filter out sessions with unverified professionals
+    const filteredSessions = sessions.filter(session => session.professionalId);
 
     const total = await Session.countDocuments(query);
 
     res.json({
       success: true,
-      sessions,
+      sessions: filteredSessions,
       pagination: {
         page: parseInt(page),
         limit: parseInt(limit),
-        total,
-        pages: Math.ceil(total / parseInt(limit))
+        total: filteredSessions.length,
+        pages: Math.ceil(filteredSessions.length / parseInt(limit))
       }
     });
   } catch (error) {
@@ -233,6 +243,9 @@ router.get('/my-sessions', requireAuth, async (req, res) => {
     if (status) {
       query.status = status;
     }
+
+    // Only show approved sessions to clients
+    query.confirmationStatus = 'approved';
 
     const sort = {};
     sort[sortBy] = sortOrder === 'desc' ? -1 : 1;
@@ -538,6 +551,36 @@ router.post('/auto-complete-expired', requireAuth, async (req, res) => {
   }
 });
 
+// Manual session auto-completion (admin only)
+router.post('/manual-auto-complete', requireAuth, async (req, res) => {
+  try {
+    // Only allow admin
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. Admin role required.'
+      });
+    }
+
+    const SessionService = require('../services/sessionService');
+    
+    const result = await SessionService.autoCompleteExpiredSessions();
+    
+    res.json({
+      success: true,
+      message: result.message,
+      results: result.results
+    });
+
+  } catch (error) {
+    console.error('Error in manual session auto-completion:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Server error'
+    });
+  }
+});
+
 // Cancel a session
 router.put('/:id/cancel', requireAuth, requireProfessional, async (req, res) => {
   try {
@@ -788,6 +831,9 @@ router.get('/professional/:id', async (req, res) => {
       // Default to only scheduled sessions
       query.status = 'scheduled';
     }
+
+    // Only show approved sessions to clients
+    query.confirmationStatus = 'approved';
 
     const sort = {};
     sort[sortBy] = sortOrder === 'desc' ? -1 : 1;

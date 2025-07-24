@@ -38,6 +38,8 @@ const notificationSchema = new mongoose.Schema({
       'event_rejected',
       'event_confirmed',
       'event_cancelled',
+      'event_booking_request',
+      'event_booking_cancelled',
       'event_review_request',
       'session_cancelled',
       'session_review_request',

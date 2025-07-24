@@ -46,7 +46,8 @@ class SessionService {
       const sessionToCreate = {
         ...sessionData,
         professionalId: professional._id,
-        status: 'scheduled'
+        status: 'scheduled',
+        confirmationStatus: 'pending' // Always set to pending on creation
       };
 
       // Create session
@@ -143,10 +144,8 @@ class SessionService {
       errors.push({ field: 'category', message: 'Category must be one of: ' + validCategories.join(', ') });
     }
 
-    // Location validation for non-online sessions
-    if (data.category !== 'online' && (!data.location || data.location.trim().length === 0)) {
-      errors.push({ field: 'location', message: 'Location is required for non-online sessions' });
-    }
+    // Location is now optional for all session types
+    // No validation required
 
     // Meeting link validation for online sessions
     if (data.category === 'online' && (!data.meetingLink || data.meetingLink.trim().length === 0)) {
@@ -233,15 +232,11 @@ class SessionService {
       }
     }
 
-    // Location validation (context-aware)
-    const finalCategory = updateData.category !== undefined ? updateData.category : existingSession.category;
-    if (finalCategory !== 'online') {
-      if (updateData.location !== undefined && (!updateData.location || updateData.location.trim().length === 0)) {
-        errors.push({ field: 'location', message: 'Location is required for non-online sessions' });
-      }
-    }
+    // Location is now optional for all session types
+    // No validation required
 
     // Meeting link validation (context-aware)
+    const finalCategory = updateData.category !== undefined ? updateData.category : existingSession.category;
     if (finalCategory === 'online') {
       if (updateData.meetingLink !== undefined && (!updateData.meetingLink || updateData.meetingLink.trim().length === 0)) {
         errors.push({ field: 'meetingLink', message: 'Meeting link is required for online sessions' });
@@ -517,6 +512,104 @@ class SessionService {
         message: 'Failed to update session',
         error: process.env.NODE_ENV === 'development' ? error.message : undefined
       };
+    }
+  }
+
+  /**
+   * Automatically complete sessions that have passed their end time
+   * This method is called by the cron job system
+   */
+  static async autoCompleteExpiredSessions() {
+    try {
+      // Check if MongoDB is connected
+      const mongoose = require('mongoose');
+      if (mongoose.connection.readyState !== 1) {
+        console.log('⚠️ [SESSION-AUTO-COMPLETE] Skipping - MongoDB not connected');
+        return {
+          success: false,
+          message: 'MongoDB not connected',
+          results: []
+        };
+      }
+
+      console.log('=== AUTO COMPLETING EXPIRED SESSIONS ===');
+      
+      const now = new Date();
+      
+      // Find sessions that should be completed (past end time and still scheduled)
+      // Include sessions without confirmationStatus or with approved status
+      const expiredSessions = await Session.find({
+        status: 'scheduled',
+        $or: [
+          { confirmationStatus: 'approved' },
+          { confirmationStatus: { $exists: false } },
+          { confirmationStatus: null }
+        ]
+      }).populate('professionalId', 'userId businessName');
+
+      console.log(`Found ${expiredSessions.length} sessions to check for expiration`);
+
+      const results = [];
+      
+      for (const session of expiredSessions) {
+        try {
+          // Calculate session end time
+          const sessionEndTime = new Date(session.startTime.getTime() + (session.duration * 60 * 1000));
+          
+          // Only complete if session has actually ended (with 5 minute buffer)
+          const bufferTime = new Date(now.getTime() - 5 * 60 * 1000); // 5 minutes buffer
+          if (sessionEndTime < bufferTime) {
+            console.log(`Auto-completing session: ${session.title} (ID: ${session._id})`);
+            
+            // Update session status to completed
+            session.status = 'completed';
+            await session.save();
+            
+            // Send review requests if SessionReviewService is available
+            try {
+              const SessionReviewService = require('./sessionReviewService');
+              const reviewResult = await SessionReviewService.sendReviewRequestsForSession(session._id, session.professionalId.userId);
+              
+              results.push({
+                sessionId: session._id,
+                sessionTitle: session.title,
+                status: 'completed',
+                reviewRequestsSent: reviewResult ? reviewResult.reviewRequests.length : 0
+              });
+            } catch (reviewError) {
+              console.error(`Error sending review requests for session ${session._id}:`, reviewError);
+              results.push({
+                sessionId: session._id,
+                sessionTitle: session.title,
+                status: 'completed',
+                reviewRequestsSent: 0,
+                reviewError: reviewError.message
+              });
+            }
+          }
+        } catch (error) {
+          console.error(`Error auto-completing session ${session._id}:`, error);
+          results.push({
+            sessionId: session._id,
+            sessionTitle: session.title,
+            status: 'error',
+            error: error.message
+          });
+        }
+      }
+
+      const completedCount = results.filter(r => r.status === 'completed').length;
+      console.log(`Auto-completed ${completedCount} sessions`);
+
+      return {
+        success: true,
+        message: `Auto-completed ${completedCount} sessions`,
+        results: results
+      };
+
+    } catch (error) {
+      console.error('Error in auto-complete expired sessions:', error);
+      throw error;
     }
   }
 }

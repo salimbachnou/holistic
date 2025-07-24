@@ -14,7 +14,7 @@ const convertImageUrl = (imagePath) => {
   if (imagePath.startsWith('http') || imagePath.startsWith('data:')) {
     return imagePath;
   }
-  const baseUrl = process.env.BASE_URL || 'https://holistic-maroc-backend.onrender.com';
+  const baseUrl = process.env.BASE_URL || 'http://localhost:5000';
   return imagePath.startsWith('/uploads') ? `${baseUrl}${imagePath}` : `${baseUrl}/uploads/profiles/${imagePath}`;
 };
 
@@ -404,14 +404,14 @@ router.get('/favorites', requireAuth, async (req, res) => {
       if (favoriteData.coverImages && favoriteData.coverImages.length > 0) {
         favoriteData.coverImages = favoriteData.coverImages.map(img => 
           img && !img.startsWith('http') ? 
-          `${process.env.BASE_URL || 'https://holistic-maroc-backend.onrender.com'}${img.startsWith('/uploads') ? img : '/uploads/professionals/' + img}` : 
+          `${process.env.BASE_URL || 'http://localhost:5000'}${img.startsWith('/uploads') ? img : '/uploads/professionals/' + img}` : 
           img
         );
       }
       
       // Convert profile photo to full URL
       if (favoriteData.profilePhoto && !favoriteData.profilePhoto.startsWith('http')) {
-        favoriteData.profilePhoto = `${process.env.BASE_URL || 'https://holistic-maroc-backend.onrender.com'}${favoriteData.profilePhoto.startsWith('/uploads') ? favoriteData.profilePhoto : '/uploads/professionals/' + favoriteData.profilePhoto}`;
+        favoriteData.profilePhoto = `${process.env.BASE_URL || 'http://localhost:5000'}${favoriteData.profilePhoto.startsWith('/uploads') ? favoriteData.profilePhoto : '/uploads/professionals/' + favoriteData.profilePhoto}`;
       }
       
       return favoriteData;

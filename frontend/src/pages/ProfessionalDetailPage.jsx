@@ -11,13 +11,14 @@ import {
   FaInstagram,
   FaLinkedin,
   FaClock,
-  FaEuroSign,
   FaUserFriends,
   FaCalendarAlt,
   FaUsers,
   FaShoppingBag,
   FaCheckCircle,
   FaAward,
+  FaEnvelope,
+  FaPaperPlane,
 } from 'react-icons/fa';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 
@@ -47,6 +48,11 @@ const ProfessionalDetailPage = () => {
   // States for image URLs like ProfilePage.jsx
   const [coverImageUrls, setCoverImageUrls] = useState([]);
   const [profileImageUrl, setProfileImageUrl] = useState(null);
+
+  // Messaging states
+  const [messageText, setMessageText] = useState('');
+  const [sendingMessage, setSendingMessage] = useState(false);
+  const [showMessageForm, setShowMessageForm] = useState(false);
 
   // Day names mapping for business hours
   const dayNames = {
@@ -115,7 +121,7 @@ const ProfessionalDetailPage = () => {
           if (!imagePath) return getDefaultFallbackImage();
           return imagePath.startsWith('http')
             ? imagePath
-            : `${process.env.REACT_APP_API_URL || 'https://holistic-maroc-backend.onrender.com'}${imagePath}`;
+            : `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}${imagePath}`;
         });
         setCoverImageUrls(urls);
       } else {
@@ -126,12 +132,12 @@ const ProfessionalDetailPage = () => {
       if (professional.profilePhoto) {
         const imageUrl = professional.profilePhoto.startsWith('http')
           ? professional.profilePhoto
-          : `${process.env.REACT_APP_API_URL || 'https://holistic-maroc-backend.onrender.com'}${professional.profilePhoto}`;
+          : `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}${professional.profilePhoto}`;
         setProfileImageUrl(imageUrl);
       } else if (professional.userId?.profileImage) {
         const imageUrl = professional.userId.profileImage.startsWith('http')
           ? professional.userId.profileImage
-          : `${process.env.REACT_APP_API_URL || 'https://holistic-maroc-backend.onrender.com'}${professional.userId.profileImage}`;
+          : `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}${professional.userId.profileImage}`;
         setProfileImageUrl(imageUrl);
       } else {
         setProfileImageUrl(null);
@@ -212,6 +218,54 @@ const ProfessionalDetailPage = () => {
     // Refresh sessions to update availability
     refetchSessions();
     toast.success('Votre réservation a été enregistrée');
+  };
+
+  // Messaging functions
+  const handleSendMessage = async e => {
+    e.preventDefault();
+
+    if (!messageText.trim()) {
+      toast.error('Veuillez saisir un message');
+      return;
+    }
+
+    if (!user) {
+      toast.error('Veuillez vous connecter pour envoyer un message');
+      navigate('/login', { state: { from: `/professionals/${id}` } });
+      return;
+    }
+
+    try {
+      setSendingMessage(true);
+
+      const receiverId = professional.userId?._id || professional.userId;
+
+      const response = await apiService.post('/messages', {
+        receiverId: receiverId,
+        text: messageText.trim(),
+        messageType: 'text',
+      });
+
+      if (response) {
+        toast.success('Message envoyé avec succès !');
+        setMessageText('');
+        setShowMessageForm(false);
+      }
+    } catch (error) {
+      console.error('Error sending message:', error);
+      toast.error("Erreur lors de l'envoi du message");
+    } finally {
+      setSendingMessage(false);
+    }
+  };
+
+  const toggleMessageForm = () => {
+    if (!user) {
+      toast.error('Veuillez vous connecter pour envoyer un message');
+      navigate('/login', { state: { from: `/professionals/${id}` } });
+      return;
+    }
+    setShowMessageForm(!showMessageForm);
   };
 
   const refetchSessions = async () => {
@@ -470,14 +524,14 @@ const ProfessionalDetailPage = () => {
                     {businessTypeLabels[professional.businessType] || professional.businessType}
                   </p>
                 </div>
-                <div className="bg-gradient-to-br from-gray-50 to-gray-100 p-4 sm:p-6 rounded-xl sm:rounded-2xl border border-gray-200 hover:shadow-lg transition-all duration-300">
+                {/* <div className="bg-gradient-to-br from-gray-50 to-gray-100 p-4 sm:p-6 rounded-xl sm:rounded-2xl border border-gray-200 hover:shadow-lg transition-all duration-300">
                   <h4 className="text-xs sm:text-sm font-bold text-gray-900 mb-1 sm:mb-2 uppercase tracking-wide">
                     Mode de réservation
                   </h4>
                   <p className="text-sm sm:text-base text-gray-700 font-medium capitalize">
                     {professional.bookingMode === 'auto' ? 'Automatique' : 'Manuel'}
                   </p>
-                </div>
+                </div> */}
                 {professional.paymentEnabled !== undefined && (
                   <div className="bg-gradient-to-br from-gray-50 to-gray-100 p-4 sm:p-6 rounded-xl sm:rounded-2xl border border-gray-200 hover:shadow-lg transition-all duration-300">
                     <h4 className="text-xs sm:text-sm font-bold text-gray-900 mb-1 sm:mb-2 uppercase tracking-wide">
@@ -488,7 +542,7 @@ const ProfessionalDetailPage = () => {
                     </p>
                   </div>
                 )}
-                {professional.subscription && (
+                {/* {professional.subscription && (
                   <div className="bg-gradient-to-br from-gray-50 to-gray-100 p-4 sm:p-6 rounded-xl sm:rounded-2xl border border-gray-200 hover:shadow-lg transition-all duration-300">
                     <h4 className="text-xs sm:text-sm font-bold text-gray-900 mb-1 sm:mb-2 uppercase tracking-wide">
                       Plan d'abonnement
@@ -497,8 +551,94 @@ const ProfessionalDetailPage = () => {
                       {professional.subscription.plan || 'Basic'}
                     </p>
                   </div>
-                )}
+                )} */}
               </div>
+            </div>
+
+            {/* Messaging Section */}
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl sm:rounded-3xl shadow-xl p-6 sm:p-8 transform hover:shadow-2xl transition-all duration-500 border border-white/20">
+              <div className="flex items-center justify-between mb-4 sm:mb-6">
+                <div className="flex items-center">
+                  <div className="h-1 sm:h-1.5 w-8 sm:w-12 bg-gradient-to-r from-pink-500 via-purple-500 to-violet-500 rounded-full mr-3 sm:mr-4 animate-pulse"></div>
+                  <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">
+                    Contactez le professionnel
+                  </h2>
+                </div>
+                <button
+                  onClick={toggleMessageForm}
+                  className="flex items-center px-4 sm:px-6 py-2 sm:py-3 bg-gradient-to-r from-pink-500 via-purple-500 to-violet-500 text-white rounded-full text-sm sm:text-base font-semibold hover:from-pink-600 hover:via-purple-600 hover:to-violet-600 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl"
+                >
+                  <FaEnvelope className="mr-2" />
+                  {showMessageForm ? 'Fermer' : 'Envoyer un message'}
+                </button>
+              </div>
+
+              {showMessageForm && (
+                <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-gray-200">
+                  <form onSubmit={handleSendMessage} className="space-y-4">
+                    <div>
+                      <label
+                        htmlFor="messageText"
+                        className="block text-sm font-medium text-gray-700 mb-2"
+                      >
+                        Votre message
+                      </label>
+                      <textarea
+                        id="messageText"
+                        value={messageText}
+                        onChange={e => setMessageText(e.target.value)}
+                        placeholder="Écrivez votre message ici..."
+                        rows={4}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-all duration-200 resize-none"
+                        required
+                        disabled={sendingMessage}
+                      />
+                    </div>
+                    <div className="flex justify-end space-x-3">
+                      <button
+                        type="button"
+                        onClick={() => setShowMessageForm(false)}
+                        className="px-4 sm:px-6 py-2 sm:py-3 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-full text-sm sm:text-base font-semibold transition-all duration-300"
+                      >
+                        Annuler
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={sendingMessage || !messageText.trim()}
+                        className="flex items-center px-4 sm:px-6 py-2 sm:py-3 bg-gradient-to-r from-pink-500 via-purple-500 to-violet-500 text-white rounded-full text-sm sm:text-base font-semibold hover:from-pink-600 hover:via-purple-600 hover:to-violet-600 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {sendingMessage ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                            Envoi...
+                          </>
+                        ) : (
+                          <>
+                            <FaPaperPlane className="mr-2" />
+                            Envoyer
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              )}
+
+              {!showMessageForm && (
+                <div className="text-center py-8">
+                  <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-pink-100 to-purple-100 rounded-full mb-4">
+                    <FaEnvelope className="text-2xl text-pink-600" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    Envoyez un message à{' '}
+                    {professional.userId?.firstName || professional.businessName}
+                  </h3>
+                  <p className="text-gray-600 text-sm sm:text-base">
+                    Posez vos questions, demandez des informations ou prenez rendez-vous directement
+                    avec ce professionnel.
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Planning Section */}
@@ -601,7 +741,7 @@ const ProfessionalDetailPage = () => {
             </div>
 
             {/* Statistics */}
-            <div className="bg-white/80 backdrop-blur-sm rounded-2xl sm:rounded-3xl shadow-xl p-6 sm:p-8 transform hover:shadow-2xl transition-all duration-500 border border-white/20">
+            {/* <div className="bg-white/80 backdrop-blur-sm rounded-2xl sm:rounded-3xl shadow-xl p-6 sm:p-8 transform hover:shadow-2xl transition-all duration-500 border border-white/20">
               <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-6 sm:mb-8 flex items-center">
                 <div className="h-1 sm:h-1.5 w-8 sm:w-10 bg-gradient-to-r from-pink-500 via-purple-500 to-violet-500 rounded-full mr-3 sm:mr-4 animate-pulse"></div>
                 Statistiques
@@ -644,7 +784,7 @@ const ProfessionalDetailPage = () => {
                   </div>
                 </div>
               </div>
-            </div>
+            </div> */}
 
             {/* Contact Info */}
             <div className="bg-white/80 backdrop-blur-sm rounded-2xl sm:rounded-3xl shadow-xl p-6 sm:p-8 transform hover:shadow-2xl transition-all duration-500 border border-white/20">
@@ -771,13 +911,44 @@ const ProfessionalDetailPage = () => {
               )}
             </div>
 
-            {/* Professional Content Links */}
+            {/* Quick Actions */}
             <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl p-8 transform hover:shadow-2xl transition-all duration-500 border border-white/20">
               <h3 className="text-2xl font-bold text-gray-900 mb-8 flex items-center">
                 <div className="h-1.5 w-10 bg-gradient-to-r from-pink-500 via-purple-500 to-violet-500 rounded-full mr-4 animate-pulse"></div>
-                Contenu du Professionnel
+                Actions Rapides
               </h3>
               <div className="space-y-6">
+                {/* Quick Message Button */}
+                <button
+                  onClick={toggleMessageForm}
+                  className="w-full flex items-center justify-between p-6 bg-gradient-to-br from-emerald-50 to-teal-50 rounded-2xl border border-emerald-200 hover:shadow-lg hover:bg-gradient-to-br hover:from-emerald-100 hover:to-teal-100 transition-all duration-300 transform hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-opacity-50"
+                >
+                  <div className="flex items-center">
+                    <div className="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-full flex items-center justify-center mr-4">
+                      <FaEnvelope className="text-white text-lg" />
+                    </div>
+                    <div>
+                      <h4 className="text-lg font-bold text-gray-900">Envoyer un message</h4>
+                      <p className="text-gray-600 text-sm">
+                        Contactez directement ce professionnel
+                      </p>
+                    </div>
+                  </div>
+                  <svg
+                    className="w-5 h-5 text-emerald-500"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 5l7 7-7 7"
+                    />
+                  </svg>
+                </button>
+
                 {/* Events Link */}
                 <Link
                   to={`/professionals/${professional._id}/events`}

@@ -176,7 +176,7 @@ async function createRealisticProducts() {
     }
 
     console.log(`🎉 SUCCÈS ! ${products.length} produits réalistes créés`);
-    console.log(`🛍️ Testez maintenant : https://holistic-maroc.vercel.app/products/[ID]`);
+    console.log(`🛍️ Testez maintenant : http://localhost:3000/products/[ID]`);
     
     mongoose.disconnect();
     console.log('👋 Déconnexion de MongoDB');

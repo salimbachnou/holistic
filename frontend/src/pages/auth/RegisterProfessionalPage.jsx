@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
 import LoadingSpinner from '../../components/Common/LoadingSpinner';
+import MapPicker from '../../components/Common/MapPicker';
 import { useAuth } from '../../contexts/AuthContext';
 
 const RegisterProfessionalPage = () => {
@@ -11,19 +12,39 @@ const RegisterProfessionalPage = () => {
     email: '',
     password: '',
     confirmPassword: '',
-    profession: '',
     specializations: '',
     phone: '',
     businessName: '',
     businessType: '',
     address: '',
+    coordinates: null,
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [passwordStrength, setPasswordStrength] = useState(0);
+  const [activityTypes, setActivityTypes] = useState([]);
 
   const { registerProfessional, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
+
+  // Fetch activity types on component mount
+  useEffect(() => {
+    const fetchActivityTypes = async () => {
+      try {
+        const response = await fetch(
+          `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/contact/activity-types`
+        );
+        const data = await response.json();
+        if (data.success) {
+          setActivityTypes(data.activityTypes);
+        }
+      } catch (error) {
+        console.error('Error fetching activity types:', error);
+      }
+    };
+
+    fetchActivityTypes();
+  }, []);
 
   const checkPasswordStrength = password => {
     let strength = 0;
@@ -58,6 +79,11 @@ const RegisterProfessionalPage = () => {
       return;
     }
 
+    if (!formData.address || !formData.coordinates) {
+      setError('Veuillez sélectionner une adresse sur la carte.');
+      return;
+    }
+
     setLoading(true);
     setError('');
 
@@ -66,16 +92,20 @@ const RegisterProfessionalPage = () => {
         `${formData.firstName} ${formData.lastName}`,
         formData.email,
         formData.password,
-        formData.profession,
         formData.specializations,
         formData.phone,
         formData.businessName,
         formData.businessType,
-        formData.address
+        formData.address,
+        formData.coordinates
       );
 
       // Redirection directe vers le tableau de bord professionnel
-      navigate('/dashboard/professional');
+      navigate('/dashboard/professional', {
+        state: {
+          showVerificationMessage: true,
+        },
+      });
     } catch (err) {
       setError(err.message || "Échec de l'inscription. Veuillez réessayer.");
     } finally {
@@ -90,7 +120,7 @@ const RegisterProfessionalPage = () => {
       const state = Math.random().toString(36).substring(7);
       // Stocker l'état dans localStorage pour vérification ultérieure
       localStorage.setItem('googleAuthState', state);
-      const redirectUrl = `${process.env.REACT_APP_API_URL || 'https://holistic-maroc-backend.onrender.com'}/api/auth/google?role=professional&state=${state}`;
+      const redirectUrl = `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/auth/google?role=professional&state=${state}`;
       window.location.href = redirectUrl;
     } catch (err) {
       setError(err.message || "Échec de l'inscription avec Google.");
@@ -427,56 +457,15 @@ const RegisterProfessionalPage = () => {
                       onChange={handleChange}
                     >
                       <option value="">Sélectionner un type</option>
-                      <option value="coach">Coach</option>
-                      <option value="therapist">Thérapeute</option>
-                      <option value="nutritionist">Nutritionniste</option>
-                      <option value="psychologist">Psychologue</option>
-                      <option value="fitness">Fitness</option>
-                      <option value="yoga">Yoga</option>
-                      <option value="meditation">Méditation</option>
-                      <option value="massage">Massage</option>
-                      <option value="acupuncture">Acupuncture</option>
-                      <option value="naturopathy">Naturopathie</option>
-                      <option value="osteopathy">Ostéopathie</option>
-                      <option value="beauty">Beauté</option>
-                      <option value="wellness">Bien-être</option>
-                      <option value="reiki">Reiki</option>
-                      <option value="hypnotherapy">Hypnothérapie</option>
-                      <option value="aromatherapy">Aromathérapie</option>
-                      <option value="reflexology">Réflexologie</option>
-                      <option value="sophrology">Sophrologie</option>
-                      <option value="spa">Spa</option>
-                      <option value="other">Autre</option>
+                      {activityTypes.map(type => (
+                        <option key={type.value} value={type.value}>
+                          {type.label}
+                        </option>
+                      ))}
                     </select>
                   </div>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                  <div>
-                    <label
-                      htmlFor="profession"
-                      className="block text-sm font-medium text-gray-700 mb-2"
-                    >
-                      Profession
-                    </label>
-                    <select
-                      id="profession"
-                      name="profession"
-                      required
-                      className="auth-input block w-full px-4 py-3 border border-gray-300 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm transition-colors duration-200"
-                      value={formData.profession}
-                      onChange={handleChange}
-                    >
-                      <option value="">Sélectionnez une profession</option>
-                      <option value="naturopathe">Naturopathe</option>
-                      <option value="nutritionniste">Nutritionniste</option>
-                      <option value="coach">Coach bien-être</option>
-                      <option value="yoga">Professeur de yoga</option>
-                      <option value="meditation">Instructeur de méditation</option>
-                      <option value="psychologue">Psychologue</option>
-                      <option value="masseur">Massothérapeute</option>
-                      <option value="autre">Autre</option>
-                    </select>
-                  </div>
+                <div className="mt-4">
                   <div>
                     <label
                       htmlFor="specializations"
@@ -496,18 +485,29 @@ const RegisterProfessionalPage = () => {
                   </div>
                 </div>
                 <div className="mt-4">
-                  <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
                     Adresse professionnelle
+                    {formData.address && formData.coordinates && (
+                      <span className="ml-2 text-green-600 text-xs">✓ Adresse sélectionnée</span>
+                    )}
                   </label>
-                  <input
-                    id="address"
-                    name="address"
-                    type="text"
-                    className="auth-input appearance-none relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm transition-colors duration-200"
-                    placeholder="Adresse complète"
-                    value={formData.address}
-                    onChange={handleChange}
+                  <MapPicker
+                    initialAddress={formData.address}
+                    initialCoordinates={formData.coordinates}
+                    onAddressSelected={({ address, coordinates }) => {
+                      setFormData(prev => ({
+                        ...prev,
+                        address,
+                        coordinates,
+                      }));
+                    }}
+                    height="300px"
                   />
+                  {formData.address && (
+                    <p className="mt-2 text-sm text-gray-600">
+                      <strong>Adresse sélectionnée :</strong> {formData.address}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>

@@ -1,7 +1,7 @@
 import { format, parseISO } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import React, { useState } from 'react';
-import { FaTimes, FaCalendarAlt, FaClock, FaEuroSign, FaUser } from 'react-icons/fa';
+import { FaTimes, FaCalendarAlt, FaClock, FaUser } from 'react-icons/fa';
 
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -43,7 +43,7 @@ const BookingModal = ({ session, professional, onClose, onSubmit }) => {
                 </span>
               </div>
               <div className="flex items-center">
-                <FaEuroSign className="text-gray-500 mr-2" />
+                <span className="text-gray-500 mr-2 text-sm font-medium">MAD</span>
                 <span className="text-gray-700">
                   {session.price?.amount || session.price} {session.price?.currency || 'MAD'}
                 </span>

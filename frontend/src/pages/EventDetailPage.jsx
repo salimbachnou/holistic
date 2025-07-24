@@ -134,9 +134,7 @@ const EventDetailPage = () => {
     const fetchEventDetails = async () => {
       try {
         setLoading(true);
-        const response = await _axios.get(
-          `https://holistic-maroc-backend.onrender.com/api/events/${id}`
-        );
+        const response = await _axios.get(`http://localhost:5000/api/events/${id}`);
 
         if (response.data && response.data.event) {
           const eventData = response.data.event;
@@ -300,13 +298,10 @@ const EventDetailPage = () => {
     setProcessingBooking(true);
 
     try {
-      const response = await _axios.post(
-        `https://holistic-maroc-backend.onrender.com/api/events/${id}/register`,
-        {
-          quantity: bookingQuantity,
-          note: bookingNote,
-        }
-      );
+      const response = await _axios.post(`http://localhost:5000/api/events/${id}/register`, {
+        quantity: bookingQuantity,
+        note: bookingNote,
+      });
 
       if (response.data && response.data.message) {
         toast.success(response.data.message);
@@ -317,9 +312,7 @@ const EventDetailPage = () => {
       closeBookingModal();
 
       // Refresh event details to update participant count
-      const updatedResponse = await _axios.get(
-        `https://holistic-maroc-backend.onrender.com/api/events/${id}`
-      );
+      const updatedResponse = await _axios.get(`http://localhost:5000/api/events/${id}`);
       if (updatedResponse.data && updatedResponse.data.event) {
         setEvent(updatedResponse.data.event);
 
@@ -353,9 +346,7 @@ const EventDetailPage = () => {
     setCancellingRegistration(true);
 
     try {
-      const response = await _axios.post(
-        `https://holistic-maroc-backend.onrender.com/api/events/${id}/cancel`
-      );
+      const response = await _axios.post(`http://localhost:5000/api/events/${id}/cancel`);
 
       if (response.data && response.data.message) {
         toast.success(response.data.message);
@@ -364,9 +355,7 @@ const EventDetailPage = () => {
       }
 
       // Refresh event details to update participant count
-      const updatedResponse = await _axios.get(
-        `https://holistic-maroc-backend.onrender.com/api/events/${id}`
-      );
+      const updatedResponse = await _axios.get(`http://localhost:5000/api/events/${id}`);
       if (updatedResponse.data && updatedResponse.data.event) {
         setEvent(updatedResponse.data.event);
 
@@ -399,7 +388,7 @@ const EventDetailPage = () => {
       if (userReview) {
         // Update existing review
         response = await _axios.put(
-          `https://holistic-maroc-backend.onrender.com/api/events/${id}/reviews/${userReview._id}`,
+          `http://localhost:5000/api/events/${id}/reviews/${userReview._id}`,
           {
             rating: reviewRating,
             comment: reviewComment,
@@ -407,13 +396,10 @@ const EventDetailPage = () => {
         );
       } else {
         // Create new review
-        response = await _axios.post(
-          `https://holistic-maroc-backend.onrender.com/api/events/${id}/reviews`,
-          {
-            rating: reviewRating,
-            comment: reviewComment,
-          }
-        );
+        response = await _axios.post(`http://localhost:5000/api/events/${id}/reviews`, {
+          rating: reviewRating,
+          comment: reviewComment,
+        });
       }
 
       if (response.data) {
@@ -421,9 +407,7 @@ const EventDetailPage = () => {
         setIsReviewModalOpen(false);
 
         // Refresh event details
-        const updatedResponse = await _axios.get(
-          `https://holistic-maroc-backend.onrender.com/api/events/${id}`
-        );
+        const updatedResponse = await _axios.get(`http://localhost:5000/api/events/${id}`);
         if (updatedResponse.data && updatedResponse.data.event) {
           setEvent(updatedResponse.data.event);
 
@@ -491,12 +475,16 @@ const EventDetailPage = () => {
     if (userParticipation && userParticipation.status === 'cancelled') {
       // Check if event is still available
       const activeParticipants =
-        event.participants?.filter(p => p.status !== 'cancelled').length || 0;
+        event.participants
+          ?.filter(p => p.status !== 'cancelled')
+          .reduce((total, p) => total + (p.quantity || 1), 0) || 0;
       return activeParticipants >= event.maxParticipants;
     }
 
     const activeParticipants =
-      event.participants?.filter(p => p.status !== 'cancelled').length || 0;
+      event.participants
+        ?.filter(p => p.status !== 'cancelled')
+        .reduce((total, p) => total + (p.quantity || 1), 0) || 0;
     return activeParticipants >= event.maxParticipants;
   };
 
@@ -572,7 +560,9 @@ const EventDetailPage = () => {
                   min="1"
                   max={
                     event.maxParticipants -
-                    (event.participants?.filter(p => p.status !== 'cancelled').length || 0)
+                    (event.participants
+                      ?.filter(p => p.status !== 'cancelled')
+                      .reduce((total, p) => total + (p.quantity || 1), 0) || 0)
                   }
                   value={bookingQuantity}
                   onChange={e => setBookingQuantity(parseInt(e.target.value) || 1)}
@@ -583,7 +573,9 @@ const EventDetailPage = () => {
                     setBookingQuantity(
                       Math.min(
                         event.maxParticipants -
-                          (event.participants?.filter(p => p.status !== 'cancelled').length || 0),
+                          (event.participants
+                            ?.filter(p => p.status !== 'cancelled')
+                            .reduce((total, p) => total + (p.quantity || 1), 0) || 0),
                         bookingQuantity + 1
                       )
                     )
@@ -592,7 +584,9 @@ const EventDetailPage = () => {
                   disabled={
                     bookingQuantity >=
                     event.maxParticipants -
-                      (event.participants?.filter(p => p.status !== 'cancelled').length || 0)
+                      (event.participants
+                        ?.filter(p => p.status !== 'cancelled')
+                        .reduce((total, p) => total + (p.quantity || 1), 0) || 0)
                   }
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -729,7 +723,7 @@ const EventDetailPage = () => {
   // Si aucune image n'est disponible, utiliser l'image par défaut
   if (eventImages.length === 0) {
     eventImages.push({
-      url: 'https://holistic-maroc-backend.onrender.com/uploads/events/default.jpg',
+      url: 'http://localhost:5000/uploads/events/default.jpg',
     });
   }
 
@@ -764,8 +758,7 @@ const EventDetailPage = () => {
                 className="w-full h-96 object-cover transform hover:scale-105 transition-transform duration-700"
                 onError={e => {
                   e.target.onerror = null;
-                  e.target.src =
-                    'https://holistic-maroc-backend.onrender.com/uploads/events/default.jpg';
+                  e.target.src = 'http://localhost:5000/uploads/events/default.jpg';
                 }}
               />
               {/* Gradient overlay */}
@@ -1232,7 +1225,9 @@ const EventDetailPage = () => {
                         <span className="text-gray-600">Places restantes</span>
                         <span className="font-semibold text-primary-600">
                           {event.maxParticipants -
-                            (event.participants?.filter(p => p.status !== 'cancelled').length || 0)}
+                            (event.participants
+                              ?.filter(p => p.status !== 'cancelled')
+                              .reduce((total, p) => total + (p.quantity || 1), 0) || 0)}
                         </span>
                       </div>
                     </div>

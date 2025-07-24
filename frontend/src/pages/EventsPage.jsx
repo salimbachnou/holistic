@@ -114,9 +114,7 @@ const EventsPage = () => {
         setLoading(true);
 
         // Fetch events
-        const eventsResponse = await _axios.get(
-          'https://holistic-maroc-backend.onrender.com/api/events'
-        );
+        const eventsResponse = await _axios.get('http://localhost:5000/api/events');
         const fetchedEvents = eventsResponse.data.events || [];
         setEvents(fetchedEvents);
         setFilteredEvents(fetchedEvents);
@@ -130,9 +128,7 @@ const EventsPage = () => {
         setExpiredEvents(expiredCount);
 
         // Fetch stats
-        const statsResponse = await _axios.get(
-          'https://holistic-maroc-backend.onrender.com/api/events/stats'
-        );
+        const statsResponse = await _axios.get('http://localhost:5000/api/events/stats');
         setStats(statsResponse.data.stats);
         setGrowth(statsResponse.data.stats.growth);
 
@@ -276,8 +272,7 @@ const EventsPage = () => {
         }).addTo(mapInstance);
 
         // Get event image URL
-        const defaultImageUrl =
-          'https://holistic-maroc-backend.onrender.com/uploads/events/1749834623480-860019398.jpg';
+        const defaultImageUrl = 'http://localhost:5000/uploads/events/1749834623480-860019398.jpg';
         let imageUrl = defaultImageUrl;
 
         if (event.images && event.images.length > 0) {
@@ -424,13 +419,18 @@ const EventsPage = () => {
     return `${event.pricing?.amount || event.price || 'Prix non spécifié'} ${event.pricing?.currency || event.currency || 'MAD'}`;
   };
 
+  const formatTime = dateString => {
+    if (!dateString) return 'Heure non spécifiée';
+    const date = new Date(dateString);
+    return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+  };
+
   // Event Card Component
   const EventCard = ({ event }) => {
     const isEventFavorite = isFavorite('events', event._id);
 
     // Utiliser directement l'image de la carte bancaire comme image par défaut
-    const defaultImageUrl =
-      'https://holistic-maroc-backend.onrender.com/uploads/events/1749834623480-860019398.jpg';
+    const defaultImageUrl = 'http://localhost:5000/uploads/events/1749834623480-860019398.jpg';
 
     // Amélioration de la logique pour trouver l'URL de l'image
     let imageUrl = defaultImageUrl;
@@ -462,7 +462,7 @@ const EventsPage = () => {
     const capacityText = event.capacity
       ? `${event.capacity.current || 0}/${event.capacity.maximum || 0} places`
       : event.maxParticipants
-        ? `${event.participants?.length || 0}/${event.maxParticipants} places`
+        ? `${event.participants?.filter(p => p.status !== 'cancelled').reduce((total, p) => total + (p.quantity || 1), 0) || 0}/${event.maxParticipants} places`
         : 'Places non spécifiées';
 
     // Gérer les informations du professionnel
@@ -547,7 +547,15 @@ const EventsPage = () => {
               </div>
               <div className="flex items-center text-sm text-gray-500">
                 <Clock className="w-4 h-4 mr-2 text-green-500" />
-                <span>{event.time || 'Heure non spécifiée'}</span>
+                <span>
+                  {event.time
+                    ? event.time
+                    : event.date
+                      ? formatTime(event.date)
+                      : event.schedule?.startDate
+                        ? formatTime(event.schedule.startDate)
+                        : 'Heure non spécifiée'}
+                </span>
               </div>
               <div className="flex items-center text-sm text-gray-500">
                 <MapPin className="w-4 h-4 mr-2 text-red-500" />

@@ -348,7 +348,11 @@ const HomePage = () => {
 
           <div className="mt-12 grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
             {professionals.map(professional => (
-              <div key={professional.id} className="lotus-card overflow-hidden">
+              <Link
+                key={professional.id}
+                to={`/professionals/${professional.id}`}
+                className="lotus-card overflow-hidden hover:shadow-lotus-hover transition-all duration-300 cursor-pointer"
+              >
                 <div className="h-48 w-full overflow-hidden">
                   <img
                     src={professional.image}
@@ -385,7 +389,7 @@ const HomePage = () => {
                     </p>
                   )}
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
 
@@ -415,7 +419,11 @@ const HomePage = () => {
 
           <div className="mt-12 grid grid-cols-1 gap-8 sm:grid-cols-3">
             {products.map(product => (
-              <div key={product.id} className="lotus-card overflow-hidden">
+              <Link
+                key={product.id}
+                to={`/products/${product.id}`}
+                className="lotus-card overflow-hidden hover:shadow-lotus-hover transition-all duration-300 cursor-pointer"
+              >
                 <div className="h-48 w-full overflow-hidden">
                   <img
                     src={product.image}
@@ -446,7 +454,7 @@ const HomePage = () => {
                     </div>
                   )}
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
 
@@ -476,7 +484,11 @@ const HomePage = () => {
 
           <div className="mt-12 grid grid-cols-1 gap-8 sm:grid-cols-3">
             {events.map(event => (
-              <div key={event.id} className="lotus-card overflow-hidden">
+              <Link
+                key={event.id}
+                to={`/events/${event.id}`}
+                className="lotus-card overflow-hidden hover:shadow-lotus-hover transition-all duration-300 cursor-pointer"
+              >
                 <div className="h-48 w-full overflow-hidden">
                   <img
                     src={event.image}
@@ -511,7 +523,7 @@ const HomePage = () => {
                     </div>
                   )}
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
 
@@ -638,7 +650,7 @@ const HomePage = () => {
                 </>
               ) : (
                 <Link
-                  to="/dashboard"
+                  to="/professionals"
                   className="btn-white text-primary-600 text-lg px-8 py-4 hover:bg-gray-100"
                 >
                   Accéder à mon espace
@@ -650,7 +662,7 @@ const HomePage = () => {
       </section>
 
       {/* Featured In Section */}
-      <section className="py-12 bg-gray-50">
+      {/* <section className="py-12 bg-gray-50">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-8">
             <h2 className="text-2xl font-medium text-gray-600">Ils parlent de nous</h2>
@@ -678,40 +690,7 @@ const HomePage = () => {
             />
           </div>
         </div>
-      </section>
-
-      {/* Newsletter Section */}
-      <section className="py-16 bg-white">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="bg-primary-50 rounded-2xl p-8 md:p-12 shadow-sm">
-            <div className="text-center">
-              <h2 className="text-2xl font-bold text-gray-900">Restez informé</h2>
-              <p className="mt-2 text-gray-600">
-                Inscrivez-vous à notre newsletter pour recevoir nos conseils bien-être et actualités
-              </p>
-            </div>
-            <div className="mt-6 max-w-md mx-auto">
-              <form onSubmit={handleNewsletterSubmit} className="flex flex-col sm:flex-row gap-3">
-                <input
-                  type="email"
-                  value={newsletterEmail}
-                  onChange={e => setNewsletterEmail(e.target.value)}
-                  placeholder="Votre adresse email"
-                  className="flex-grow px-4 py-3 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                  required
-                />
-                <button
-                  type="submit"
-                  disabled={newsletterLoading}
-                  className="btn-primary py-3 px-6 rounded-lg whitespace-nowrap disabled:opacity-50"
-                >
-                  {newsletterLoading ? 'Inscription...' : "S'inscrire"}
-                </button>
-              </form>
-            </div>
-          </div>
-        </div>
-      </section>
+      </section> */}
     </div>
   );
 };

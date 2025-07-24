@@ -2,15 +2,7 @@ import { format, parseISO } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import React, { useState } from 'react';
 import { toast } from 'react-hot-toast';
-import {
-  FaTimes,
-  FaCalendarAlt,
-  FaClock,
-  FaEuroSign,
-  FaUser,
-  FaLock,
-  FaEnvelope,
-} from 'react-icons/fa';
+import { FaTimes, FaCalendarAlt, FaClock, FaUser, FaLock, FaEnvelope } from 'react-icons/fa';
 
 import { useAuth } from '../../contexts/AuthContext';
 import { apiService } from '../../services/axiosConfig';
@@ -122,7 +114,7 @@ const EnhancedBookingModal = ({ session, professional, onClose, onSuccess }) => 
             </span>
           </div>
           <div className="flex items-center">
-            <FaEuroSign className="text-gray-500 mr-2" />
+            <span className="text-gray-500 mr-2 text-sm font-medium">MAD</span>
             <span className="text-gray-700">
               {session.price?.amount || session.price} {session.price?.currency || 'MAD'}
             </span>

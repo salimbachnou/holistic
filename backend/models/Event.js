@@ -67,9 +67,6 @@ const EventSchema = new Schema(
     }],
     address: {
       type: String,
-      required: function() {
-        return this.eventType === 'in_person';
-      },
     },
     locationCoordinates: {
       lat: Number,
@@ -123,6 +120,15 @@ const EventSchema = new Schema(
           type: String,
           enum: ['pending', 'confirmed', 'cancelled'],
           default: 'pending',
+        },
+        quantity: {
+          type: Number,
+          default: 1,
+          min: 1
+        },
+        note: {
+          type: String,
+          trim: true
         },
         createdAt: {
           type: Date,

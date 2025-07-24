@@ -1,69 +1,120 @@
 const mongoose = require('mongoose');
-const Professional = require('../models/Professional');
-const User = require('../models/User');
+const bcrypt = require('bcryptjs');
+require('dotenv').config();
 
-// Configuration de la base de données
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://salimbachnou:sasaSASA13%40%40@cluster0.b01i0ev.mongodb.net/holistic?retryWrites=true&w=majority&appName=Cluster0/holistic-platform';
+// Import des modèles
+const User = require('../models/User');
+const Professional = require('../models/Professional');
+
+const TEST_PROFESSIONAL = {
+  email: 'professional@test.com',
+  password: 'password123',
+  firstName: 'Test',
+  lastName: 'Professional',
+  phone: '0612345678',
+  businessName: 'Test Business',
+  businessType: 'wellness'
+};
 
 async function createTestProfessional() {
   try {
+    console.log('🔧 Création d\'un compte professionnel de test...\n');
+
     // Connexion à la base de données
-    await mongoose.connect(MONGODB_URI);
-    console.log('✅ Connexion à MongoDB réussie');
+    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/holistic');
+    console.log('✅ Connexion à la base de données établie');
 
-    // Créer un utilisateur de test
-    const testUser = new User({
-      email: 'test.professional@example.com',
-      firstName: 'Test',
-      lastName: 'Professional',
-      name: 'Test Professional',
-      password: 'testpassword123',
+    // Vérifier si l'utilisateur existe déjà
+    const existingUser = await User.findOne({ email: TEST_PROFESSIONAL.email });
+    if (existingUser) {
+      console.log('⚠️  Un utilisateur avec cet email existe déjà');
+      console.log('📧 Email:', TEST_PROFESSIONAL.email);
+      console.log('🔑 Mot de passe:', TEST_PROFESSIONAL.password);
+      console.log('👤 Nom:', `${TEST_PROFESSIONAL.firstName} ${TEST_PROFESSIONAL.lastName}`);
+      
+      // Vérifier si le profil professionnel existe
+      const existingProfessional = await Professional.findOne({ userId: existingUser._id });
+      if (existingProfessional) {
+        console.log('✅ Profil professionnel existe déjà');
+      } else {
+        console.log('⚠️  Profil professionnel manquant, création...');
+        const professional = new Professional({
+          userId: existingUser._id,
+          businessName: TEST_PROFESSIONAL.businessName,
+          businessType: TEST_PROFESSIONAL.businessType,
+          title: TEST_PROFESSIONAL.businessName,
+          description: 'Compte de test pour les tests API',
+          address: '123 Test Street, Test City',
+          contactInfo: {
+            email: TEST_PROFESSIONAL.email,
+            phone: TEST_PROFESSIONAL.phone
+          },
+          isVerified: true,
+          isActive: true
+        });
+        await professional.save();
+        console.log('✅ Profil professionnel créé');
+      }
+      return;
+    }
+
+    // Hasher le mot de passe
+    const hashedPassword = await bcrypt.hash(TEST_PROFESSIONAL.password, 12);
+
+    // Créer l'utilisateur
+    const user = new User({
+      email: TEST_PROFESSIONAL.email,
+      password: hashedPassword,
+      firstName: TEST_PROFESSIONAL.firstName,
+      lastName: TEST_PROFESSIONAL.lastName,
+      name: `${TEST_PROFESSIONAL.firstName} ${TEST_PROFESSIONAL.lastName}`,
+      phone: TEST_PROFESSIONAL.phone,
       role: 'professional',
-      isVerified: true
-    });
-
-    await testUser.save();
-    console.log('✅ Utilisateur de test créé:', testUser.email);
-
-    // Créer un professionnel de test
-    const testProfessional = new Professional({
-      userId: testUser._id,
-      businessName: 'Test Wellness Center',
-      businessType: 'yoga',
-      title: 'Professeur de Yoga',
-      description: 'Professionnel de test pour les images de couverture',
-      address: 'Casablanca, Morocco',
-      contactInfo: {
-        phone: '+212600000000',
-        email: 'test.professional@example.com'
-      },
-      businessAddress: {
-        street: '123 Test Street',
-        city: 'Casablanca',
-        country: 'Morocco',
-        coordinates: {
-          lat: 33.5731,
-          lng: -7.5898
-        }
-      },
-      isActive: true,
       isVerified: true,
-      coverImages: [] // Commencer avec un tableau vide
+      isActive: true
     });
 
-    await testProfessional.save();
-    console.log('✅ Professionnel de test créé:', testProfessional.businessName);
-    console.log('🆔 ID du professionnel:', testProfessional._id);
+    await user.save();
+    console.log('✅ Utilisateur créé avec succès');
 
-    console.log('\n✅ Professionnel de test créé avec succès !');
+    // Créer le profil professionnel
+    const professional = new Professional({
+      userId: user._id,
+      businessName: TEST_PROFESSIONAL.businessName,
+      businessType: TEST_PROFESSIONAL.businessType,
+      title: TEST_PROFESSIONAL.businessName,
+      description: 'Compte de test pour les tests API',
+      address: '123 Test Street, Test City',
+      contactInfo: {
+        email: TEST_PROFESSIONAL.email,
+        phone: TEST_PROFESSIONAL.phone
+      },
+      isVerified: true,
+      isActive: true
+    });
+
+    await professional.save();
+    console.log('✅ Profil professionnel créé avec succès');
+
+    console.log('\n🎉 Compte de test créé avec succès!');
+    console.log('📧 Email:', TEST_PROFESSIONAL.email);
+    console.log('🔑 Mot de passe:', TEST_PROFESSIONAL.password);
+    console.log('👤 Nom:', `${TEST_PROFESSIONAL.firstName} ${TEST_PROFESSIONAL.lastName}`);
+    console.log('\n💡 Vous pouvez maintenant utiliser ces identifiants dans le script de test');
 
   } catch (error) {
-    console.error('❌ Erreur lors de la création:', error);
+    console.error('❌ Erreur lors de la création du compte de test:', error.message);
   } finally {
     await mongoose.disconnect();
-    console.log('👋 Déconnexion de MongoDB');
+    console.log('🔌 Connexion à la base de données fermée');
   }
 }
 
-// Exécuter le script
+// Exécuter le script si appelé directement
+if (require.main === module) {
+  createTestProfessional();
+}
+
+module.exports = { createTestProfessional }; 
+createTestProfessional(); 
 createTestProfessional(); 

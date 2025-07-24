@@ -246,8 +246,8 @@ async function createTestEventsAndProducts() {
     console.log(`Professionnel ID: ${professional._id}`);
     console.log(`User ID du professionnel: ${professional.userId._id}`);
     console.log('Vous pouvez maintenant tester les pages:');
-    console.log(`- Événements: https://holistic-maroc.vercel.app/professionals/${professional._id}/events`);
-    console.log(`- Produits: https://holistic-maroc.vercel.app/professionals/${professional._id}/products`);
+    console.log(`- Événements: http://localhost:3000/professionals/${professional._id}/events`);
+    console.log(`- Produits: http://localhost:3000/professionals/${professional._id}/products`);
 
   } catch (error) {
     console.error('Erreur lors de la création des données de test:', error);

@@ -13,7 +13,7 @@ import {
   ArrowPathIcon,
 } from '@heroicons/react/24/outline';
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 
 import ProfessionalStatsDebugger from '../../components/professional/ProfessionalStatsDebugger';
@@ -24,12 +24,21 @@ import ProfessionalService from '../../services/professionalService';
 
 const ProfessionalDashboardPage = () => {
   const { user } = useAuth();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showVerificationMessage, setShowVerificationMessage] = useState(
+    location.state?.showVerificationMessage ||
+      searchParams.get('showVerification') === 'true' ||
+      false
+  );
+  const [professionalProfile, setProfessionalProfile] = useState(null);
 
   useEffect(() => {
     fetchDashboardStats();
+    fetchProfessionalProfile();
   }, []);
 
   const fetchDashboardStats = async () => {
@@ -55,6 +64,27 @@ const ProfessionalDashboardPage = () => {
       toast.error('Erreur lors du chargement des statistiques');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchProfessionalProfile = async () => {
+    try {
+      const result = await ProfessionalService.getProfessionalProfile();
+
+      if (result.success && result.data) {
+        setProfessionalProfile(result.data);
+
+        // Show verification message if professional is not verified and not dismissed
+        if (!result.data.isVerified) {
+          setShowVerificationMessage(true);
+        } else if (result.data.isVerified) {
+          setShowVerificationMessage(false);
+          // Clear the dismissed flag since account is now verified
+          localStorage.removeItem('verificationMessageDismissed');
+        }
+      }
+    } catch (err) {
+      console.error('Erreur lors du chargement du profil professionnel:', err);
     }
   };
 
@@ -90,6 +120,18 @@ const ProfessionalDashboardPage = () => {
       icon: UserIcon,
     },
     {
+      name: 'Réservations Événements',
+      description: 'Gérez les inscriptions et participants de vos événements',
+      href: '/dashboard/professional/event-bookings',
+      icon: CalendarDaysIcon,
+    },
+    {
+      name: 'Réservations de Sessions',
+      description: 'Gérez toutes les réservations de vos sessions',
+      href: '/dashboard/professional/session-bookings',
+      icon: CalendarDaysIcon,
+    },
+    {
       name: 'Paramètres',
       description: 'Configurer mon compte',
       href: '/dashboard/professional/settings',
@@ -112,6 +154,54 @@ const ProfessionalDashboardPage = () => {
   return (
     <div className="min-h-screen bg-gray-50 py-4 sm:py-8">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        {/* Verification Message */}
+        {showVerificationMessage &&
+          !localStorage.getItem('verificationMessageDismissed') &&
+          (!professionalProfile || !professionalProfile.isVerified) && (
+            <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path
+                      fillRule="evenodd"
+                      d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <h3 className="text-sm font-medium text-blue-800">
+                    Compte en attente de vérification
+                  </h3>
+                  <div className="mt-2 text-sm text-blue-700">
+                    <p>
+                      Votre inscription a été effectuée avec succès ! Votre compte sera vérifié par
+                      l'administrateur dans les plus brefs délais.
+                    </p>
+                    <p className="mt-2">
+                      <strong>Important :</strong> Vos sessions, événements et produits ne seront
+                      visibles par les clients qu'après la confirmation de votre compte par
+                      l'administrateur.
+                    </p>
+                  </div>
+                  <div className="mt-4">
+                    <button
+                      type="button"
+                      className="bg-blue-100 text-blue-800 px-3 py-1 rounded-md text-sm font-medium hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                      onClick={() => {
+                        setShowVerificationMessage(false);
+                        // Store in localStorage to remember user dismissed the message
+                        localStorage.setItem('verificationMessageDismissed', 'true');
+                      }}
+                    >
+                      Compris
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
         {/* Header */}
         <div className="mb-6 sm:mb-8">
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
@@ -133,21 +223,6 @@ const ProfessionalDashboardPage = () => {
               <span className="sm:hidden">Actualiser</span>
             </button>
           </div>
-          {error && (
-            <div className="mt-4 p-3 sm:p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
-                <p className="text-sm text-yellow-800">
-                  ⚠️ Certaines données peuvent ne pas être à jour. {error}
-                </p>
-                <button
-                  onClick={fetchDashboardStats}
-                  className="text-sm text-yellow-800 hover:text-yellow-900 underline self-start"
-                >
-                  Réessayer
-                </button>
-              </div>
-            </div>
-          )}
         </div>
 
         {/* Stats Grid */}
@@ -266,7 +341,7 @@ const ProfessionalDashboardPage = () => {
           <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4 sm:mb-6">
             Actions rapides
           </h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 sm:gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
             {quickActions.map(action => {
               const Icon = action.icon;
               return (

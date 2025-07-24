@@ -2,15 +2,12 @@ import axios from 'axios';
 
 // Create a custom axios instance with default configuration
 const api = axios.create({
-  baseURL:
-    process.env.NODE_ENV === 'production'
-      ? '/api' // In production, use relative path
-      : 'https://holistic-maroc-backend.onrender.com/api', // In development, use absolute URL
-  timeout: 10000,
+  baseURL: process.env.REACT_APP_API_URL || 'http://localhost:5000/api',
+  timeout: 30000, // Increased timeout for Render cold starts
   headers: {
     'Content-Type': 'application/json',
   },
-  withCredentials: true, // Important pour les cookies de session et CORS
+  withCredentials: false, // Set to false for cross-origin requests between Vercel and Render
 });
 
 // Add request interceptor for authentication
@@ -46,11 +43,11 @@ api.interceptors.response.use(
 
     // Vous pouvez ajouter d'autres gestionnaires d'erreurs HTTP ici
     if (error.response?.status === 404) {
-      console.log('Ressource introuvable');
+      // Resource not found - could trigger a notification or redirect
     }
 
     if (error.response?.status === 500) {
-      console.log('Erreur serveur interne');
+      // Internal server error - could trigger a global error handler
     }
 
     return Promise.reject(error);
@@ -195,7 +192,10 @@ export const apiService = {
         activities: data.activities || [],
         services: data.services || [],
       };
-
+      // Ajout bookingMode si présent
+      if (data.bookingMode) {
+        updateData.bookingMode = data.bookingMode;
+      }
       const response = await api.put('/professionals/profile', updateData);
 
       // Si la mise à jour est réussie, mais que certains champs manquent dans la réponse,
@@ -353,6 +353,19 @@ export const apiService = {
       return response.data;
     } catch (error) {
       console.error('Error replacing cover image:', error);
+      throw error;
+    }
+  },
+
+  // ===================== PROFILE STATISTICS =====================
+
+  // Récupérer les statistiques du profil professionnel
+  async getProfileStats() {
+    try {
+      const response = await api.get('/professionals/me/profile-stats');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching profile stats:', error);
       throw error;
     }
   },

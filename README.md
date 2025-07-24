@@ -16,7 +16,7 @@ Pour lancer le projet complet (frontend et backend) avec une seule commande:
 
 Cette commande lancera simultanément:
 - Le backend sur http://localhost:5000
-- Le frontend sur https://holistic-maroc.vercel.app
+- Le frontend sur http://localhost:3000
 
 ## Commandes individuelles
 

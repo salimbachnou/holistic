@@ -20,8 +20,15 @@ const AuthCallbackPage = () => {
     if (token) {
       handleAuthCallback(token)
         .then(() => {
-          // Redirect to home page after successful authentication
-          window.location.href = '/';
+          // Check if this is a professional registration
+          const role = searchParams.get('role');
+          if (role === 'professional') {
+            // Redirect to professional dashboard with verification message
+            window.location.href = '/dashboard/professional?showVerification=true';
+          } else {
+            // Redirect to home page after successful authentication
+            window.location.href = '/';
+          }
         })
         .catch(error => {
           console.error('Auth callback error:', error);

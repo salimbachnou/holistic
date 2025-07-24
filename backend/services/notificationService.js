@@ -140,7 +140,7 @@ class NotificationService {
         'Nouvelle réservation',
         `${booking.client?.firstName || 'Client'} ${booking.client?.lastName || ''} - ${formattedDate} à ${formattedTime}`,
         'appointment_scheduled',
-        '/dashboard/professional/sessions',
+        '/dashboard/professional/session-bookings',
         {
           bookingId: booking._id,
           clientName: booking.client ? `${booking.client.firstName} ${booking.client.lastName}` : 'Client',

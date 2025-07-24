@@ -56,14 +56,10 @@ const createSessionValidation = [
     .isIn(['individual', 'group', 'online', 'workshop', 'retreat'])
     .withMessage('Invalid category'),
 
-  // Conditional validation for location
+  // Location is now optional for all session types
   body('location')
-    .custom((value, { req }) => {
-      if (req.body.category !== 'online' && (!value || value.trim() === '')) {
-        throw new Error('Location is required for non-online sessions');
-      }
-      return true;
-    }),
+    .optional()
+    .trim(),
 
   // Conditional validation for meeting link
   body('meetingLink')
@@ -159,13 +155,7 @@ const updateSessionValidation = [
 
   body('location')
     .optional()
-    .trim()
-    .custom((value, { req }) => {
-      if (req.body.category && req.body.category !== 'online' && (!value || value.trim() === '')) {
-        throw new Error('Location is required for non-online sessions');
-      }
-      return true;
-    }),
+    .trim(),
 
   body('meetingLink')
     .optional()

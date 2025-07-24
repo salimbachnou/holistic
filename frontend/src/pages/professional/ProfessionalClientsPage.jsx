@@ -29,6 +29,7 @@ const ProfessionalClientsPage = () => {
   const [clients, setClients] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [filterType, setFilterType] = useState('all');
   const [selectedClient, setSelectedClient] = useState(null);
   const [showClientDetails, setShowClientDetails] = useState(false);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
@@ -58,6 +59,7 @@ const ProfessionalClientsPage = () => {
           limit: pagination.limit,
           search: searchTerm,
           status: filterStatus,
+          type: filterType,
         },
       });
 
@@ -74,7 +76,7 @@ const ProfessionalClientsPage = () => {
       console.error('Error fetching clients:', error);
       setIsLoading(false);
     }
-  }, [token, searchTerm, filterStatus, pagination.page, pagination.limit]);
+  }, [token, searchTerm, filterStatus, filterType, pagination.page, pagination.limit]);
 
   // Debounce search term changes
   useEffect(() => {
@@ -99,6 +101,16 @@ const ProfessionalClientsPage = () => {
   // Handle filter status change
   const handleFilterChange = e => {
     setFilterStatus(e.target.value);
+    setPagination(prev => ({
+      ...prev,
+      page: 1,
+    }));
+    setShowMobileFilters(false);
+  };
+
+  // Handle filter type change
+  const handleFilterTypeChange = e => {
+    setFilterType(e.target.value);
     setPagination(prev => ({
       ...prev,
       page: 1,
@@ -258,7 +270,9 @@ const ProfessionalClientsPage = () => {
             </div>
 
             <div className="mt-6">
-              <h4 className="text-lg font-medium text-gray-900 mb-2">Sessions à venir</h4>
+              <h4 className="text-lg font-medium text-gray-900 mb-2">
+                Sessions et Événements à venir
+              </h4>
               {selectedClient.upcomingSessions && selectedClient.upcomingSessions.length > 0 ? (
                 <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
                   {selectedClient.upcomingSessions.map((session, index) => (
@@ -267,11 +281,31 @@ const ProfessionalClientsPage = () => {
                       className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border-b border-gray-200 last:border-b-0 space-y-2 sm:space-y-0"
                     >
                       <div className="text-center sm:text-left">
-                        <div className="font-medium text-gray-900 text-sm sm:text-base">
-                          {session.service}
+                        <div className="flex items-center gap-2">
+                          <div className="font-medium text-gray-900 text-sm sm:text-base">
+                            {session.service}
+                          </div>
+                          <span
+                            className={`px-2 py-0.5 rounded text-xs font-medium ${
+                              session.type === 'event'
+                                ? 'bg-purple-100 text-purple-800'
+                                : session.type === 'session'
+                                  ? 'bg-blue-100 text-blue-800'
+                                  : 'bg-green-100 text-green-800'
+                            }`}
+                          >
+                            {session.type === 'event'
+                              ? 'Événement'
+                              : session.type === 'session'
+                                ? 'Session'
+                                : 'Réservation'}
+                          </span>
                         </div>
                         <div className="text-sm text-gray-600">
                           {new Date(session.date).toLocaleDateString('fr-FR')} à {session.time}
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          {session.payment ? session.payment.toLocaleString() : '0'} MAD
                         </div>
                       </div>
                       <ProfessionalButton variant="ghost" size="sm">
@@ -282,13 +316,15 @@ const ProfessionalClientsPage = () => {
                 </div>
               ) : (
                 <div className="bg-gray-50 p-4 rounded-lg text-gray-500 text-center">
-                  Aucune session à venir
+                  Aucune session ou événement à venir
                 </div>
               )}
             </div>
 
             <div className="mt-6">
-              <h4 className="text-lg font-medium text-gray-900 mb-2">Historique des sessions</h4>
+              <h4 className="text-lg font-medium text-gray-900 mb-2">
+                Historique des sessions et événements
+              </h4>
               {selectedClient.pastSessions && selectedClient.pastSessions.length > 0 ? (
                 <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
                   {/* Desktop Table */}
@@ -301,6 +337,12 @@ const ProfessionalClientsPage = () => {
                             className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                           >
                             Date
+                          </th>
+                          <th
+                            scope="col"
+                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                          >
+                            Type
                           </th>
                           <th
                             scope="col"
@@ -328,6 +370,23 @@ const ProfessionalClientsPage = () => {
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                               {new Date(session.date).toLocaleDateString('fr-FR')}
                             </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span
+                                className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                  session.type === 'event'
+                                    ? 'bg-purple-100 text-purple-800'
+                                    : session.type === 'session'
+                                      ? 'bg-blue-100 text-blue-800'
+                                      : 'bg-green-100 text-green-800'
+                                }`}
+                              >
+                                {session.type === 'event'
+                                  ? 'Événement'
+                                  : session.type === 'session'
+                                    ? 'Session'
+                                    : 'Réservation'}
+                              </span>
+                            </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                               {session.service}
                             </td>
@@ -337,7 +396,7 @@ const ProfessionalClientsPage = () => {
                             <td className="px-6 py-4 whitespace-nowrap">
                               <span
                                 className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                                  session.status === 'completed'
+                                  session.status === 'completed' || session.status === 'confirmed'
                                     ? 'bg-green-100 text-green-800'
                                     : session.status === 'cancelled'
                                       ? 'bg-red-100 text-red-800'
@@ -346,7 +405,7 @@ const ProfessionalClientsPage = () => {
                                         : 'bg-gray-100 text-gray-800'
                                 }`}
                               >
-                                {session.status === 'completed'
+                                {session.status === 'completed' || session.status === 'confirmed'
                                   ? 'Complété'
                                   : session.status === 'cancelled'
                                     ? 'Annulé'
@@ -367,8 +426,25 @@ const ProfessionalClientsPage = () => {
                       <div key={index} className="p-4 space-y-2">
                         <div className="flex justify-between items-start">
                           <div>
-                            <div className="font-medium text-gray-900 text-sm">
-                              {session.service}
+                            <div className="flex items-center gap-2">
+                              <div className="font-medium text-gray-900 text-sm">
+                                {session.service}
+                              </div>
+                              <span
+                                className={`px-2 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                  session.type === 'event'
+                                    ? 'bg-purple-100 text-purple-800'
+                                    : session.type === 'session'
+                                      ? 'bg-blue-100 text-blue-800'
+                                      : 'bg-green-100 text-green-800'
+                                }`}
+                              >
+                                {session.type === 'event'
+                                  ? 'Événement'
+                                  : session.type === 'session'
+                                    ? 'Session'
+                                    : 'Réservation'}
+                              </span>
                             </div>
                             <div className="text-sm text-gray-600">
                               {new Date(session.date).toLocaleDateString('fr-FR')}
@@ -380,7 +456,7 @@ const ProfessionalClientsPage = () => {
                             </div>
                             <span
                               className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                                session.status === 'completed'
+                                session.status === 'completed' || session.status === 'confirmed'
                                   ? 'bg-green-100 text-green-800'
                                   : session.status === 'cancelled'
                                     ? 'bg-red-100 text-red-800'
@@ -389,7 +465,7 @@ const ProfessionalClientsPage = () => {
                                       : 'bg-gray-100 text-gray-800'
                               }`}
                             >
-                              {session.status === 'completed'
+                              {session.status === 'completed' || session.status === 'confirmed'
                                 ? 'Complété'
                                 : session.status === 'cancelled'
                                   ? 'Annulé'
@@ -462,7 +538,14 @@ const ProfessionalClientsPage = () => {
                               </ul>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              {order.total ? order.total.toLocaleString() : '0'} MAD
+                              {order.totalAmount
+                                ? order.totalAmount.amount
+                                  ? order.totalAmount.amount.toLocaleString()
+                                  : '0'
+                                : order.total
+                                  ? order.total.toLocaleString()
+                                  : '0'}{' '}
+                              MAD
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
                               <span
@@ -533,7 +616,14 @@ const ProfessionalClientsPage = () => {
                           </ul>
                         </div>
                         <div className="font-medium text-gray-900">
-                          {order.total ? order.total.toLocaleString() : '0'} MAD
+                          {order.totalAmount
+                            ? order.totalAmount.amount
+                              ? order.totalAmount.amount.toLocaleString()
+                              : '0'
+                            : order.total
+                              ? order.total.toLocaleString()
+                              : '0'}{' '}
+                          MAD
                         </div>
                       </div>
                     ))}
@@ -544,25 +634,6 @@ const ProfessionalClientsPage = () => {
                   Aucune commande
                 </div>
               )}
-            </div>
-
-            <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-end">
-              <ProfessionalButton
-                variant="ghost"
-                icon={EnvelopeIcon}
-                onClick={() => handleSendMessage(selectedClient.id)}
-                className="w-full sm:w-auto"
-              >
-                Envoyer un message
-              </ProfessionalButton>
-              <ProfessionalButton
-                variant="ghost"
-                icon={CalendarDaysIcon}
-                onClick={() => handleScheduleSession(selectedClient.id)}
-                className="w-full sm:w-auto"
-              >
-                Planifier une session
-              </ProfessionalButton>
             </div>
           </div>
         </div>
@@ -634,6 +705,24 @@ const ProfessionalClientsPage = () => {
                 <option value="all">Tous les clients</option>
                 <option value="active">Clients actifs</option>
                 <option value="inactive">Clients inactifs</option>
+              </select>
+            </div>
+            <div className="flex-shrink-0">
+              <label htmlFor="filterType" className="sr-only">
+                Filtrer par type
+              </label>
+              <select
+                id="filterType"
+                name="filterType"
+                className="block w-full pl-3 pr-10 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 text-sm sm:text-base"
+                value={filterType}
+                onChange={handleFilterTypeChange}
+              >
+                <option value="all">Tous les types</option>
+                <option value="session">Sessions uniquement</option>
+                <option value="event">Événements uniquement</option>
+                <option value="boutique">Boutique uniquement</option>
+                <option value="mixed">Clients mixtes</option>
               </select>
             </div>
           </div>
@@ -708,11 +797,37 @@ const ProfessionalClientsPage = () => {
                       </div>
                     </div>
                     <div className="col-span-2 flex items-center">
-                      <div className="text-sm text-gray-900">{client.totalSessions} sessions</div>
+                      <div className="text-sm text-gray-900">
+                        {client.totalSessions} sessions
+                        {client.tags && client.tags.length > 0 && (
+                          <div className="mt-1 flex flex-wrap gap-1">
+                            {client.tags.slice(0, 2).map((tag, idx) => (
+                              <span
+                                key={idx}
+                                className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-primary-100 text-primary-800"
+                              >
+                                {tag}
+                              </span>
+                            ))}
+                            {client.tags.length > 2 && (
+                              <span className="text-xs text-gray-500">
+                                +{client.tags.length - 2}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </div>
                     <div className="col-span-2 flex items-center">
                       <div className="text-sm text-gray-900">
-                        {client.totalSpent ? client.totalSpent.toLocaleString() : '0'} MAD
+                        <div className="font-medium">
+                          {client.totalSpent ? client.totalSpent.toLocaleString() : '0'} MAD
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {client.totalSessions > 0
+                            ? `Moy: ${Math.round(client.totalSpent / client.totalSessions).toLocaleString()} MAD/session`
+                            : 'Aucune session'}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -786,10 +901,21 @@ const ProfessionalClientsPage = () => {
                       )}
                     </div>
                     <div className="mt-2 flex items-center justify-between text-sm text-gray-500">
-                      <span>{client.totalSessions} sessions</span>
-                      <span>
-                        {client.totalSpent ? client.totalSpent.toLocaleString() : '0'} MAD
-                      </span>
+                      <div>
+                        <span>{client.totalSessions} sessions</span>
+                        {client.totalSessions > 0 && (
+                          <div className="text-xs text-gray-400">
+                            Moy:{' '}
+                            {Math.round(client.totalSpent / client.totalSessions).toLocaleString()}{' '}
+                            MAD/session
+                          </div>
+                        )}
+                      </div>
+                      <div className="text-right">
+                        <div className="font-medium text-gray-900">
+                          {client.totalSpent ? client.totalSpent.toLocaleString() : '0'} MAD
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -915,6 +1041,7 @@ const ProfessionalClientsPage = () => {
                 <p className="mt-1 text-xl sm:text-2xl font-semibold text-gray-900">
                   {stats.totalClients}
                 </p>
+                <p className="text-xs text-gray-500 mt-1">Sessions, Événements & Boutique</p>
               </div>
             </div>
           </div>
@@ -931,6 +1058,12 @@ const ProfessionalClientsPage = () => {
                 <p className="mt-1 text-xl sm:text-2xl font-semibold text-gray-900">
                   {stats.activeClients}
                 </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  {stats.totalClients > 0
+                    ? Math.round((stats.activeClients / stats.totalClients) * 100)
+                    : 0}
+                  % du total
+                </p>
               </div>
             </div>
           </div>
@@ -943,8 +1076,11 @@ const ProfessionalClientsPage = () => {
                 <CalendarDaysIcon className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600" />
               </div>
               <div className="ml-3 sm:ml-5">
-                <h3 className="text-base sm:text-lg font-medium text-gray-900">Sessions ce mois</h3>
-                <p className="mt-1 text-xl sm:text-2xl font-semibold text-gray-900">24</p>
+                <h3 className="text-base sm:text-lg font-medium text-gray-900">Revenu Total</h3>
+                <p className="mt-1 text-xl sm:text-2xl font-semibold text-gray-900">
+                  {stats.totalRevenue ? stats.totalRevenue.toLocaleString() : '0'} MAD
+                </p>
+                <p className="text-xs text-gray-500 mt-1">Toutes activités confondues</p>
               </div>
             </div>
           </div>
@@ -961,6 +1097,7 @@ const ProfessionalClientsPage = () => {
                 <p className="mt-1 text-xl sm:text-2xl font-semibold text-gray-900">
                   {stats.averageRevenue ? stats.averageRevenue.toLocaleString() : '0'} MAD
                 </p>
+                <p className="text-xs text-gray-500 mt-1">Par client</p>
               </div>
             </div>
           </div>

@@ -287,7 +287,31 @@ const ProfessionalNotificationsPage = () => {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between">
                     <a
-                      href={notification.link || '#'}
+                      href={(() => {
+                        // Déterminer la route de redirection selon le type de notification
+                        let redirectTo = notification.link || '#';
+
+                        // Rediriger vers les réservations de sessions pour les notifications de réservation
+                        if (
+                          notification.type === 'booking_request' ||
+                          notification.type === 'booking_confirmed' ||
+                          notification.type === 'booking_cancelled' ||
+                          notification.type === 'appointment_scheduled' ||
+                          notification.type === 'appointment_cancelled'
+                        ) {
+                          redirectTo = '/dashboard/professional/session-bookings';
+                        }
+
+                        // Rediriger vers les réservations d'événements pour les notifications d'événements
+                        if (
+                          notification.type === 'event_booking_request' ||
+                          notification.type === 'event_booking_cancelled'
+                        ) {
+                          redirectTo = '/dashboard/professional/event-bookings';
+                        }
+
+                        return redirectTo;
+                      })()}
                       className="text-base font-medium text-gray-900 hover:text-primary-600"
                       onClick={() => {
                         if (!notification.read) {

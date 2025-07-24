@@ -105,7 +105,8 @@ router.post('/', requireAuth, [
     // Check if user already booked this session
     const existingBooking = await Booking.findOne({
       client: req.user._id,
-      'service.sessionId': sessionId
+      'service.sessionId': sessionId,
+      status: { $ne: 'cancelled' } // <-- Permet de réserver à nouveau si la précédente est annulée
     });
 
     if (existingBooking) {
@@ -147,8 +148,7 @@ router.post('/', requireAuth, [
         } : undefined,
         onlineLink: session.category === 'online' ? session.meetingLink : undefined
       },
-      status: bookingType === 'message' ? 'pending' : 
-             (sessionId ? 'pending' : (professional.bookingMode === 'auto' ? 'confirmed' : 'pending')),
+      status: bookingType === 'message' ? 'pending' : (professional.bookingMode === 'auto' ? 'confirmed' : 'pending'),
       paymentStatus: 'pending',
       totalAmount: {
         amount: session.price,

@@ -7,6 +7,13 @@ class EventReviewService {
    */
   static async checkCompletedEvents() {
     try {
+      // Check if MongoDB is connected
+      const mongoose = require('mongoose');
+      if (mongoose.connection.readyState !== 1) {
+        console.log('⚠️ [EVENT-REVIEW] Skipping - MongoDB not connected');
+        return { eventsChecked: 0, notificationsSent: 0 };
+      }
+
       console.log('🔍 [EVENT-REVIEW] Checking for completed events...');
       
       const now = new Date();

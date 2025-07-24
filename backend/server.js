@@ -11,6 +11,9 @@ const path = require('path');
 const fs = require('fs');
 require('dotenv').config();
 
+// Import database connection middleware
+const { connectWithRetry, ensureDbConnected } = require('./middleware/dbConnection');
+
 // Load models
 require('./models/User');
 require('./models/Professional');
@@ -42,6 +45,7 @@ const notificationsRoutes = require('./routes/notifications');
 const reviewsRoutes = require('./routes/reviews');
 const orderReviewsRoutes = require('./routes/orderReviews');
 const homepageRoutes = require('./routes/homepage');
+const statsRoutes = require('./routes/stats'); // Add this line
 
 // Import passport configuration
 require('./config/passport');
@@ -50,7 +54,7 @@ const app = express();
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: {
-    origin: process.env.FRONTEND_URL || "https://holistic-maroc.vercel.app",
+    origin: process.env.FRONTEND_URL || "http://localhost:3000",
     methods: ["GET", "POST"],
     credentials: true
   }
@@ -92,7 +96,7 @@ if (!fs.existsSync(productImagesDir)) {
 
 // Configure CORS middleware with more permissive settings
 const corsOptions = {
-  origin: process.env.FRONTEND_URL || "https://holistic-maroc.vercel.app",
+  origin: process.env.FRONTEND_URL || "http://localhost:3000",
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
@@ -124,7 +128,7 @@ app.options('*', cors(corsOptions));
 // Serve static files from uploads directory
 app.use('/uploads', (req, res, next) => {
   // Set CORS headers specifically for static files
-  res.setHeader('Access-Control-Allow-Origin', process.env.FRONTEND_URL || 'https://holistic-maroc.vercel.app');
+  res.setHeader('Access-Control-Allow-Origin', process.env.FRONTEND_URL || 'http://localhost:3000');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   res.setHeader('Access-Control-Allow-Credentials', 'true');
@@ -135,11 +139,13 @@ app.use('/uploads', (req, res, next) => {
 // Session configuration
 app.use(session({
   secret: process.env.SESSION_SECRET || 'holistic-secret-key',
-  resave: false,
-  saveUninitialized: false,
+  resave: true,
+  saveUninitialized: true,
   cookie: {
     secure: process.env.NODE_ENV === 'production',
-    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    httpOnly: true,
+    sameSite: 'lax'
   }
 }));
 
@@ -147,10 +153,13 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 
-// MongoDB connection
-mongoose.connect(process.env.MONGODB_URI || 'mongodb+srv://salimbachnou:sasaSASA13%40%40@cluster0.b01i0ev.mongodb.net/holistic?retryWrites=true&w=majority&appName=Cluster0/holistic')
+// Apply database connection check middleware to all API routes
+app.use('/api', ensureDbConnected);
+
+// Replace the existing MongoDB connection with our enhanced version
+connectWithRetry()
 .then(async () => {
-  console.log('MongoDB connected successfully');
+  console.log('MongoDB connected successfully via middleware');
   
   // Create admin account if it doesn't exist
   try {
@@ -165,7 +174,7 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb+srv://salimbachnou:sasaSASA
 
 // Special CORS handling for auth endpoint
 app.use('/api/auth/me/jwt', process.env.NODE_ENV === 'production' ? authJwtLimiter : (req, res, next) => next(), (req, res, next) => {
-  res.setHeader('Access-Control-Allow-Origin', process.env.FRONTEND_URL || 'https://holistic-maroc.vercel.app');
+  res.setHeader('Access-Control-Allow-Origin', process.env.FRONTEND_URL || 'http://localhost:3000');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   res.setHeader('Access-Control-Allow-Credentials', 'true');
@@ -179,7 +188,7 @@ app.use('/api/auth/me/jwt', process.env.NODE_ENV === 'production' ? authJwtLimit
 
 // Global middleware to ensure CORS headers are always sent
 app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', process.env.FRONTEND_URL || 'https://holistic-maroc.vercel.app');
+  res.header('Access-Control-Allow-Origin', process.env.FRONTEND_URL || 'http://localhost:3000');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
   res.header('Access-Control-Allow-Credentials', 'true');
@@ -207,6 +216,7 @@ app.use('/api/notifications', notificationsRoutes);
 app.use('/api/reviews', reviewsRoutes);
 app.use('/api/order-reviews', orderReviewsRoutes);
 app.use('/api/homepage', homepageRoutes);
+app.use('/api/stats', statsRoutes); // Add this line
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
@@ -279,26 +289,66 @@ httpServer.listen(PORT, () => {
   
   // Start automatic event review notifications (check every 6 hours)
   const EventReviewService = require('./services/eventReviewService');
+  const SessionService = require('./services/sessionService');
   
-  // Run immediately on startup (after 30 seconds delay)
-  setTimeout(async () => {
+  // Wait for MongoDB connection before starting services
+  const mongoose = require('mongoose');
+  
+  // Function to start services after database connection
+  const startServices = async () => {
     try {
       console.log('🚀 [STARTUP] Running initial event review check...');
       await EventReviewService.checkCompletedEvents();
+      
+      console.log('🚀 [STARTUP] Running initial session auto-completion check...');
+      await SessionService.autoCompleteExpiredSessions();
     } catch (error) {
-      console.error('❌ [STARTUP] Error in initial event review check:', error);
+      console.error('❌ [STARTUP] Error in initial checks:', error);
     }
-  }, 30000);
+  };
   
-  // Then run every 6 hours
+  // Start services when MongoDB is connected
+  if (mongoose.connection.readyState === 1) {
+    // Already connected, start services immediately
+    setTimeout(startServices, 5000); // 5 second delay
+  } else {
+    // Wait for connection
+    mongoose.connection.once('connected', () => {
+      console.log('✅ MongoDB connected, starting services...');
+      setTimeout(startServices, 5000); // 5 second delay after connection
+    });
+  }
+  
+  // Session auto-completion check (every 15 minutes)
   setInterval(async () => {
     try {
-      console.log('⏰ [CRON] Running scheduled event review check...');
-      await EventReviewService.checkCompletedEvents();
+      // Check if MongoDB is connected before running
+      if (mongoose.connection.readyState === 1) {
+        console.log('⏰ [CRON] Running session auto-completion check...');
+        await SessionService.autoCompleteExpiredSessions();
+      } else {
+        console.log('⚠️ [CRON] Skipping session auto-completion - MongoDB not connected');
+      }
+    } catch (error) {
+      console.error('❌ [CRON] Error in session auto-completion check:', error);
+    }
+  }, 15 * 60 * 1000); // 15 minutes in milliseconds
+  
+  // Event review check (every 6 hours)
+  setInterval(async () => {
+    try {
+      // Check if MongoDB is connected before running
+      if (mongoose.connection.readyState === 1) {
+        console.log('⏰ [CRON] Running scheduled event review check...');
+        await EventReviewService.checkCompletedEvents();
+      } else {
+        console.log('⚠️ [CRON] Skipping event review check - MongoDB not connected');
+      }
     } catch (error) {
       console.error('❌ [CRON] Error in scheduled event review check:', error);
     }
   }, 6 * 60 * 60 * 1000); // 6 hours in milliseconds
   
   console.log('✅ Event review notifications scheduler started (runs every 6 hours)');
+  console.log('✅ Session auto-completion scheduler started (runs every 15 minutes)');
 }); 

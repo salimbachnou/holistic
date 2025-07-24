@@ -1,7 +1,6 @@
 import {
   CheckIcon,
   ClockIcon,
-  CurrencyEuroIcon,
   ExclamationTriangleIcon,
   MagnifyingGlassIcon,
   MapPinIcon,
@@ -27,7 +26,6 @@ import {
   FaCalendarAlt,
   FaClock,
   FaEdit,
-  FaEuroSign,
   FaEye,
   FaLink,
   FaMapMarkerAlt,
@@ -89,6 +87,28 @@ const formatPercentage = (value, total) => {
   if (total === 0) return '0';
   const percentage = (value / total) * 100;
   return formatNumber(percentage, 1);
+};
+
+// Ajout utilitaires pour le statut d'approbation
+const getConfirmationStatusLabel = status => {
+  const map = {
+    pending: "En attente d'approbation",
+    approved: 'Approuvée',
+    rejected: 'Rejetée',
+  };
+  return map[status] || status;
+};
+const getConfirmationStatusClass = status => {
+  switch (status) {
+    case 'pending':
+      return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+    case 'approved':
+      return 'bg-green-100 text-green-800 border-green-200';
+    case 'rejected':
+      return 'bg-red-100 text-red-800 border-red-200';
+    default:
+      return 'bg-gray-100 text-gray-800 border-gray-200';
+  }
 };
 
 const ProfessionalSessionsPage = () => {
@@ -213,8 +233,7 @@ const ProfessionalSessionsPage = () => {
   const fetchProfessionalCategories = async () => {
     try {
       setLoadingCategories(true);
-      const API_URL =
-        process.env.REACT_APP_API_URL || 'https://holistic-maroc-backend.onrender.com';
+      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
       const token = localStorage.getItem('token');
 
       const response = await axios.get(`${API_URL}/api/professionals/me/categories`, {
@@ -235,8 +254,7 @@ const ProfessionalSessionsPage = () => {
   // Add function to add a new category
   const addCategory = async categoryName => {
     try {
-      const API_URL =
-        process.env.REACT_APP_API_URL || 'https://holistic-maroc-backend.onrender.com';
+      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
       const token = localStorage.getItem('token');
 
       const response = await axios.post(
@@ -264,8 +282,7 @@ const ProfessionalSessionsPage = () => {
   // Add function to delete a category
   const deleteCategory = async categoryName => {
     try {
-      const API_URL =
-        process.env.REACT_APP_API_URL || 'https://holistic-maroc-backend.onrender.com';
+      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
       const token = localStorage.getItem('token');
 
       const response = await axios.delete(
@@ -292,8 +309,7 @@ const ProfessionalSessionsPage = () => {
     try {
       setLoadingReviews(true);
       setReviewsError(null); // Reset error state
-      const API_URL =
-        process.env.REACT_APP_API_URL || 'https://holistic-maroc-backend.onrender.com';
+      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
       const token = localStorage.getItem('token');
 
       // Validation des paramètres
@@ -420,8 +436,7 @@ const ProfessionalSessionsPage = () => {
 
     try {
       setSubmittingResponse(true);
-      const API_URL =
-        process.env.REACT_APP_API_URL || 'https://holistic-maroc-backend.onrender.com';
+      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
       const token = localStorage.getItem('token');
 
       await axios.put(
@@ -454,8 +469,7 @@ const ProfessionalSessionsPage = () => {
   const fetchSessions = async () => {
     try {
       setLoading(true);
-      const API_URL =
-        process.env.REACT_APP_API_URL || 'https://holistic-maroc-backend.onrender.com';
+      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
       const token = localStorage.getItem('token');
 
       const response = await axios.get(`${API_URL}/api/sessions/professional`, {
@@ -475,8 +489,7 @@ const ProfessionalSessionsPage = () => {
   const fetchSessionBookings = async sessionId => {
     try {
       setIsLoadingRequests(true);
-      const API_URL =
-        process.env.REACT_APP_API_URL || 'https://holistic-maroc-backend.onrender.com';
+      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
       const token = localStorage.getItem('token');
 
       const response = await axios.get(`${API_URL}/api/sessions/${sessionId}/bookings`, {
@@ -513,8 +526,7 @@ const ProfessionalSessionsPage = () => {
 
   const fetchSpecificBooking = async bookingId => {
     try {
-      const API_URL =
-        process.env.REACT_APP_API_URL || 'https://holistic-maroc-backend.onrender.com';
+      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
       const token = localStorage.getItem('token');
 
       const response = await axios.get(`${API_URL}/api/bookings/${bookingId}`, {
@@ -608,13 +620,7 @@ const ProfessionalSessionsPage = () => {
         }
       }
 
-      if (formData.category !== 'online' && !formData.location) {
-        toast.error("L'adresse est obligatoire pour les sessions physiques");
-        return;
-      }
-
-      const API_URL =
-        process.env.REACT_APP_API_URL || 'https://holistic-maroc-backend.onrender.com';
+      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
       const token = localStorage.getItem('token');
 
       if (!token) {
@@ -796,8 +802,7 @@ const ProfessionalSessionsPage = () => {
 
   const handleDeleteConfirm = async () => {
     try {
-      const API_URL =
-        process.env.REACT_APP_API_URL || 'https://holistic-maroc-backend.onrender.com';
+      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
       const token = localStorage.getItem('token');
 
       await axios.put(
@@ -908,8 +913,7 @@ const ProfessionalSessionsPage = () => {
 
   const handleBookingStatusChange = async (bookingId, status, reason = '') => {
     try {
-      const API_URL =
-        process.env.REACT_APP_API_URL || 'https://holistic-maroc-backend.onrender.com';
+      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
       const token = localStorage.getItem('token');
 
       await axios.put(
@@ -938,8 +942,7 @@ const ProfessionalSessionsPage = () => {
 
   const handleCompleteSession = async sessionId => {
     try {
-      const API_URL =
-        process.env.REACT_APP_API_URL || 'https://holistic-maroc-backend.onrender.com';
+      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
       const token = localStorage.getItem('token');
 
       const response = await axios.put(
@@ -1337,98 +1340,107 @@ const ProfessionalSessionsPage = () => {
       </div>
 
       <div className="container mx-auto px-2 sm:px-4 lg:px-6 py-4 sm:py-6 lg:py-8">
-        {/* Statistiques améliorées - Responsive */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mb-6 sm:mb-8">
-          {/* Total des sessions */}
-          <div className="bg-white rounded-xl lg:rounded-2xl shadow-lg p-3 sm:p-4 lg:p-6 border border-slate-200/60 hover:shadow-xl transition-all duration-300">
-            <div className="flex items-center justify-between">
-              <div className="min-w-0 flex-1">
-                <p className="text-xs sm:text-sm font-medium text-slate-600 mb-1 truncate">
-                  Total Sessions
-                </p>
-                <p className="text-lg sm:text-xl lg:text-2xl font-bold text-slate-900">
-                  {sessionStats.total}
-                </p>
-                <p className="text-xs text-slate-500 flex items-center gap-1 mt-1">
-                  <CalendarIcon className="h-3 w-3 flex-shrink-0" />
-                  <span className="truncate hidden sm:inline">Sessions créées</span>
-                  <span className="truncate sm:hidden">Créées</span>
-                </p>
+        {/* Categories Management Section */}
+        <div className="bg-white rounded-2xl shadow-lg border border-slate-200/60">
+          <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-slate-100">
+            <div className="flex items-center gap-3">
+              <div className="bg-gradient-to-br from-slate-100 to-slate-200 p-2 rounded-lg flex-shrink-0">
+                <svg
+                  className="h-4 w-4 sm:h-5 sm:w-5 text-slate-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
+                  />
+                </svg>
               </div>
-              <div className="bg-gradient-to-br from-slate-100 to-slate-200 p-1.5 sm:p-2 lg:p-3 rounded-lg lg:rounded-xl flex-shrink-0">
-                <CalendarIcon className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 text-slate-600" />
+              <div className="min-w-0 flex-1">
+                <h2 className="text-base sm:text-lg font-semibold text-slate-900 truncate">
+                  Gestion des Catégories
+                </h2>
+                <p className="text-slate-600 text-xs sm:text-sm truncate">
+                  Organisez vos sessions avec des catégories personnalisées
+                </p>
               </div>
             </div>
           </div>
 
-          {/* Sessions programmées */}
-          <div className="bg-white rounded-xl lg:rounded-2xl shadow-lg p-3 sm:p-4 lg:p-6 border border-slate-200/60 hover:shadow-xl transition-all duration-300">
-            <div className="flex items-center justify-between">
-              <div className="min-w-0 flex-1">
-                <p className="text-xs sm:text-sm font-medium text-slate-600 mb-1 truncate">
-                  Programmées
-                </p>
-                <p className="text-lg sm:text-xl lg:text-2xl font-bold text-emerald-600">
-                  {sessionStats.scheduled}
-                </p>
-                <p className="text-xs text-emerald-600 flex items-center gap-1 mt-1">
-                  <ClockIcon className="h-3 w-3 flex-shrink-0" />
-                  <span className="truncate">
-                    {formatPercentage(sessionStats.scheduled, sessionStats.total)}%
-                  </span>
-                </p>
-              </div>
-              <div className="bg-gradient-to-br from-emerald-100 to-emerald-200 p-1.5 sm:p-2 lg:p-3 rounded-lg lg:rounded-xl flex-shrink-0">
-                <ClockIcon className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 text-emerald-600" />
-              </div>
+          <div className="p-4 sm:p-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
+              {availableCategories.map((category, index) => (
+                <div
+                  key={index}
+                  className="bg-gradient-to-br from-white to-slate-50 border border-slate-200 rounded-2xl p-4 sm:p-6 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 hover:border-slate-300"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center min-w-0 flex-1">
+                      <div className="w-8 h-8 sm:w-12 sm:h-12 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-xl sm:rounded-2xl flex items-center justify-center text-white text-sm sm:text-lg font-bold mr-3 sm:mr-4 shadow-lg flex-shrink-0">
+                        {category.charAt(0).toUpperCase()}
+                      </div>
+                      <span className="font-semibold text-slate-900 text-sm sm:text-lg truncate">
+                        {category}
+                      </span>
+                    </div>
+                    <button
+                      onClick={async () => {
+                        await deleteCategory(category);
+                      }}
+                      className="text-red-500 hover:text-red-700 transition-all duration-200 p-1 sm:p-2 rounded-xl hover:bg-red-50 transform hover:scale-110 flex-shrink-0"
+                      title="Supprimer cette catégorie"
+                    >
+                      <TrashIcon className="h-4 w-4 sm:h-5 sm:w-5" />
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
-          </div>
 
-          {/* Sessions terminées */}
-          <div className="bg-white rounded-xl lg:rounded-2xl shadow-lg p-3 sm:p-4 lg:p-6 border border-slate-200/60 hover:shadow-xl transition-all duration-300">
-            <div className="flex items-center justify-between">
-              <div className="min-w-0 flex-1">
-                <p className="text-xs sm:text-sm font-medium text-slate-600 mb-1 truncate">
-                  Terminées
-                </p>
-                <p className="text-lg sm:text-xl lg:text-2xl font-bold text-blue-600">
-                  {sessionStats.completed}
-                </p>
-                <p className="text-xs text-blue-600 flex items-center gap-1 mt-1">
-                  <CheckIcon className="h-3 w-3 flex-shrink-0" />
-                  <span className="truncate hidden sm:inline">Avec succès</span>
-                  <span className="truncate sm:hidden">OK</span>
-                </p>
-              </div>
-              <div className="bg-gradient-to-br from-blue-100 to-blue-200 p-1.5 sm:p-2 lg:p-3 rounded-lg lg:rounded-xl flex-shrink-0">
-                <CheckIcon className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 text-blue-600" />
-              </div>
-            </div>
-          </div>
-
-          {/* Revenus totaux */}
-          <div className="bg-white rounded-xl lg:rounded-2xl shadow-lg p-3 sm:p-4 lg:p-6 border border-slate-200/60 hover:shadow-xl transition-all duration-300 col-span-2 lg:col-span-1">
-            <div className="flex items-center justify-between">
-              <div className="min-w-0 flex-1">
-                <p className="text-xs sm:text-sm font-medium text-slate-600 mb-1 truncate">
-                  Revenus
-                </p>
-                <p className="text-base sm:text-lg lg:text-2xl font-bold text-purple-600 truncate">
-                  {formatNumber(sessionStats.totalRevenue)} MAD
-                </p>
-                <p className="text-xs text-purple-600 flex items-center gap-1 mt-1">
-                  <CurrencyEuroIcon className="h-3 w-3 flex-shrink-0" />
-                  <span className="truncate hidden sm:inline">Revenus totaux</span>
-                  <span className="truncate sm:hidden">Total</span>
-                </p>
-              </div>
-              <div className="bg-gradient-to-br from-purple-100 to-purple-200 p-1.5 sm:p-2 lg:p-3 rounded-lg lg:rounded-xl flex-shrink-0">
-                <CurrencyEuroIcon className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 text-purple-600" />
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-4 sm:p-6 border border-slate-200">
+              <h3 className="text-base sm:text-lg font-semibold text-slate-900 mb-3 sm:mb-4 flex items-center">
+                <PlusIcon className="h-4 w-4 sm:h-5 sm:w-5 mr-2 text-blue-600" />
+                <span className="truncate">Ajouter une nouvelle catégorie</span>
+              </h3>
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-3 sm:space-y-0 sm:space-x-4">
+                <input
+                  type="text"
+                  value={newCategory}
+                  onChange={e => setNewCategory(e.target.value)}
+                  placeholder="Nom de la nouvelle catégorie..."
+                  className="flex-1 px-3 sm:px-4 py-2 sm:py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-sm sm:text-lg transition-all duration-200"
+                  onKeyPress={async e => {
+                    if (e.key === 'Enter' && newCategory.trim()) {
+                      e.preventDefault();
+                      const success = await addCategory(newCategory.trim());
+                      if (success) {
+                        setNewCategory('');
+                      }
+                    }
+                  }}
+                />
+                <button
+                  onClick={async () => {
+                    if (newCategory.trim()) {
+                      const success = await addCategory(newCategory.trim());
+                      if (success) {
+                        setNewCategory('');
+                      }
+                    }
+                  }}
+                  className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-xl font-semibold flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-0.5 text-sm sm:text-base"
+                >
+                  <PlusIcon className="h-3 w-3 sm:h-4 sm:w-4" />
+                  <span className="hidden sm:inline">Ajouter</span>
+                  <span className="sm:hidden">Ajouter</span>
+                </button>
               </div>
             </div>
           </div>
         </div>
-
         {/* Filtres - Responsive */}
         <div className="bg-white rounded-xl lg:rounded-2xl shadow-lg p-4 sm:p-6 mb-6 sm:mb-8 border border-slate-200/60">
           <div className="flex items-center gap-3 mb-4 sm:mb-6">
@@ -1545,7 +1557,6 @@ const ProfessionalSessionsPage = () => {
             </div>
           </div>
         </div>
-
         {/* Content based on view mode */}
         {loading ? (
           <div className="flex flex-col items-center justify-center py-16">
@@ -1666,17 +1677,7 @@ const ProfessionalSessionsPage = () => {
                           {/* Badge de statut */}
                           <div className="flex items-center justify-between text-sm">
                             <span
-                              className={`inline-flex items-center px-2 sm:px-3 py-1 rounded-full text-xs font-semibold shadow-lg ${
-                                session.status === 'scheduled'
-                                  ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
-                                  : session.status === 'in_progress'
-                                    ? 'bg-amber-100 text-amber-800 border border-amber-200'
-                                    : session.status === 'completed'
-                                      ? 'bg-blue-100 text-blue-800 border border-blue-200'
-                                      : session.status === 'cancelled'
-                                        ? 'bg-red-100 text-red-800 border border-red-200'
-                                        : 'bg-slate-100 text-slate-800 border border-slate-200'
-                              }`}
+                              className={`px-2 py-1 rounded-full font-semibold border ${getStatusClass(session.status)}`}
                             >
                               <span className="hidden sm:inline">
                                 {session.status === 'scheduled' && '🕐 Programmée'}
@@ -1691,14 +1692,11 @@ const ProfessionalSessionsPage = () => {
                                 {session.status === 'cancelled' && '❌'}
                               </span>
                             </span>
-                            {session.reviews && session.reviews.length > 0 && (
-                              <div className="flex items-center gap-1 text-amber-500">
-                                <StarIcon className="h-3 w-3 sm:h-4 sm:w-4 fill-current" />
-                                <span className="text-xs sm:text-sm font-medium">
-                                  {formatNumber(getSessionReviewStats(session).averageRating, 1)}
-                                </span>
-                              </div>
-                            )}
+                            <span
+                              className={`ml-2 px-2 py-1 rounded-full font-semibold border ${getConfirmationStatusClass(session.confirmationStatus)}`}
+                            >
+                              {getConfirmationStatusLabel(session.confirmationStatus)}
+                            </span>
                           </div>
 
                           {/* Métadonnées */}
@@ -1714,7 +1712,7 @@ const ProfessionalSessionsPage = () => {
                           {/* Prix et participants */}
                           <div className="flex items-center justify-between pt-2 border-t border-slate-100">
                             <div className="flex items-center gap-1 min-w-0 flex-1">
-                              <CurrencyEuroIcon className="h-3 w-3 sm:h-4 sm:w-4 text-slate-500 flex-shrink-0" />
+                              <span className="text-slate-500 font-medium text-sm">MAD</span>
                               <span className="font-bold text-sm sm:text-lg text-slate-900 truncate">
                                 {formatCurrency(session.price)}
                               </span>
@@ -1820,7 +1818,7 @@ const ProfessionalSessionsPage = () => {
               <div className="bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl sm:rounded-2xl p-4 sm:p-6 lg:p-8 text-white shadow-lg sm:shadow-2xl hover:shadow-2xl sm:hover:shadow-3xl transition-all duration-300 transform hover:-translate-y-1 sm:hover:-translate-y-2">
                 <div className="flex items-center flex-col sm:flex-row text-center sm:text-left">
                   <div className="bg-white/20 rounded-xl sm:rounded-2xl p-2 sm:p-3 lg:p-4 mb-3 sm:mb-0 sm:mr-4 lg:mr-6 flex-shrink-0">
-                    <CurrencyEuroIcon className="h-6 w-6 sm:h-8 sm:w-8 lg:h-10 lg:w-10 mx-auto sm:mx-0" />
+                    <span className="text-2xl font-bold text-slate-900">MAD</span>
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-purple-100 font-medium text-sm sm:text-base">
@@ -2109,108 +2107,6 @@ const ProfessionalSessionsPage = () => {
             </div>
           </div>
         )}
-
-        {/* Categories Management Section */}
-        <div className="bg-white rounded-2xl shadow-lg border border-slate-200/60">
-          <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-slate-100">
-            <div className="flex items-center gap-3">
-              <div className="bg-gradient-to-br from-slate-100 to-slate-200 p-2 rounded-lg flex-shrink-0">
-                <svg
-                  className="h-4 w-4 sm:h-5 sm:w-5 text-slate-600"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
-                  />
-                </svg>
-              </div>
-              <div className="min-w-0 flex-1">
-                <h2 className="text-base sm:text-lg font-semibold text-slate-900 truncate">
-                  Gestion des Catégories
-                </h2>
-                <p className="text-slate-600 text-xs sm:text-sm truncate">
-                  Organisez vos sessions avec des catégories personnalisées
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="p-4 sm:p-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
-              {availableCategories.map((category, index) => (
-                <div
-                  key={index}
-                  className="bg-gradient-to-br from-white to-slate-50 border border-slate-200 rounded-2xl p-4 sm:p-6 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 hover:border-slate-300"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center min-w-0 flex-1">
-                      <div className="w-8 h-8 sm:w-12 sm:h-12 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-xl sm:rounded-2xl flex items-center justify-center text-white text-sm sm:text-lg font-bold mr-3 sm:mr-4 shadow-lg flex-shrink-0">
-                        {category.charAt(0).toUpperCase()}
-                      </div>
-                      <span className="font-semibold text-slate-900 text-sm sm:text-lg truncate">
-                        {category}
-                      </span>
-                    </div>
-                    <button
-                      onClick={async () => {
-                        await deleteCategory(category);
-                      }}
-                      className="text-red-500 hover:text-red-700 transition-all duration-200 p-1 sm:p-2 rounded-xl hover:bg-red-50 transform hover:scale-110 flex-shrink-0"
-                      title="Supprimer cette catégorie"
-                    >
-                      <TrashIcon className="h-4 w-4 sm:h-5 sm:w-5" />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-4 sm:p-6 border border-slate-200">
-              <h3 className="text-base sm:text-lg font-semibold text-slate-900 mb-3 sm:mb-4 flex items-center">
-                <PlusIcon className="h-4 w-4 sm:h-5 sm:w-5 mr-2 text-blue-600" />
-                <span className="truncate">Ajouter une nouvelle catégorie</span>
-              </h3>
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-3 sm:space-y-0 sm:space-x-4">
-                <input
-                  type="text"
-                  value={newCategory}
-                  onChange={e => setNewCategory(e.target.value)}
-                  placeholder="Nom de la nouvelle catégorie..."
-                  className="flex-1 px-3 sm:px-4 py-2 sm:py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-sm sm:text-lg transition-all duration-200"
-                  onKeyPress={async e => {
-                    if (e.key === 'Enter' && newCategory.trim()) {
-                      e.preventDefault();
-                      const success = await addCategory(newCategory.trim());
-                      if (success) {
-                        setNewCategory('');
-                      }
-                    }
-                  }}
-                />
-                <button
-                  onClick={async () => {
-                    if (newCategory.trim()) {
-                      const success = await addCategory(newCategory.trim());
-                      if (success) {
-                        setNewCategory('');
-                      }
-                    }
-                  }}
-                  className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-xl font-semibold flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-0.5 text-sm sm:text-base"
-                >
-                  <PlusIcon className="h-3 w-3 sm:h-4 sm:w-4" />
-                  <span className="hidden sm:inline">Ajouter</span>
-                  <span className="sm:hidden">Ajouter</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
 
       {/* Session Details Modal - Responsive */}
@@ -2251,6 +2147,11 @@ const ProfessionalSessionsPage = () => {
                         {selectedSession.status === 'cancelled' && '❌'}
                       </span>
                     </span>
+                    <span
+                      className={`ml-2 inline-flex items-center px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-semibold shadow-lg ${getConfirmationStatusClass(selectedSession.confirmationStatus)}`}
+                    >
+                      {getConfirmationStatusLabel(selectedSession.confirmationStatus)}
+                    </span>
 
                     {isSessionInPast(selectedSession.startTime) &&
                       selectedSession.status === 'scheduled' && (
@@ -2268,6 +2169,16 @@ const ProfessionalSessionsPage = () => {
                   <XMarkIcon className="h-5 w-5 sm:h-6 sm:w-6" />
                 </button>
               </div>
+              {['pending', 'rejected'].includes(selectedSession.confirmationStatus) && (
+                <div
+                  className={`my-4 p-3 rounded-lg text-sm font-semibold ${selectedSession.confirmationStatus === 'pending' ? 'bg-yellow-50 text-yellow-800 border border-yellow-200' : 'bg-red-50 text-red-800 border border-red-200'}`}
+                >
+                  {selectedSession.confirmationStatus === 'pending' &&
+                    "Cette session est en attente de validation par l'administrateur. Elle n'est pas encore visible par les clients."}
+                  {selectedSession.confirmationStatus === 'rejected' &&
+                    "Cette session a été rejetée par l'administrateur. Veuillez la modifier ou contacter le support."}
+                </div>
+              )}
             </div>
 
             <div className="p-4 sm:p-6 lg:p-8">
@@ -2331,7 +2242,7 @@ const ProfessionalSessionsPage = () => {
                 <div className="bg-gradient-to-br from-emerald-100 to-teal-200 p-4 sm:p-6 rounded-2xl border border-emerald-300 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
                   <div className="flex items-center text-emerald-700 mb-3">
                     <div className="bg-emerald-500/20 rounded-xl p-2 sm:p-3 mr-3 sm:mr-4">
-                      <CurrencyEuroIcon className="h-4 w-4 sm:h-6 sm:w-6" />
+                      <span className="text-slate-500 font-medium">MAD</span>
                     </div>
                     <span className="font-bold text-sm sm:text-lg">Prix</span>
                   </div>
@@ -2552,7 +2463,7 @@ const ProfessionalSessionsPage = () => {
               <div className="flex justify-between items-center">
                 <div>
                   <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-white">
-                    {isEditing ? '✏️ Modifier la session' : '✨ Créer une nouvelle session'}
+                    {isEditing ? 'Modifier la session' : 'Créer une nouvelle session'}
                   </h2>
                   <p className="text-indigo-100 mt-2 text-sm sm:text-base lg:text-lg">
                     {isEditing
@@ -2747,11 +2658,8 @@ const ProfessionalSessionsPage = () => {
                           className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors duration-200"
                           required
                         >
-                          <option value="individual">Individuelle</option>
-                          <option value="group">Groupe</option>
+                          <option value="presentiel">Présentiel</option>
                           <option value="online">En ligne</option>
-                          <option value="workshop">Atelier</option>
-                          <option value="retreat">Retraite</option>
                         </select>
                       </div>
                     </div>
@@ -2806,7 +2714,7 @@ const ProfessionalSessionsPage = () => {
                           htmlFor="location"
                           className="block text-sm font-bold text-gray-700 mb-2"
                         >
-                          Adresse du lieu *
+                          Adresse du lieu
                           <span className="text-xs font-normal text-gray-500 ml-2">
                             (Recherchez ou sélectionnez sur la carte)
                           </span>
@@ -2821,7 +2729,7 @@ const ProfessionalSessionsPage = () => {
                             onChange={handleAddressInputChange}
                             className="w-full px-12 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors duration-200"
                             placeholder="Entrez une adresse ou cliquez sur la carte"
-                            required={formData.category !== 'online'}
+                            required={false}
                           />
                           <MagnifyingGlassIcon className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
 

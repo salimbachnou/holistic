@@ -22,13 +22,7 @@ const validateProfessionalRequest = [
   body('email').isEmail().withMessage('Valid email is required'),
   body('phone').notEmpty().withMessage('Phone number is required'),
   body('businessCreationDate').isISO8601().withMessage('Valid date is required'),
-  body('activityType').isIn([
-    'yoga', 'meditation', 'naturopathy', 'massage', 'acupuncture',
-    'osteopathy', 'chiropractic', 'nutrition', 'psychology', 'coaching',
-    'reiki', 'aromatherapy', 'reflexology', 'ayurveda', 'hypnotherapy',
-    'sophrology', 'spa', 'beauty', 'wellness', 'fitness', 'therapist',
-    'nutritionist', 'other'
-  ]).withMessage('Valid activity type is required'),
+  body('activityType').notEmpty().withMessage('Valid activity type is required'),
   body('selectedPlan').isIn(['basic', 'premium', 'enterprise']).withMessage('Valid plan is required')
 ];
 
@@ -211,37 +205,22 @@ router.post('/information-request', validateInformationRequest, async (req, res)
 });
 
 // Get activity types for dropdown
-router.get('/activity-types', (req, res) => {
-  const activityTypes = [
-    { value: 'yoga', label: 'Yoga' },
-    { value: 'meditation', label: 'Méditation' },
-    { value: 'naturopathy', label: 'Naturopathie' },
-    { value: 'massage', label: 'Massage' },
-    { value: 'acupuncture', label: 'Acupuncture' },
-    { value: 'osteopathy', label: 'Ostéopathie' },
-    { value: 'chiropractic', label: 'Chiropractie' },
-    { value: 'nutrition', label: 'Nutrition' },
-    { value: 'psychology', label: 'Psychologie' },
-    { value: 'coaching', label: 'Coaching' },
-    { value: 'reiki', label: 'Reiki' },
-    { value: 'aromatherapy', label: 'Aromathérapie' },
-    { value: 'reflexology', label: 'Réflexologie' },
-    { value: 'ayurveda', label: 'Ayurveda' },
-    { value: 'hypnotherapy', label: 'Hypnothérapie' },
-    { value: 'sophrology', label: 'Sophrologie' },
-    { value: 'spa', label: 'Spa' },
-    { value: 'beauty', label: 'Beauté' },
-    { value: 'wellness', label: 'Bien-être' },
-    { value: 'fitness', label: 'Fitness' },
-    { value: 'therapist', label: 'Thérapeute' },
-    { value: 'nutritionist', label: 'Nutritionniste' },
-    { value: 'other', label: 'Autre' }
-  ];
-
-  res.json({
-    success: true,
-    activityTypes
-  });
+router.get('/activity-types', async (req, res) => {
+  try {
+    const ActivityType = require('../models/ActivityType');
+    const activityTypes = await ActivityType.getForDropdown();
+    
+    res.json({
+      success: true,
+      activityTypes
+    });
+  } catch (error) {
+    console.error('Error fetching activity types:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la récupération des types d\'activité'
+    });
+  }
 });
 
 // Get subscription plans

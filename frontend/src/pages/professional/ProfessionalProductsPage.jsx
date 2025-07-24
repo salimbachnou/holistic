@@ -7,7 +7,6 @@ import {
   ExclamationTriangleIcon,
   MagnifyingGlassIcon,
   TagIcon,
-  CurrencyEuroIcon,
   CubeIcon,
   PhotoIcon,
   ClockIcon,
@@ -69,7 +68,7 @@ const getImageUrl = imagePath => {
   }
 
   // Otherwise, prepend the API URL
-  const API_URL = process.env.REACT_APP_API_URL || 'https://holistic-maroc-backend.onrender.com';
+  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
   return `${API_URL}${imagePath}`;
 };
 
@@ -105,8 +104,8 @@ const ProfessionalProductsPage = () => {
     title: '',
     name: '',
     description: '',
-    price: 0,
-    stock: 0,
+    price: '',
+    stock: '',
     category: 'supplements',
     composition: '',
     specifications: [],
@@ -120,6 +119,7 @@ const ProfessionalProductsPage = () => {
   const [newSizeStock, setNewSizeStock] = useState(0);
   const [newSpecification, setNewSpecification] = useState('');
   const [newTag, setNewTag] = useState('');
+  const [stockType, setStockType] = useState('unique'); // 'unique' ou 'by_size'
   const fileInputRef = useRef(null);
 
   useEffect(() => {
@@ -130,8 +130,7 @@ const ProfessionalProductsPage = () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
-      const API_URL =
-        process.env.REACT_APP_API_URL || 'https://holistic-maroc-backend.onrender.com';
+      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
       const response = await axios.get(`${API_URL}/api/professionals/products`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -165,8 +164,7 @@ const ProfessionalProductsPage = () => {
     try {
       setLoadingOrders(true);
       const token = localStorage.getItem('token');
-      const API_URL =
-        process.env.REACT_APP_API_URL || 'https://holistic-maroc-backend.onrender.com';
+      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
       const response = await axios.get(`${API_URL}/api/orders/by-product/${productId}`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -187,8 +185,7 @@ const ProfessionalProductsPage = () => {
     try {
       setUpdatingOrderStatus(orderId);
       const token = localStorage.getItem('token');
-      const API_URL =
-        process.env.REACT_APP_API_URL || 'https://holistic-maroc-backend.onrender.com';
+      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
       await axios.put(
         `${API_URL}/api/orders/${orderId}/status`,
@@ -224,8 +221,7 @@ const ProfessionalProductsPage = () => {
     try {
       setUpdatingOrderStatus(orderId);
       const token = localStorage.getItem('token');
-      const API_URL =
-        process.env.REACT_APP_API_URL || 'https://holistic-maroc-backend.onrender.com';
+      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
       await axios.put(
         `${API_URL}/api/orders/${orderId}/deliver`,
@@ -316,8 +312,8 @@ const ProfessionalProductsPage = () => {
       title: '',
       name: '',
       description: '',
-      price: 0,
-      stock: 0,
+      price: '',
+      stock: '',
       category: 'supplements',
       composition: '',
       specifications: [],
@@ -327,6 +323,7 @@ const ProfessionalProductsPage = () => {
       images: [],
       customCategory: '',
     });
+    setStockType('unique');
     setIsEditing(false);
     setIsFormModalOpen(true);
   };
@@ -346,11 +343,24 @@ const ProfessionalProductsPage = () => {
       return;
     }
 
+    // Validation du type de stock
+    if (
+      stockType === 'by_size' &&
+      (!formData.sizeInventory || formData.sizeInventory.length === 0)
+    ) {
+      toast.error('Veuillez ajouter au moins une taille avec son stock');
+      return;
+    }
+
+    if (stockType === 'unique' && (formData.stock === '' || formData.stock === 0)) {
+      toast.error('Veuillez saisir le stock unique');
+      return;
+    }
+
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
-      const API_URL =
-        process.env.REACT_APP_API_URL || 'https://holistic-maroc-backend.onrender.com';
+      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
       const productData = {
         ...formData,
@@ -362,6 +372,11 @@ const ProfessionalProductsPage = () => {
           name: spec,
           value: spec,
         })),
+        // Convertir le prix en nombre
+        price: formData.price === '' ? 0 : parseFloat(formData.price) || 0,
+        // Convertir le stock en nombre selon le type
+        stock:
+          stockType === 'unique' ? (formData.stock === '' ? 0 : parseInt(formData.stock) || 0) : 0,
       };
 
       // Supprimer le champ customCategory des données envoyées (il n'est plus nécessaire)
@@ -888,7 +903,7 @@ const ProfessionalProductsPage = () => {
                           {/* Prix et stock */}
                           <div className="flex items-center justify-between pt-2 border-t border-slate-100">
                             <div className="flex items-center gap-1">
-                              <CurrencyEuroIcon className="h-4 w-4 text-slate-500" />
+                              <span className="text-slate-500 font-medium text-sm">MAD</span>
                               <span className="font-bold text-lg text-slate-900">
                                 {formatPrice(product.price, product.currency)}
                               </span>
@@ -1056,7 +1071,7 @@ const ProfessionalProductsPage = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="bg-slate-50 rounded-xl p-4">
                       <div className="flex items-center gap-2 mb-2">
-                        <CurrencyEuroIcon className="h-5 w-5 text-slate-500" />
+                        <span className="text-slate-500 font-medium text-sm">MAD</span>
                         <span className="text-sm font-medium text-slate-600">Prix</span>
                       </div>
                       <p className="text-2xl font-bold text-slate-900">
@@ -1196,12 +1211,18 @@ const ProfessionalProductsPage = () => {
                         setSelectedProduct(selectedProduct);
                         setIsFormModalOpen(true);
                         setIsEditing(true);
+                        // Détecter le type de stock basé sur les données du produit
+                        const hasSizeInventory =
+                          selectedProduct.sizeInventory && selectedProduct.sizeInventory.length > 0;
+                        const stockTypeValue = hasSizeInventory ? 'by_size' : 'unique';
+
+                        setStockType(stockTypeValue);
                         setFormData({
                           title: selectedProduct.title,
                           name: selectedProduct.name,
                           description: selectedProduct.description,
-                          price: selectedProduct.price,
-                          stock: selectedProduct.stock,
+                          price: selectedProduct.price === 0 ? '' : selectedProduct.price,
+                          stock: selectedProduct.stock === 0 ? '' : selectedProduct.stock,
                           category: selectedProduct.category,
                           composition: selectedProduct.composition || '',
                           specifications: (selectedProduct.specifications || []).map(spec =>
@@ -1359,7 +1380,7 @@ const ProfessionalProductsPage = () => {
                               </span>
                             </div>
                             <div className="flex items-center gap-2">
-                              <CurrencyEuroIcon className="h-4 w-4 text-slate-500" />
+                              <span className="text-slate-500 font-medium text-xs">MAD</span>
                               <span className="text-sm font-semibold text-slate-900">
                                 {order.totalAmount?.amount || order.totalAmount}{' '}
                                 {order.totalAmount?.currency || 'MAD'}
@@ -1775,9 +1796,13 @@ const ProfessionalProductsPage = () => {
                         min="0"
                         step="0.01"
                         value={formData.price}
-                        onChange={e =>
-                          setFormData(prev => ({ ...prev, price: parseFloat(e.target.value) || 0 }))
-                        }
+                        onChange={e => {
+                          const value = e.target.value;
+                          setFormData(prev => ({
+                            ...prev,
+                            price: value === '' ? '' : parseFloat(value) || 0,
+                          }));
+                        }}
                         className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
                         placeholder="0.00"
                       />
@@ -1785,21 +1810,42 @@ const ProfessionalProductsPage = () => {
 
                     <div>
                       <label className="block text-sm font-medium text-slate-700 mb-2">
-                        Stock *
+                        Type de stock *
+                      </label>
+                      <select
+                        value={stockType}
+                        onChange={e => setStockType(e.target.value)}
+                        className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                      >
+                        <option value="unique">Stock unique</option>
+                        <option value="by_size">Par taille</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Stock unique */}
+                  {stockType === 'unique' && (
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        Stock unique *
                       </label>
                       <input
                         type="number"
                         required
                         min="0"
                         value={formData.stock}
-                        onChange={e =>
-                          setFormData(prev => ({ ...prev, stock: parseInt(e.target.value) || 0 }))
-                        }
+                        onChange={e => {
+                          const value = e.target.value;
+                          setFormData(prev => ({
+                            ...prev,
+                            stock: value === '' ? '' : parseInt(value) || 0,
+                          }));
+                        }}
                         className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
                         placeholder="0"
                       />
                     </div>
-                  </div>
+                  )}
 
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-2">
@@ -1913,62 +1959,66 @@ const ProfessionalProductsPage = () => {
                     )}
                   </div>
 
-                  {/* Gestion des tailles */}
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">
-                      Tailles disponibles (optionnel)
-                    </label>
-                    <div className="space-y-3">
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          value={newSizeOption}
-                          onChange={e => setNewSizeOption(e.target.value)}
-                          placeholder="Taille (ex: S, M, L, 100ml)"
-                          className="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        />
-                        <input
-                          type="number"
-                          value={newSizeStock}
-                          onChange={e => setNewSizeStock(parseInt(e.target.value) || 0)}
-                          placeholder="Stock"
-                          min="0"
-                          className="w-24 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        />
-                        <button
-                          type="button"
-                          onClick={addSizeOption}
-                          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-                        >
-                          <PlusIcon className="h-4 w-4" />
-                        </button>
-                      </div>
-
-                      {/* Liste des tailles */}
-                      {formData.sizeInventory && formData.sizeInventory.length > 0 && (
-                        <div className="space-y-2">
-                          {formData.sizeInventory.map((size, index) => (
-                            <div
-                              key={index}
-                              className="flex items-center justify-between bg-slate-50 p-3 rounded-lg"
-                            >
-                              <span className="font-medium">{size.size}</span>
-                              <div className="flex items-center gap-2">
-                                <span className="text-sm text-slate-500">Stock: {size.stock}</span>
-                                <button
-                                  type="button"
-                                  onClick={() => removeSizeOption(index)}
-                                  className="text-red-600 hover:text-red-800 transition-colors"
-                                >
-                                  <TrashIcon className="h-4 w-4" />
-                                </button>
-                              </div>
-                            </div>
-                          ))}
+                  {/* Gestion des tailles - affiché seulement si type de stock = by_size */}
+                  {stockType === 'by_size' && (
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        Tailles disponibles *
+                      </label>
+                      <div className="space-y-3">
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={newSizeOption}
+                            onChange={e => setNewSizeOption(e.target.value)}
+                            placeholder="Taille (ex: S, M, L, 100ml)"
+                            className="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          />
+                          <input
+                            type="number"
+                            value={newSizeStock}
+                            onChange={e => setNewSizeStock(parseInt(e.target.value) || 0)}
+                            placeholder="Stock"
+                            min="0"
+                            className="w-24 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          />
+                          <button
+                            type="button"
+                            onClick={addSizeOption}
+                            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                          >
+                            <PlusIcon className="h-4 w-4" />
+                          </button>
                         </div>
-                      )}
+
+                        {/* Liste des tailles */}
+                        {formData.sizeInventory && formData.sizeInventory.length > 0 && (
+                          <div className="space-y-2">
+                            {formData.sizeInventory.map((size, index) => (
+                              <div
+                                key={index}
+                                className="flex items-center justify-between bg-slate-50 p-3 rounded-lg"
+                              >
+                                <span className="font-medium">{size.size}</span>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm text-slate-500">
+                                    Stock: {size.stock}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => removeSizeOption(index)}
+                                    className="text-red-600 hover:text-red-800 transition-colors"
+                                  >
+                                    <TrashIcon className="h-4 w-4" />
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
+                  )}
 
                   {/* Gestion des spécifications */}
                   <div>
