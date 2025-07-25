@@ -195,7 +195,7 @@ const settingsSchema = new mongoose.Schema({
       },
       faviconUrl: {
         type: String,
-        default: '/favicon.ico'
+        default: '/logo.png'
       },
       customCSS: {
         type: String,

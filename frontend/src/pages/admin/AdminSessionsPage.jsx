@@ -45,7 +45,8 @@ const AdminSessionsPage = () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
-      const BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      const BASE_URL =
+        process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
       const response = await axios.get(`${BASE_URL}/api/admin/sessions`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -74,7 +75,8 @@ const AdminSessionsPage = () => {
   const handleUpdateStatus = async (sessionId, status) => {
     try {
       const token = localStorage.getItem('token');
-      const BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      const BASE_URL =
+        process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
       await axios.put(
         `${BASE_URL}/api/admin/sessions/${sessionId}/status`,
@@ -93,7 +95,8 @@ const AdminSessionsPage = () => {
   const checkSessionBookings = async sessionId => {
     try {
       const token = localStorage.getItem('token');
-      const BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      const BASE_URL =
+        process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
       const response = await axios.get(`${BASE_URL}/api/admin/sessions/${sessionId}/bookings`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -148,7 +151,8 @@ const AdminSessionsPage = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      const BASE_URL =
+        process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
       const response = await axios.delete(`${BASE_URL}/api/admin/sessions/${sessionId}`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -183,7 +187,8 @@ const AdminSessionsPage = () => {
   const handleApproveSession = async sessionId => {
     try {
       const token = localStorage.getItem('token');
-      const BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      const BASE_URL =
+        process.env.REACT_APP_API_URL || 'http://localhost:5000';
       await axios.put(
         `${BASE_URL}/api/admin/sessions/${sessionId}/approve`,
         {},
@@ -201,7 +206,8 @@ const AdminSessionsPage = () => {
     if (!window.confirm('Êtes-vous sûr de vouloir rejeter cette session ?')) return;
     try {
       const token = localStorage.getItem('token');
-      const BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      const BASE_URL =
+        process.env.REACT_APP_API_URL || 'http://localhost:5000';
       await axios.put(
         `${BASE_URL}/api/admin/sessions/${sessionId}/reject`,
         {},
@@ -249,7 +255,8 @@ const AdminSessionsPage = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      const BASE_URL =
+        process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
       await axios.put(
         `${BASE_URL}/api/admin/bookings/${bookingId}/cancel`,

@@ -265,7 +265,8 @@ const ProfessionalMessagesPage = () => {
       return;
     }
 
-    const SOCKET_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+    const SOCKET_URL =
+      process.env.REACT_APP_API_URL || 'http://localhost:5000';
     socketRef.current = io(SOCKET_URL, {
       reconnectionAttempts: 5,
       reconnectionDelay: 1000,
@@ -444,7 +445,8 @@ const ProfessionalMessagesPage = () => {
         return;
       }
 
-      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      const API_URL =
+        process.env.REACT_APP_API_URL || 'http://localhost:5000';
       const response = await axios.get(`${API_URL}/api/messages/conversations`, {
         headers: { Authorization: `Bearer ${token}` },
       });

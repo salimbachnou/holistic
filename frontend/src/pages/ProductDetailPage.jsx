@@ -70,7 +70,9 @@ const ProductDetailPage = () => {
       setLoading(true);
       setError(null);
 
-      const response = await axios.get(`http://localhost:5000/api/products/${id}`);
+      const response = await axios.get(
+        `http://localhost:5000/api/products/${id}`
+      );
 
       // Handle both wrapped and direct response formats
       const productData = response.data.data || response.data;

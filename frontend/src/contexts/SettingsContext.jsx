@@ -118,7 +118,7 @@ const getDefaultSettings = () => ({
     primaryColor: '#059669',
     secondaryColor: '#0D9488',
     logoUrl: '/logo.png',
-    faviconUrl: '/favicon.ico',
+    faviconUrl: '/logo.png',
     enableDarkMode: false,
   },
   payments: {

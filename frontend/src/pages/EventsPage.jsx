@@ -114,7 +114,9 @@ const EventsPage = () => {
         setLoading(true);
 
         // Fetch events
-        const eventsResponse = await _axios.get('http://localhost:5000/api/events');
+        const eventsResponse = await _axios.get(
+          'http://localhost:5000/api/events'
+        );
         const fetchedEvents = eventsResponse.data.events || [];
         setEvents(fetchedEvents);
         setFilteredEvents(fetchedEvents);
@@ -128,7 +130,9 @@ const EventsPage = () => {
         setExpiredEvents(expiredCount);
 
         // Fetch stats
-        const statsResponse = await _axios.get('http://localhost:5000/api/events/stats');
+        const statsResponse = await _axios.get(
+          'http://localhost:5000/api/events/stats'
+        );
         setStats(statsResponse.data.stats);
         setGrowth(statsResponse.data.stats.growth);
 
@@ -272,7 +276,8 @@ const EventsPage = () => {
         }).addTo(mapInstance);
 
         // Get event image URL
-        const defaultImageUrl = 'http://localhost:5000/uploads/events/1749834623480-860019398.jpg';
+        const defaultImageUrl =
+          'http://localhost:5000/uploads/events/1749834623480-860019398.jpg';
         let imageUrl = defaultImageUrl;
 
         if (event.images && event.images.length > 0) {
@@ -430,7 +435,8 @@ const EventsPage = () => {
     const isEventFavorite = isFavorite('events', event._id);
 
     // Utiliser directement l'image de la carte bancaire comme image par défaut
-    const defaultImageUrl = 'http://localhost:5000/uploads/events/1749834623480-860019398.jpg';
+    const defaultImageUrl =
+      'http://localhost:5000/uploads/events/1749834623480-860019398.jpg';
 
     // Amélioration de la logique pour trouver l'URL de l'image
     let imageUrl = defaultImageUrl;
