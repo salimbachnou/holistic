@@ -97,12 +97,19 @@ export const AuthProvider = ({ children }) => {
           localStorage.setItem('welcomeToastShown', 'true');
         }
         return response.data.user;
+      } else if (response.data && response.data.requiresVerification) {
+        // Return the response data for verification handling
+        return response.data;
+      } else if (response.data && response.data.success && response.data.message) {
+        // Handle case where user exists but needs verification
+        return response.data;
       } else {
         throw new Error("Erreur lors de l'inscription. Veuillez réessayer.");
       }
     } catch (error) {
       console.error('Registration error:', error);
       const errorInfo = handleAPIError(error);
+      console.log('Error response:', error.response?.data);
       throw new Error(errorInfo.message || "Erreur lors de l'inscription. Veuillez réessayer.");
     } finally {
       setLoading(false);
@@ -152,11 +159,18 @@ export const AuthProvider = ({ children }) => {
           "Inscription professionnelle réussie ! Votre compte sera vérifié par l'administrateur dans les plus brefs délais."
         );
         return response.data.user;
+      } else if (response.data && response.data.requiresVerification) {
+        // Return the response data for verification handling
+        return response.data;
+      } else if (response.data && response.data.success && response.data.message) {
+        // Handle case where user exists but needs verification
+        return response.data;
       } else {
         throw new Error("Erreur lors de l'inscription. Veuillez réessayer.");
       }
     } catch (error) {
       console.error('Professional registration error:', error);
+      console.log('Error response:', error.response?.data);
       const errorInfo = handleAPIError(error);
       throw new Error(errorInfo.message || "Erreur lors de l'inscription. Veuillez réessayer.");
     } finally {

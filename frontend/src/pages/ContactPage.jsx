@@ -14,6 +14,52 @@ const ContactPage = () => {
     message: '',
   });
   const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState({});
+
+  const validateForm = () => {
+    const newErrors = {};
+
+    // First name validation
+    if (!formData.firstName.trim()) {
+      newErrors.firstName = 'Le prénom est requis';
+    } else if (formData.firstName.trim().length < 2) {
+      newErrors.firstName = 'Le prénom doit contenir au moins 2 caractères';
+    }
+
+    // Last name validation
+    if (!formData.lastName.trim()) {
+      newErrors.lastName = 'Le nom est requis';
+    } else if (formData.lastName.trim().length < 2) {
+      newErrors.lastName = 'Le nom doit contenir au moins 2 caractères';
+    }
+
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!formData.email.trim()) {
+      newErrors.email = "L'email est requis";
+    } else if (!emailRegex.test(formData.email.trim())) {
+      newErrors.email = "L'email n'est pas valide";
+    }
+
+    // Subject validation
+    if (!formData.subject.trim()) {
+      newErrors.subject = 'Le sujet est requis';
+    } else if (formData.subject.trim().length < 3) {
+      newErrors.subject = 'Le sujet doit contenir au moins 3 caractères';
+    }
+
+    // Message validation
+    if (!formData.message.trim()) {
+      newErrors.message = 'Le message est requis';
+    } else if (formData.message.trim().length < 10) {
+      newErrors.message = 'Le message doit contenir au moins 10 caractères';
+    } else if (formData.message.trim().length > 1000) {
+      newErrors.message = 'Le message ne peut pas dépasser 1000 caractères';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   const handleChange = e => {
     const { name, value } = e.target;
@@ -21,14 +67,37 @@ const ContactPage = () => {
       ...prev,
       [name]: value,
     }));
+
+    // Clear error when user starts typing
+    if (errors[name]) {
+      setErrors(prev => ({
+        ...prev,
+        [name]: '',
+      }));
+    }
   };
 
   const handleSubmit = async e => {
     e.preventDefault();
+
+    // Validate form before submission
+    if (!validateForm()) {
+      toast.error('Veuillez corriger les erreurs dans le formulaire');
+      return;
+    }
+
     setLoading(true);
 
     try {
-      const response = await apiService.post('/contact', formData);
+      const response = await apiService.post('/contact', {
+        firstName: formData.firstName.trim(),
+        lastName: formData.lastName.trim(),
+        email: formData.email.trim().toLowerCase(),
+        phone: formData.phone.trim() || undefined,
+        subject: formData.subject.trim(),
+        message: formData.message.trim(),
+      });
+
       if (response.data.success) {
         toast.success('Message envoyé avec succès !');
         setFormData({
@@ -39,14 +108,36 @@ const ContactPage = () => {
           subject: '',
           message: '',
         });
+        setErrors({});
       }
     } catch (error) {
-      toast.error(
-        error.response?.data?.message || "Une erreur s'est produite lors de l'envoi du message"
-      );
+      console.error('Contact form error:', error);
+
+      if (error.response?.data?.errors) {
+        // Handle validation errors from backend
+        const backendErrors = {};
+        error.response.data.errors.forEach(err => {
+          backendErrors[err.path] = err.msg;
+        });
+        setErrors(backendErrors);
+        toast.error('Veuillez corriger les erreurs dans le formulaire');
+      } else {
+        toast.error(
+          error.response?.data?.message || "Une erreur s'est produite lors de l'envoi du message"
+        );
+      }
     } finally {
       setLoading(false);
     }
+  };
+
+  const getInputClassName = fieldName => {
+    const baseClass =
+      'mt-1 block w-full rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500';
+    const errorClass = 'border-red-300 focus:border-red-500 focus:ring-red-500';
+    const normalClass = 'border-gray-300';
+
+    return `${baseClass} ${errors[fieldName] ? errorClass : normalClass}`;
   };
 
   return (
@@ -123,7 +214,7 @@ const ContactPage = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label htmlFor="firstName" className="block text-sm font-medium text-gray-700">
-                    Prénom
+                    Prénom *
                   </label>
                   <input
                     type="text"
@@ -131,14 +222,17 @@ const ContactPage = () => {
                     name="firstName"
                     value={formData.firstName}
                     onChange={handleChange}
-                    required
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                    className={getInputClassName('firstName')}
+                    placeholder="Votre prénom"
                   />
+                  {errors.firstName && (
+                    <p className="mt-1 text-sm text-red-600">{errors.firstName}</p>
+                  )}
                 </div>
 
                 <div>
                   <label htmlFor="lastName" className="block text-sm font-medium text-gray-700">
-                    Nom
+                    Nom *
                   </label>
                   <input
                     type="text"
@@ -146,16 +240,19 @@ const ContactPage = () => {
                     name="lastName"
                     value={formData.lastName}
                     onChange={handleChange}
-                    required
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                    className={getInputClassName('lastName')}
+                    placeholder="Votre nom"
                   />
+                  {errors.lastName && (
+                    <p className="mt-1 text-sm text-red-600">{errors.lastName}</p>
+                  )}
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                    Email
+                    Email *
                   </label>
                   <input
                     type="email"
@@ -163,9 +260,10 @@ const ContactPage = () => {
                     name="email"
                     value={formData.email}
                     onChange={handleChange}
-                    required
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                    className={getInputClassName('email')}
+                    placeholder="votre.email@exemple.com"
                   />
+                  {errors.email && <p className="mt-1 text-sm text-red-600">{errors.email}</p>}
                 </div>
 
                 <div>
@@ -178,14 +276,16 @@ const ContactPage = () => {
                     name="phone"
                     value={formData.phone}
                     onChange={handleChange}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                    className={getInputClassName('phone')}
+                    placeholder="+212 6XX-XXXXXX"
                   />
+                  {errors.phone && <p className="mt-1 text-sm text-red-600">{errors.phone}</p>}
                 </div>
               </div>
 
               <div>
                 <label htmlFor="subject" className="block text-sm font-medium text-gray-700">
-                  Sujet
+                  Sujet *
                 </label>
                 <input
                   type="text"
@@ -193,14 +293,15 @@ const ContactPage = () => {
                   name="subject"
                   value={formData.subject}
                   onChange={handleChange}
-                  required
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                  className={getInputClassName('subject')}
+                  placeholder="Sujet de votre message"
                 />
+                {errors.subject && <p className="mt-1 text-sm text-red-600">{errors.subject}</p>}
               </div>
 
               <div>
                 <label htmlFor="message" className="block text-sm font-medium text-gray-700">
-                  Message
+                  Message *
                 </label>
                 <textarea
                   id="message"
@@ -208,16 +309,20 @@ const ContactPage = () => {
                   rows="4"
                   value={formData.message}
                   onChange={handleChange}
-                  required
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                  className={getInputClassName('message')}
+                  placeholder="Votre message (minimum 10 caractères)"
                 ></textarea>
+                {errors.message && <p className="mt-1 text-sm text-red-600">{errors.message}</p>}
+                <p className="mt-1 text-sm text-gray-500">
+                  {formData.message.length}/1000 caractères
+                </p>
               </div>
 
               <div>
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:bg-primary-400"
+                  className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:bg-primary-400 disabled:cursor-not-allowed"
                 >
                   {loading ? 'Envoi en cours...' : 'Envoyer le message'}
                 </button>

@@ -238,15 +238,11 @@ const MessagesPage = () => {
         const formData = new FormData();
         formData.append('file', attachment.file);
 
-        const response = await _axios.post(
-          'http://localhost:5000/api/uploads/message',
-          formData,
-          {
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem('token')}`,
-            },
-          }
-        );
+        const response = await _axios.post('http://localhost:5000/api/uploads/message', formData, {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('token')}`,
+          },
+        });
 
         uploadedFiles.push({
           type: attachment.type,

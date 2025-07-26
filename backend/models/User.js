@@ -123,6 +123,23 @@ const userSchema = new mongoose.Schema({
     ref: 'User',
     default: null
   },
+  // Email verification fields
+  emailVerificationToken: {
+    type: String,
+    default: null
+  },
+  emailVerificationExpiry: {
+    type: Date,
+    default: null
+  },
+  emailVerified: {
+    type: Boolean,
+    default: false
+  },
+  emailVerifiedAt: {
+    type: Date,
+    default: null
+  },
   // Password reset fields
   resetPasswordToken: {
     type: String,

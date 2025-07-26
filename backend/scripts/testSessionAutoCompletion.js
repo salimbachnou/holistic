@@ -35,8 +35,7 @@ async function testSessionAutoCompletion() {
         price: 50,
         category: 'individual',
         professionalId: professional._id,
-        status: 'scheduled',
-        confirmationStatus: 'approved'
+        status: 'scheduled'
       },
       {
         title: 'Test Session - Expired 30 minutes ago',
@@ -47,8 +46,7 @@ async function testSessionAutoCompletion() {
         price: 50,
         category: 'individual',
         professionalId: professional._id,
-        status: 'scheduled',
-        confirmationStatus: 'approved'
+        status: 'scheduled'
       },
       {
         title: 'Test Session - Still active',
@@ -59,8 +57,7 @@ async function testSessionAutoCompletion() {
         price: 50,
         category: 'individual',
         professionalId: professional._id,
-        status: 'scheduled',
-        confirmationStatus: 'approved'
+        status: 'scheduled'
       }
     ];
     

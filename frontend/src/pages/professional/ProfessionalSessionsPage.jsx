@@ -89,28 +89,6 @@ const formatPercentage = (value, total) => {
   return formatNumber(percentage, 1);
 };
 
-// Ajout utilitaires pour le statut d'approbation
-const getConfirmationStatusLabel = status => {
-  const map = {
-    pending: "En attente d'approbation",
-    approved: 'Approuvée',
-    rejected: 'Rejetée',
-  };
-  return map[status] || status;
-};
-const getConfirmationStatusClass = status => {
-  switch (status) {
-    case 'pending':
-      return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-    case 'approved':
-      return 'bg-green-100 text-green-800 border-green-200';
-    case 'rejected':
-      return 'bg-red-100 text-red-800 border-red-200';
-    default:
-      return 'bg-gray-100 text-gray-800 border-gray-200';
-  }
-};
-
 const ProfessionalSessionsPage = () => {
   const { user } = useAuth();
 
@@ -233,8 +211,7 @@ const ProfessionalSessionsPage = () => {
   const fetchProfessionalCategories = async () => {
     try {
       setLoadingCategories(true);
-      const API_URL =
-        process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
       const token = localStorage.getItem('token');
 
       const response = await axios.get(`${API_URL}/api/professionals/me/categories`, {
@@ -255,8 +232,7 @@ const ProfessionalSessionsPage = () => {
   // Add function to add a new category
   const addCategory = async categoryName => {
     try {
-      const API_URL =
-        process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
       const token = localStorage.getItem('token');
 
       const response = await axios.post(
@@ -284,8 +260,7 @@ const ProfessionalSessionsPage = () => {
   // Add function to delete a category
   const deleteCategory = async categoryName => {
     try {
-      const API_URL =
-        process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
       const token = localStorage.getItem('token');
 
       const response = await axios.delete(
@@ -312,8 +287,7 @@ const ProfessionalSessionsPage = () => {
     try {
       setLoadingReviews(true);
       setReviewsError(null); // Reset error state
-      const API_URL =
-        process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
       const token = localStorage.getItem('token');
 
       // Validation des paramètres
@@ -440,8 +414,7 @@ const ProfessionalSessionsPage = () => {
 
     try {
       setSubmittingResponse(true);
-      const API_URL =
-        process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
       const token = localStorage.getItem('token');
 
       await axios.put(
@@ -474,8 +447,7 @@ const ProfessionalSessionsPage = () => {
   const fetchSessions = async () => {
     try {
       setLoading(true);
-      const API_URL =
-        process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
       const token = localStorage.getItem('token');
 
       const response = await axios.get(`${API_URL}/api/sessions/professional`, {
@@ -495,8 +467,7 @@ const ProfessionalSessionsPage = () => {
   const fetchSessionBookings = async sessionId => {
     try {
       setIsLoadingRequests(true);
-      const API_URL =
-        process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
       const token = localStorage.getItem('token');
 
       const response = await axios.get(`${API_URL}/api/sessions/${sessionId}/bookings`, {
@@ -533,8 +504,7 @@ const ProfessionalSessionsPage = () => {
 
   const fetchSpecificBooking = async bookingId => {
     try {
-      const API_URL =
-        process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
       const token = localStorage.getItem('token');
 
       const response = await axios.get(`${API_URL}/api/bookings/${bookingId}`, {
@@ -628,8 +598,7 @@ const ProfessionalSessionsPage = () => {
         }
       }
 
-      const API_URL =
-        process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
       const token = localStorage.getItem('token');
 
       if (!token) {
@@ -811,8 +780,7 @@ const ProfessionalSessionsPage = () => {
 
   const handleDeleteConfirm = async () => {
     try {
-      const API_URL =
-        process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
       const token = localStorage.getItem('token');
 
       await axios.put(
@@ -923,8 +891,7 @@ const ProfessionalSessionsPage = () => {
 
   const handleBookingStatusChange = async (bookingId, status, reason = '') => {
     try {
-      const API_URL =
-        process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
       const token = localStorage.getItem('token');
 
       await axios.put(
@@ -953,8 +920,7 @@ const ProfessionalSessionsPage = () => {
 
   const handleCompleteSession = async sessionId => {
     try {
-      const API_URL =
-        process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
       const token = localStorage.getItem('token');
 
       const response = await axios.put(
@@ -1686,31 +1652,6 @@ const ProfessionalSessionsPage = () => {
                             </p>
                           </div>
 
-                          {/* Badge de statut */}
-                          <div className="flex items-center justify-between text-sm">
-                            <span
-                              className={`px-2 py-1 rounded-full font-semibold border ${getStatusClass(session.status)}`}
-                            >
-                              <span className="hidden sm:inline">
-                                {session.status === 'scheduled' && '🕐 Programmée'}
-                                {session.status === 'in_progress' && '⚡ En cours'}
-                                {session.status === 'completed' && '✅ Terminée'}
-                                {session.status === 'cancelled' && '❌ Annulée'}
-                              </span>
-                              <span className="sm:hidden">
-                                {session.status === 'scheduled' && '🕐'}
-                                {session.status === 'in_progress' && '⚡'}
-                                {session.status === 'completed' && '✅'}
-                                {session.status === 'cancelled' && '❌'}
-                              </span>
-                            </span>
-                            <span
-                              className={`ml-2 px-2 py-1 rounded-full font-semibold border ${getConfirmationStatusClass(session.confirmationStatus)}`}
-                            >
-                              {getConfirmationStatusLabel(session.confirmationStatus)}
-                            </span>
-                          </div>
-
                           {/* Métadonnées */}
                           <div className="flex items-center justify-between text-xs sm:text-sm">
                             <div className="flex items-center gap-1 text-slate-500 min-w-0 flex-1">
@@ -2159,11 +2100,6 @@ const ProfessionalSessionsPage = () => {
                         {selectedSession.status === 'cancelled' && '❌'}
                       </span>
                     </span>
-                    <span
-                      className={`ml-2 inline-flex items-center px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-semibold shadow-lg ${getConfirmationStatusClass(selectedSession.confirmationStatus)}`}
-                    >
-                      {getConfirmationStatusLabel(selectedSession.confirmationStatus)}
-                    </span>
 
                     {isSessionInPast(selectedSession.startTime) &&
                       selectedSession.status === 'scheduled' && (
@@ -2181,16 +2117,6 @@ const ProfessionalSessionsPage = () => {
                   <XMarkIcon className="h-5 w-5 sm:h-6 sm:w-6" />
                 </button>
               </div>
-              {['pending', 'rejected'].includes(selectedSession.confirmationStatus) && (
-                <div
-                  className={`my-4 p-3 rounded-lg text-sm font-semibold ${selectedSession.confirmationStatus === 'pending' ? 'bg-yellow-50 text-yellow-800 border border-yellow-200' : 'bg-red-50 text-red-800 border border-red-200'}`}
-                >
-                  {selectedSession.confirmationStatus === 'pending' &&
-                    "Cette session est en attente de validation par l'administrateur. Elle n'est pas encore visible par les clients."}
-                  {selectedSession.confirmationStatus === 'rejected' &&
-                    "Cette session a été rejetée par l'administrateur. Veuillez la modifier ou contacter le support."}
-                </div>
-              )}
             </div>
 
             <div className="p-4 sm:p-6 lg:p-8">

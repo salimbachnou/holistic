@@ -35,8 +35,7 @@ const SessionReviewPage = () => {
 
   const fetchSessionDetails = async () => {
     try {
-      const API_URL =
-        process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
       const token = localStorage.getItem('token');
 
       // Fetch session details
@@ -100,8 +99,7 @@ const SessionReviewPage = () => {
     setSubmitting(true);
 
     try {
-      const API_URL =
-        process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
       const token = localStorage.getItem('token');
 
       const reviewData = {

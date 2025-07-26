@@ -47,7 +47,6 @@ class SessionService {
         ...sessionData,
         professionalId: professional._id,
         status: 'scheduled',
-        confirmationStatus: 'pending' // Always set to pending on creation
       };
 
       // Create session
@@ -540,11 +539,6 @@ class SessionService {
       // Include sessions without confirmationStatus or with approved status
       const expiredSessions = await Session.find({
         status: 'scheduled',
-        $or: [
-          { confirmationStatus: 'approved' },
-          { confirmationStatus: { $exists: false } },
-          { confirmationStatus: null }
-        ]
       }).populate('professionalId', 'userId businessName');
 
       console.log(`Found ${expiredSessions.length} sessions to check for expiration`);

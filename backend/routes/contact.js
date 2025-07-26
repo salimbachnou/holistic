@@ -254,19 +254,23 @@ router.get('/plans', (req, res) => {
 
 // General contact form
 router.post('/', [
-  body('firstName').notEmpty().withMessage('First name is required'),
-  body('lastName').notEmpty().withMessage('Last name is required'),
-  body('email').isEmail().withMessage('Valid email is required'),
-  body('subject').notEmpty().withMessage('Subject is required'),
-  body('message').isLength({ min: 10, max: 1000 }).withMessage('Message must be between 10 and 1000 characters')
+  body('firstName').notEmpty().withMessage('Le prénom est requis'),
+  body('lastName').notEmpty().withMessage('Le nom est requis'),
+  body('email').isEmail().withMessage('Email valide requis'),
+  body('subject').notEmpty().withMessage('Le sujet est requis'),
+  body('message').isLength({ min: 10, max: 1000 }).withMessage('Le message doit contenir entre 10 et 1000 caractères')
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({
         success: false,
-        message: 'Validation errors',
-        errors: errors.array()
+        message: 'Erreurs de validation',
+        errors: errors.array().map(error => ({
+          path: error.path,
+          msg: error.msg,
+          value: error.value
+        }))
       });
     }
 
@@ -282,12 +286,12 @@ router.post('/', [
     // Create new contact request
     const contactRequest = new Contact({
       type: 'general_contact',
-      firstName,
-      lastName,
-      email: email.toLowerCase(),
-      subject,
-      message,
-      phone,
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
+      email: email.toLowerCase().trim(),
+      subject: subject.trim(),
+      message: message.trim(),
+      phone: phone ? phone.trim() : undefined,
       ipAddress: req.ip,
       userAgent: req.get('User-Agent')
     });
@@ -326,15 +330,31 @@ router.post('/', [
 
     res.status(201).json({
       success: true,
-      message: 'Message sent successfully',
+      message: 'Message envoyé avec succès',
       requestId: contactRequest._id
     });
 
   } catch (error) {
     console.error('Error submitting contact form:', error);
+    
+    // Handle mongoose validation errors
+    if (error.name === 'ValidationError') {
+      const validationErrors = Object.keys(error.errors).map(key => ({
+        path: key,
+        msg: error.errors[key].message,
+        value: error.errors[key].value
+      }));
+      
+      return res.status(400).json({
+        success: false,
+        message: 'Erreurs de validation',
+        errors: validationErrors
+      });
+    }
+    
     res.status(500).json({
       success: false,
-      message: 'Server error'
+      message: 'Erreur serveur'
     });
   }
 });

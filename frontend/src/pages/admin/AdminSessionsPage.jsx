@@ -21,7 +21,6 @@ const AdminSessionsPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
-  const [confirmationStatusFilter, setConfirmationStatusFilter] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [stats, setStats] = useState({});
@@ -39,14 +38,13 @@ const AdminSessionsPage = () => {
 
   useEffect(() => {
     fetchSessions();
-  }, [currentPage, searchTerm, statusFilter, categoryFilter, confirmationStatusFilter]);
+  }, [currentPage, searchTerm, statusFilter, categoryFilter]);
 
   const fetchSessions = async () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
-      const BASE_URL =
-        process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      const BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
       const response = await axios.get(`${BASE_URL}/api/admin/sessions`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -56,7 +54,6 @@ const AdminSessionsPage = () => {
           search: searchTerm,
           status: statusFilter,
           category: categoryFilter,
-          confirmationStatus: confirmationStatusFilter,
         },
       });
 
@@ -75,8 +72,7 @@ const AdminSessionsPage = () => {
   const handleUpdateStatus = async (sessionId, status) => {
     try {
       const token = localStorage.getItem('token');
-      const BASE_URL =
-        process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      const BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
       await axios.put(
         `${BASE_URL}/api/admin/sessions/${sessionId}/status`,
@@ -95,8 +91,7 @@ const AdminSessionsPage = () => {
   const checkSessionBookings = async sessionId => {
     try {
       const token = localStorage.getItem('token');
-      const BASE_URL =
-        process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      const BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
       const response = await axios.get(`${BASE_URL}/api/admin/sessions/${sessionId}/bookings`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -151,8 +146,7 @@ const AdminSessionsPage = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const BASE_URL =
-        process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      const BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
       const response = await axios.delete(`${BASE_URL}/api/admin/sessions/${sessionId}`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -181,43 +175,6 @@ const AdminSessionsPage = () => {
       } else {
         toast.error(error.response?.data?.message || 'Erreur lors de la suppression');
       }
-    }
-  };
-
-  const handleApproveSession = async sessionId => {
-    try {
-      const token = localStorage.getItem('token');
-      const BASE_URL =
-        process.env.REACT_APP_API_URL || 'http://localhost:5000';
-      await axios.put(
-        `${BASE_URL}/api/admin/sessions/${sessionId}/approve`,
-        {},
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      toast.success('Session approuvée avec succès');
-      fetchSessions();
-    } catch (error) {
-      console.error("Erreur lors de l'approbation:", error);
-      toast.error("Erreur lors de l'approbation");
-    }
-  };
-
-  const handleRejectSession = async sessionId => {
-    if (!window.confirm('Êtes-vous sûr de vouloir rejeter cette session ?')) return;
-    try {
-      const token = localStorage.getItem('token');
-      const BASE_URL =
-        process.env.REACT_APP_API_URL || 'http://localhost:5000';
-      await axios.put(
-        `${BASE_URL}/api/admin/sessions/${sessionId}/reject`,
-        {},
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      toast.success('Session rejetée avec succès');
-      fetchSessions();
-    } catch (error) {
-      console.error('Erreur lors du rejet:', error);
-      toast.error('Erreur lors du rejet');
     }
   };
 
@@ -255,8 +212,7 @@ const AdminSessionsPage = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const BASE_URL =
-        process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      const BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
       await axios.put(
         `${BASE_URL}/api/admin/bookings/${bookingId}/cancel`,
@@ -328,28 +284,6 @@ const AdminSessionsPage = () => {
       case 'completed':
         return 'bg-green-100 text-green-800';
       case 'cancelled':
-        return 'bg-red-100 text-red-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const getConfirmationStatusLabel = status => {
-    const statuses = {
-      pending: 'En attente',
-      approved: 'Approuvée',
-      rejected: 'Rejetée',
-    };
-    return statuses[status] || status;
-  };
-
-  const getConfirmationStatusClass = status => {
-    switch (status) {
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'approved':
-        return 'bg-green-100 text-green-800';
-      case 'rejected':
         return 'bg-red-100 text-red-800';
       default:
         return 'bg-gray-100 text-gray-800';
@@ -454,26 +388,12 @@ const AdminSessionsPage = () => {
               <option value="retreat">Retraite</option>
             </select>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Approbation</label>
-            <select
-              className="border border-gray-300 rounded-md w-full py-2 px-3 focus:ring-primary-500 focus:border-primary-500"
-              value={confirmationStatusFilter}
-              onChange={e => setConfirmationStatusFilter(e.target.value)}
-            >
-              <option value="">Tous</option>
-              <option value="pending">En attente</option>
-              <option value="approved">Approuvée</option>
-              <option value="rejected">Rejetée</option>
-            </select>
-          </div>
           <div className="flex items-end">
             <button
               onClick={() => {
                 setSearchTerm('');
                 setStatusFilter('');
                 setCategoryFilter('');
-                setConfirmationStatusFilter('');
                 setCurrentPage(1);
               }}
               className="btn-secondary w-full flex items-center justify-center"
@@ -512,13 +432,6 @@ const AdminSessionsPage = () => {
                           )}`}
                         >
                           {getStatusLabel(session.status)}
-                        </span>
-                        <span
-                          className={`ml-2 px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getConfirmationStatusClass(
-                            session.confirmationStatus
-                          )}`}
-                        >
-                          {getConfirmationStatusLabel(session.confirmationStatus)}
                         </span>
                       </div>
                     </div>
@@ -610,26 +523,8 @@ const AdminSessionsPage = () => {
                         </button>
 
                         <div className="flex space-x-2">
-                          {session.confirmationStatus === 'pending' && (
+                          {session.status === 'scheduled' && (
                             <>
-                              <button
-                                onClick={() => handleApproveSession(session._id)}
-                                className="flex items-center text-green-600 hover:text-green-900 text-sm font-medium"
-                                title="Approuver"
-                              >
-                                <CheckIcon className="h-4 w-4" />
-                              </button>
-                              <button
-                                onClick={() => handleRejectSession(session._id)}
-                                className="flex items-center text-yellow-600 hover:text-yellow-900 text-sm font-medium"
-                                title="Rejeter"
-                              >
-                                <XMarkIcon className="h-4 w-4" />
-                              </button>
-                            </>
-                          )}
-                          {session.status === 'scheduled' &&
-                            session.confirmationStatus === 'approved' && (
                               <button
                                 onClick={() => handleUpdateStatus(session._id, 'cancelled')}
                                 className="flex items-center text-red-600 hover:text-red-900 text-sm font-medium"
@@ -637,7 +532,8 @@ const AdminSessionsPage = () => {
                               >
                                 <XMarkIcon className="h-4 w-4" />
                               </button>
-                            )}
+                            </>
+                          )}
                           {(session.status === 'cancelled' || session.status === 'completed') && (
                             <button
                               onClick={() => handleDeleteSession(session._id)}
@@ -692,7 +588,7 @@ const AdminSessionsPage = () => {
               <ClockIcon className="h-16 w-16 mx-auto text-gray-400" />
               <h3 className="mt-4 text-lg font-medium text-gray-900">Aucune session trouvée</h3>
               <p className="mt-2 text-gray-500">
-                {searchTerm || statusFilter || categoryFilter || confirmationStatusFilter
+                {searchTerm || statusFilter || categoryFilter
                   ? 'Aucune session ne correspond à vos critères de recherche'
                   : "Il n'y a pas encore de sessions dans le système"}
               </p>

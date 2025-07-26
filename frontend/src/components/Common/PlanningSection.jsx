@@ -97,7 +97,6 @@ const SessionCarousel = ({ sessions, onBookSession, isDesktop = false }) => {
         {/* Prix et Places */}
         <div className="text-center space-y-1 mb-2">
           <div className="flex items-center justify-center">
-            <Euro className="w-3 h-3 text-green-600 mr-1" />
             <span className={`font-semibold text-green-600 ${isDesktop ? 'text-xs' : 'text-sm'}`}>
               {session.price?.amount || session.price} {session.price?.currency || 'MAD'}
             </span>

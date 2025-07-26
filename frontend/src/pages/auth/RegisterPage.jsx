@@ -58,17 +58,26 @@ const RegisterPage = () => {
     setError('');
 
     try {
-      await register(
+      const result = await register(
         `${formData.firstName} ${formData.lastName}`,
         formData.email,
         formData.password,
         formData.birthDate,
         formData.gender
       );
-      navigate('/login', {
-        state: { message: 'Inscription réussie. Veuillez vous connecter.' },
-      });
+
+      // Check if verification is required
+      if (result && (result.requiresVerification || result.message)) {
+        navigate('/verify-email', {
+          state: { email: formData.email },
+        });
+      } else {
+        navigate('/login', {
+          state: { message: 'Inscription réussie. Veuillez vous connecter.' },
+        });
+      }
     } catch (err) {
+      console.log('Registration error:', err);
       setError(err.message || "Échec de l'inscription. Veuillez réessayer.");
     } finally {
       setLoading(false);

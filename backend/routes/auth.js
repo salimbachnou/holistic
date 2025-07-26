@@ -7,6 +7,7 @@ const { body, validationResult } = require('express-validator');
 const User = require('../models/User');
 const router = express.Router();
 const nodemailer = require('nodemailer');
+const { sendEmailVerification } = require('../services/emailService');
 
 // Configuration de Nodemailer
 const transporter = nodemailer.createTransport({
@@ -44,8 +45,14 @@ const formatUserData = (user) => {
     phone: user.phone,
     address: user.address,
     birthDate: user.birthDate,
-    gender: user.gender
+    gender: user.gender,
+    emailVerified: user.emailVerified
   };
+};
+
+// Generate verification code
+const generateVerificationCode = () => {
+  return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
 // Middleware to check if user is authenticated
@@ -80,6 +87,15 @@ router.post('/login', [
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
       return res.status(400).json({ message: 'Email ou mot de passe incorrect' });
+    }
+
+    // Check if email is verified for local users
+    if (user.provider === 'local' && !user.emailVerified && user.role !== 'admin') {
+      return res.status(401).json({ 
+        message: 'Votre compte n\'est pas encore vérifié. Veuillez vérifier votre email et entrer le code de vérification.',
+        requiresVerification: true,
+        email: user.email
+      });
     }
 
     // Generate JWT
@@ -134,7 +150,11 @@ router.post('/register', [
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       console.log('Validation errors:', errors.array());
-      return res.status(400).json({ errors: errors.array() });
+      return res.status(400).json({ 
+        success: false,
+        message: 'Validation errors',
+        errors: errors.array() 
+      });
     }
 
     const { email, password, firstName, lastName, phone, birthDate, gender } = req.body;
@@ -142,11 +162,41 @@ router.post('/register', [
     // Check if user already exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res.status(400).json({ message: 'Un utilisateur avec cet email existe déjà' });
+      console.log('User already exists:', email);
+      
+      // If user exists but is not verified, allow them to request verification again
+      if (!existingUser.emailVerified) {
+        // Generate new verification code
+        const verificationCode = generateVerificationCode();
+        const verificationExpiry = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+        
+        existingUser.emailVerificationToken = verificationCode;
+        existingUser.emailVerificationExpiry = verificationExpiry;
+        await existingUser.save();
+        
+        // Send verification email
+        const emailSent = await sendEmailVerification(existingUser, verificationCode);
+        
+        return res.status(200).json({
+          success: true,
+          message: 'Un compte existe déjà avec cet email. Un nouveau code de vérification a été envoyé.',
+          requiresVerification: emailSent,
+          email: existingUser.email
+        });
+      }
+      
+      return res.status(400).json({ 
+        success: false,
+        message: 'Un utilisateur avec cet email existe déjà' 
+      });
     }
 
+    // Generate verification code
+    const verificationCode = generateVerificationCode();
+    const verificationExpiry = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+
     // Create new user
-    const user = new User({
+    let userData = {
       email,
       password,
       firstName,
@@ -155,11 +205,90 @@ router.post('/register', [
       phone,
       birthDate,
       gender,
-      role: 'client', // Default role
+      role: req.body.role || 'client', // Permettre de spécifier le rôle si besoin
       provider: 'local',
-      isVerified: true // Définir l'utilisateur comme vérifié
-    });
+      isVerified: false, // User needs to verify email
+      emailVerified: false,
+      emailVerificationToken: verificationCode,
+      emailVerificationExpiry: verificationExpiry
+    };
+    // Si c'est un admin, bypass la vérification
+    if (userData.role === 'admin') {
+      userData.isVerified = true;
+      userData.emailVerified = true;
+      userData.emailVerificationToken = null;
+      userData.emailVerificationExpiry = null;
+    }
+    const user = new User(userData);
+    await user.save();
 
+    // N'envoyer l'email de vérification que si ce n'est pas un admin
+    let emailSent = false;
+    if (user.role !== 'admin') {
+      emailSent = await sendEmailVerification(user, verificationCode);
+    }
+    if (user.role !== 'admin' && !emailSent) {
+      // If email service is not configured, still create the user but mark as verified
+      user.emailVerified = true;
+      user.emailVerifiedAt = new Date();
+      user.isVerified = true;
+      await user.save();
+      console.log('Email service not configured. User created without verification.');
+    }
+
+    res.status(201).json({
+      success: true,
+      message: emailSent 
+        ? 'Inscription réussie. Veuillez vérifier votre email pour activer votre compte.'
+        : 'Inscription réussie. Votre compte a été créé.',
+      requiresVerification: emailSent,
+      email: user.email
+    });
+  } catch (error) {
+    console.error('Registration error:', error);
+    res.status(500).json({ message: 'Erreur du serveur' });
+  }
+});
+
+// Verify email endpoint
+router.post('/verify-email', [
+  body('email').isEmail().normalizeEmail(),
+  body('code').isLength({ min: 6, max: 6 }).withMessage('Le code doit contenir 6 chiffres')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { email, code } = req.body;
+
+    // Find user by email
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ message: 'Utilisateur non trouvé' });
+    }
+
+    // Check if already verified
+    if (user.emailVerified) {
+      return res.status(400).json({ message: 'Votre email est déjà vérifié' });
+    }
+
+    // Check if verification code matches and is not expired
+    if (user.emailVerificationToken !== code) {
+      return res.status(400).json({ message: 'Code de vérification incorrect' });
+    }
+
+    if (user.emailVerificationExpiry < new Date()) {
+      return res.status(400).json({ message: 'Code de vérification expiré. Veuillez demander un nouveau code.' });
+    }
+
+    // Verify the user
+    user.emailVerified = true;
+    user.emailVerifiedAt = new Date();
+    user.isVerified = true;
+    user.emailVerificationToken = null;
+    user.emailVerificationExpiry = null;
     await user.save();
 
     // Generate JWT
@@ -169,13 +298,63 @@ router.post('/register', [
       { expiresIn: '7d' }
     );
 
-    res.status(201).json({
+    res.json({
       success: true,
+      message: 'Email vérifié avec succès. Votre compte est maintenant actif.',
       token,
       user: formatUserData(user)
     });
   } catch (error) {
-    console.error('Registration error:', error);
+    console.error('Email verification error:', error);
+    res.status(500).json({ message: 'Erreur du serveur' });
+  }
+});
+
+// Resend verification code
+router.post('/resend-verification', [
+  body('email').isEmail().normalizeEmail()
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { email } = req.body;
+
+    // Find user by email
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ message: 'Utilisateur non trouvé' });
+    }
+
+    // Check if already verified
+    if (user.emailVerified) {
+      return res.status(400).json({ message: 'Votre email est déjà vérifié' });
+    }
+
+    // Generate new verification code
+    const verificationCode = generateVerificationCode();
+    const verificationExpiry = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+
+    // Update user with new verification code
+    user.emailVerificationToken = verificationCode;
+    user.emailVerificationExpiry = verificationExpiry;
+    await user.save();
+
+    // Send new verification email
+    const emailSent = await sendEmailVerification(user, verificationCode);
+
+    if (!emailSent) {
+      return res.status(500).json({ message: 'Erreur lors de l\'envoi de l\'email. Veuillez réessayer.' });
+    }
+
+    res.json({
+      success: true,
+      message: 'Nouveau code de vérification envoyé à votre email.'
+    });
+  } catch (error) {
+    console.error('Resend verification error:', error);
     res.status(500).json({ message: 'Erreur du serveur' });
   }
 });
@@ -194,7 +373,12 @@ router.post('/register/professional', [
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+      console.log('Professional registration validation errors:', errors.array());
+      return res.status(400).json({ 
+        success: false,
+        message: 'Validation errors',
+        errors: errors.array() 
+      });
     }
 
     const { 
@@ -205,8 +389,38 @@ router.post('/register/professional', [
     // Check if user already exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res.status(400).json({ message: 'Un utilisateur avec cet email existe déjà' });
+      console.log('Professional user already exists:', email);
+      
+      // If user exists but is not verified, allow them to request verification again
+      if (!existingUser.emailVerified) {
+        // Generate new verification code
+        const verificationCode = generateVerificationCode();
+        const verificationExpiry = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+        
+        existingUser.emailVerificationToken = verificationCode;
+        existingUser.emailVerificationExpiry = verificationExpiry;
+        await existingUser.save();
+        
+        // Send verification email
+        const emailSent = await sendEmailVerification(existingUser, verificationCode);
+        
+        return res.status(200).json({
+          success: true,
+          message: 'Un compte existe déjà avec cet email. Un nouveau code de vérification a été envoyé.',
+          requiresVerification: emailSent,
+          email: existingUser.email
+        });
+      }
+      
+      return res.status(400).json({ 
+        success: false,
+        message: 'Un utilisateur avec cet email existe déjà' 
+      });
     }
+
+    // Generate verification code
+    const verificationCode = generateVerificationCode();
+    const verificationExpiry = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
 
     // Create new user
     const user = new User({
@@ -218,7 +432,10 @@ router.post('/register/professional', [
       phone,
       role: 'professional', // Professional role
       provider: 'local',
-      isVerified: false // Le compte doit être vérifié par l'admin
+      isVerified: false, // Le compte doit être vérifié par l'admin
+      emailVerified: false,
+      emailVerificationToken: verificationCode,
+      emailVerificationExpiry: verificationExpiry
     });
 
     await user.save();
@@ -251,17 +468,25 @@ router.post('/register/professional', [
 
     await professional.save();
 
-    // Generate JWT
-    const token = jwt.sign(
-      { userId: user._id, email: user.email, role: user.role },
-      process.env.JWT_SECRET || 'fallback-secret',
-      { expiresIn: '7d' }
-    );
+    // Send verification email
+    const emailSent = await sendEmailVerification(user, verificationCode);
+    
+    if (!emailSent) {
+      // If email service is not configured, still create the user but mark as verified
+      user.emailVerified = true;
+      user.emailVerifiedAt = new Date();
+      await user.save();
+      
+      console.log('Email service not configured. Professional user created without verification.');
+    }
 
     res.status(201).json({
       success: true,
-      token,
-      user: formatUserData(user)
+      message: emailSent 
+        ? 'Inscription réussie. Veuillez vérifier votre email pour activer votre compte.'
+        : 'Inscription réussie. Votre compte a été créé.',
+      requiresVerification: emailSent,
+      email: user.email
     });
   } catch (error) {
     console.error('Professional registration error:', error);

@@ -141,7 +141,7 @@ const AdminClientsPage = () => {
             </h1>
             <p className="mt-2 text-gray-600">Gérez tous les clients de la plateforme</p>
           </div>
-          <div className="mt-4 sm:mt-0">
+          {/* <div className="mt-4 sm:mt-0">
             <button
               onClick={() => setShowCreateModal(true)}
               className="btn-primary flex items-center shadow-lg hover:shadow-xl"
@@ -149,7 +149,7 @@ const AdminClientsPage = () => {
               <PlusIcon className="h-5 w-5 mr-2" />
               Nouveau Client
             </button>
-          </div>
+          </div> */}
         </motion.div>
       </div>
 

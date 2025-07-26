@@ -24,6 +24,7 @@ import AdminProductsPage from './pages/admin/AdminProductsPage';
 import AdminProfessionalsPage from './pages/admin/AdminProfessionalsPage';
 import AdminSessionsPage from './pages/admin/AdminSessionsPage';
 import AdminSettingsPage from './pages/admin/AdminSettingsPage';
+import EmailVerificationPage from './pages/auth/EmailVerificationPage';
 import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
 import GoogleAuthCallbackPage from './pages/auth/GoogleAuthCallbackPage';
 import LoginPage from './pages/auth/LoginPage';
@@ -255,6 +256,7 @@ const AppContent = () => {
           />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/register/professional" element={<RegisterProfessionalPage />} />
+          <Route path="/verify-email" element={<EmailVerificationPage />} />
           <Route path="/auth/google/callback" element={<GoogleAuthCallbackPage />} />
           <Route path="/auth/callback" element={<GoogleAuthCallbackPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />

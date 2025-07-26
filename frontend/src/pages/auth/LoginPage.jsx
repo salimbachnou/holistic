@@ -42,6 +42,14 @@ const LoginPage = () => {
         }
       }
     } catch (err) {
+      // Check if account needs verification
+      if (err.response?.data?.requiresVerification) {
+        navigate('/verify-email', {
+          state: { email: email },
+        });
+        return;
+      }
+
       setError(
         err.response?.data?.message || 'Échec de la connexion. Veuillez vérifier vos informations.'
       );

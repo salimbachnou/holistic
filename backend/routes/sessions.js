@@ -75,9 +75,6 @@ router.get('/', async (req, res) => {
       query.status = 'scheduled';
     }
 
-    // Only show approved sessions to clients
-    query.confirmationStatus = 'approved';
-
     const sort = {};
     sort[sortBy] = sortOrder === 'desc' ? -1 : 1;
 
@@ -243,9 +240,6 @@ router.get('/my-sessions', requireAuth, async (req, res) => {
     if (status) {
       query.status = status;
     }
-
-    // Only show approved sessions to clients
-    query.confirmationStatus = 'approved';
 
     const sort = {};
     sort[sortBy] = sortOrder === 'desc' ? -1 : 1;
@@ -831,9 +825,6 @@ router.get('/professional/:id', async (req, res) => {
       // Default to only scheduled sessions
       query.status = 'scheduled';
     }
-
-    // Only show approved sessions to clients
-    query.confirmationStatus = 'approved';
 
     const sort = {};
     sort[sortBy] = sortOrder === 'desc' ? -1 : 1;

@@ -17,7 +17,7 @@ const createTransporter = async () => {
         return null;
       }
       
-      return nodemailer.createTransporter({
+      return nodemailer.createTransport({
         service: 'gmail',
         auth: {
           user: process.env.EMAIL_USER,
@@ -30,7 +30,7 @@ const createTransporter = async () => {
     }
 
     // Use settings from database
-    return nodemailer.createTransporter({
+    return nodemailer.createTransport({
       host: emailSettings.smtpHost,
       port: parseInt(emailSettings.smtpPort),
       secure: emailSettings.smtpSecure, // true for 465, false for other ports
@@ -64,6 +64,73 @@ const getEmailSettings = async () => {
       fromAddress: 'noreply@holistic.ma',
       siteName: 'Holistic.ma'
     };
+  }
+};
+
+// Send email verification code
+const sendEmailVerification = async (user, verificationCode) => {
+  try {
+    const transporter = await createTransporter();
+    const emailSettings = await getEmailSettings();
+    
+    // Skip email sending if transporter is not configured
+    if (!transporter) {
+      console.log('Email service not configured. Skipping verification email.');
+      return false;
+    }
+    
+    const mailOptions = {
+      from: `${emailSettings.fromName} <${emailSettings.fromAddress}>`,
+      to: user.email,
+      subject: `Vérification de votre compte - ${emailSettings.siteName}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="text-align: center; margin-bottom: 30px;">
+            <h1 style="color: #2d5a87; margin: 0;">Vérification de votre compte</h1>
+          </div>
+          
+          <div style="background-color: #f8f9fa; padding: 30px; border-radius: 10px; margin-bottom: 30px;">
+            <p style="margin: 0 0 20px 0; font-size: 16px; color: #333;">
+              Bonjour ${user.firstName || user.name || 'Utilisateur'},
+            </p>
+            
+            <p style="margin: 0 0 20px 0; font-size: 16px; color: #333;">
+              Merci de vous être inscrit sur ${emailSettings.siteName}. Pour activer votre compte, 
+              veuillez utiliser le code de vérification suivant :
+            </p>
+            
+            <div style="text-align: center; margin: 30px 0;">
+              <div style="background-color: #2d5a87; color: white; padding: 20px; border-radius: 8px; font-size: 24px; font-weight: bold; letter-spacing: 5px; display: inline-block; min-width: 200px;">
+                ${verificationCode}
+              </div>
+            </div>
+            
+            <p style="margin: 20px 0 0 0; font-size: 14px; color: #666;">
+              <strong>Important :</strong> Ce code expirera dans 15 minutes pour des raisons de sécurité.
+            </p>
+            
+            <p style="margin: 20px 0 0 0; font-size: 14px; color: #666;">
+              Si vous n'avez pas créé de compte sur ${emailSettings.siteName}, 
+              vous pouvez ignorer cet email en toute sécurité.
+            </p>
+          </div>
+          
+          <div style="text-align: center; padding: 20px; border-top: 1px solid #eee;">
+            <p style="margin: 0; font-size: 12px; color: #999;">
+              Cet email a été envoyé par ${emailSettings.siteName}<br>
+              Si vous avez des questions, contactez-nous à ${emailSettings.fromAddress}
+            </p>
+          </div>
+        </div>
+      `
+    };
+    
+    await transporter.sendMail(mailOptions);
+    console.log(`Verification email sent to: ${user.email}`);
+    return true;
+  } catch (error) {
+    console.error('Error sending verification email:', error);
+    return false;
   }
 };
 
@@ -420,5 +487,6 @@ module.exports = {
   sendBookingConfirmationToClient,
   sendBookingNotificationToProfessional,
   sendBookingStatusUpdateToClient,
-  sendPaymentConfirmationEmail
+  sendPaymentConfirmationEmail,
+  sendEmailVerification
 }; 

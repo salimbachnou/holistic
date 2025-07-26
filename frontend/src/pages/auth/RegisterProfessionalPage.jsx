@@ -100,13 +100,21 @@ const RegisterProfessionalPage = () => {
         formData.coordinates
       );
 
-      // Redirection directe vers le tableau de bord professionnel
-      navigate('/dashboard/professional', {
-        state: {
-          showVerificationMessage: true,
-        },
-      });
+      // Check if verification is required
+      if (result && (result.requiresVerification || result.message)) {
+        navigate('/verify-email', {
+          state: { email: formData.email },
+        });
+      } else {
+        // Redirection directe vers le tableau de bord professionnel
+        navigate('/dashboard/professional', {
+          state: {
+            showVerificationMessage: true,
+          },
+        });
+      }
     } catch (err) {
+      console.log('Professional registration error:', err);
       setError(err.message || "Échec de l'inscription. Veuillez réessayer.");
     } finally {
       setLoading(false);

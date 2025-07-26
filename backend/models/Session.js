@@ -124,12 +124,6 @@ const sessionSchema = new mongoose.Schema({
     type: Number,
     default: 0,
     min: 0
-  },
-  // Confirmation status for admin approval
-  confirmationStatus: {
-    type: String,
-    enum: ['pending', 'approved', 'rejected'],
-    default: 'pending',
   }
 }, {
   timestamps: true

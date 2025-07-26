@@ -1477,9 +1477,6 @@ router.get('/sessions', requireAdmin, async (req, res) => {
     if (category) {
       query.category = category;
     }
-    if (req.query.confirmationStatus) {
-      query.confirmationStatus = req.query.confirmationStatus;
-    }
 
     // Import Session model
     const Session = require('../models/Session');
@@ -1552,38 +1549,38 @@ router.put('/sessions/:id/status', requireAdmin, async (req, res) => {
 });
 
 // Approve a session (admin)
-router.put('/sessions/:id/approve', requireAdmin, async (req, res) => {
-  try {
-    const Session = require('../models/Session');
-    const session = await Session.findById(req.params.id);
-    if (!session) {
-      return res.status(404).json({ message: 'Session not found' });
-    }
-    session.confirmationStatus = 'approved';
-    await session.save();
-    res.json({ success: true, message: 'Session approved', session });
-  } catch (error) {
-    console.error('Approve session error:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-});
+// router.put('/sessions/:id/approve', requireAdmin, async (req, res) => {
+//   try {
+//     const Session = require('../models/Session');
+//     const session = await Session.findById(req.params.id);
+//     if (!session) {
+//       return res.status(404).json({ message: 'Session not found' });
+//     }
+//     session.confirmationStatus = 'approved';
+//     await session.save();
+//     res.json({ success: true, message: 'Session approved', session });
+//   } catch (error) {
+//     console.error('Approve session error:', error);
+//     res.status(500).json({ message: 'Server error' });
+//   }
+// });
 
 // Reject a session (admin)
-router.put('/sessions/:id/reject', requireAdmin, async (req, res) => {
-  try {
-    const Session = require('../models/Session');
-    const session = await Session.findById(req.params.id);
-    if (!session) {
-      return res.status(404).json({ message: 'Session not found' });
-    }
-    session.confirmationStatus = 'rejected';
-    await session.save();
-    res.json({ success: true, message: 'Session rejected', session });
-  } catch (error) {
-    console.error('Reject session error:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-});
+// router.put('/sessions/:id/reject', requireAdmin, async (req, res) => {
+//   try {
+//     const Session = require('../models/Session');
+//     const session = await Session.findById(req.params.id);
+//     if (!session) {
+//       return res.status(404).json({ message: 'Session not found' });
+//     }
+//     session.confirmationStatus = 'rejected';
+//     await session.save();
+//     res.json({ success: true, message: 'Session rejected', session });
+//   } catch (error) {
+//     console.error('Reject session error:', error);
+//     res.status(500).json({ message: 'Server error' });
+//   }
+// });
 
 // Get bookings for a session
 router.get('/sessions/:id/bookings', requireAdmin, async (req, res) => {

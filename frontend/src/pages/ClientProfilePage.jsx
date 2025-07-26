@@ -56,6 +56,7 @@ const ClientProfilePage = () => {
     message: '',
   });
   const [submittingContact, setSubmittingContact] = useState(false);
+  const [contactErrors, setContactErrors] = useState({});
   const [previewImage, setPreviewImage] = useState(null);
 
   const fetchBookings = useCallback(async () => {
@@ -159,6 +160,14 @@ const ClientProfilePage = () => {
       ...prev,
       [name]: value,
     }));
+
+    // Clear error when user starts typing
+    if (contactErrors[name]) {
+      setContactErrors(prev => ({
+        ...prev,
+        [name]: '',
+      }));
+    }
   };
 
   const handleImageChange = e => {
@@ -236,7 +245,37 @@ const ClientProfilePage = () => {
     setSubmittingContact(true);
 
     try {
-      const response = await apiService.post('/contact', contactForm);
+      // Validate form data before submission
+      const errors = {};
+
+      if (!contactForm.subject.trim()) {
+        errors.subject = 'Le sujet est requis';
+      } else if (contactForm.subject.trim().length < 3) {
+        errors.subject = 'Le sujet doit contenir au moins 3 caractères';
+      }
+
+      if (!contactForm.message.trim()) {
+        errors.message = 'Le message est requis';
+      } else if (contactForm.message.trim().length < 10) {
+        errors.message = 'Le message doit contenir au moins 10 caractères';
+      } else if (contactForm.message.trim().length > 1000) {
+        errors.message = 'Le message ne peut pas dépasser 1000 caractères';
+      }
+
+      setContactErrors(errors);
+
+      if (Object.keys(errors).length > 0) {
+        toast.error('Veuillez corriger les erreurs dans le formulaire');
+        return;
+      }
+
+      const response = await apiService.post('/contact', {
+        firstName: contactForm.firstName.trim(),
+        lastName: contactForm.lastName.trim(),
+        email: contactForm.email.trim().toLowerCase(),
+        subject: contactForm.subject.trim(),
+        message: contactForm.message.trim(),
+      });
 
       if (response.data.success) {
         toast.success('Votre message a été envoyé avec succès');
@@ -247,9 +286,22 @@ const ClientProfilePage = () => {
           subject: '',
           message: '',
         });
+        setContactErrors({});
       }
     } catch (error) {
-      toast.error(error.response?.data?.message || "Erreur lors de l'envoi du message");
+      console.error('Contact form error:', error);
+
+      if (error.response?.data?.errors) {
+        // Handle validation errors from backend
+        const backendErrors = {};
+        error.response.data.errors.forEach(err => {
+          backendErrors[err.path] = err.msg;
+        });
+        setContactErrors(backendErrors);
+        toast.error('Veuillez corriger les erreurs dans le formulaire');
+      } else {
+        toast.error(error.response?.data?.message || "Erreur lors de l'envoi du message");
+      }
     } finally {
       setSubmittingContact(false);
     }
@@ -1364,7 +1416,7 @@ const ClientProfilePage = () => {
             htmlFor="subject"
             className="block text-xs sm:text-sm font-medium text-gray-700 mb-1"
           >
-            Sujet
+            Sujet *
           </label>
           <input
             id="subject"
@@ -1372,9 +1424,16 @@ const ClientProfilePage = () => {
             type="text"
             value={contactForm.subject}
             onChange={handleContactInputChange}
-            required
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm sm:text-base"
+            className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm sm:text-base ${
+              contactErrors.subject
+                ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
+                : 'border-gray-300'
+            }`}
+            placeholder="Sujet de votre message"
           />
+          {contactErrors.subject && (
+            <p className="text-xs text-red-600 mt-1">{contactErrors.subject}</p>
+          )}
         </div>
 
         <div>
@@ -1382,7 +1441,7 @@ const ClientProfilePage = () => {
             htmlFor="message"
             className="block text-xs sm:text-sm font-medium text-gray-700 mb-1"
           >
-            Message
+            Message *
           </label>
           <textarea
             id="message"
@@ -1390,18 +1449,26 @@ const ClientProfilePage = () => {
             rows="5"
             value={contactForm.message}
             onChange={handleContactInputChange}
-            required
             minLength={10}
             maxLength={1000}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm sm:text-base resize-y"
+            className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm sm:text-base resize-y ${
+              contactErrors.message
+                ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
+                : 'border-gray-300'
+            }`}
+            placeholder="Votre message (minimum 10 caractères)"
           ></textarea>
+          {contactErrors.message && (
+            <p className="text-xs text-red-600 mt-1">{contactErrors.message}</p>
+          )}
+          <p className="text-xs text-gray-500 mt-1">{contactForm.message.length}/1000 caractères</p>
         </div>
 
         <div className="flex justify-end">
           <button
             type="submit"
             disabled={submittingContact}
-            className="w-full sm:w-auto bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 transition-colors disabled:bg-primary-400 text-sm sm:text-base"
+            className="w-full sm:w-auto bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 transition-colors disabled:bg-primary-400 disabled:cursor-not-allowed text-sm sm:text-base"
           >
             {submittingContact ? 'Envoi en cours...' : 'Envoyer'}
           </button>
