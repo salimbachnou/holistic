@@ -2580,6 +2580,29 @@ router.post('/profile', isAuthenticated, [
       ...req.body
     };
 
+    // Handle coordinates validation - prevent null values
+    if (professionalData.businessAddress && professionalData.businessAddress.coordinates) {
+      const coords = professionalData.businessAddress.coordinates;
+      
+      // If both lat and lng are null, remove the coordinates object entirely
+      if (coords.lat === null && coords.lng === null) {
+        delete professionalData.businessAddress.coordinates;
+      } else if (coords.lat === null || coords.lng === null) {
+        // If only one coordinate is null, remove the null one
+        if (coords.lat === null) {
+          delete professionalData.businessAddress.coordinates.lat;
+        }
+        if (coords.lng === null) {
+          delete professionalData.businessAddress.coordinates.lng;
+        }
+        
+        // If we removed one coordinate, remove the entire coordinates object
+        if (!professionalData.businessAddress.coordinates.lat || !professionalData.businessAddress.coordinates.lng) {
+          delete professionalData.businessAddress.coordinates;
+        }
+      }
+    }
+
     const professional = new Professional(professionalData);
     await professional.save();
 
@@ -2658,6 +2681,29 @@ router.put('/profile', isAuthenticated, isProfessional, async (req, res) => {
         // Ensure country is always set
         country: updateData.businessAddress.country || professional.businessAddress?.country || 'Morocco'
       };
+      
+      // Handle coordinates validation - prevent null values
+      if (updateData.businessAddress.coordinates) {
+        const coords = updateData.businessAddress.coordinates;
+        
+        // If both lat and lng are null, remove the coordinates object entirely
+        if (coords.lat === null && coords.lng === null) {
+          delete updateData.businessAddress.coordinates;
+        } else if (coords.lat === null || coords.lng === null) {
+          // If only one coordinate is null, remove the null one
+          if (coords.lat === null) {
+            delete updateData.businessAddress.coordinates.lat;
+          }
+          if (coords.lng === null) {
+            delete updateData.businessAddress.coordinates.lng;
+          }
+          
+          // If we removed one coordinate, remove the entire coordinates object
+          if (!updateData.businessAddress.coordinates.lat || !updateData.businessAddress.coordinates.lng) {
+            delete updateData.businessAddress.coordinates;
+          }
+        }
+      }
     }
 
     // Ensure contactInfo has required fields

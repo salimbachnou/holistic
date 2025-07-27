@@ -204,8 +204,21 @@ router.post('/', requireAuth, [
     // Get client data for email
     const client = await User.findById(req.user._id);
 
-    // Email notifications disabled - using in-app notifications only
-    console.log('Email notifications disabled. Using in-app notifications only.');
+    // Send email notifications
+    try {
+      const EmailService = require('../services/emailService');
+      
+      // Send confirmation email to client
+      await EmailService.sendSessionBookingConfirmationToClient(booking, client, professional, session);
+      console.log('Session booking confirmation email sent to client');
+      
+      // Send notification email to professional
+      await EmailService.sendSessionBookingNotificationToProfessional(booking, client, professional, session);
+      console.log('Session booking notification email sent to professional');
+    } catch (emailError) {
+      console.error('Error sending session booking emails:', emailError);
+      // Don't fail the booking if email sending fails
+    }
 
     // Déclencher la notification pour le professionnel
     try {

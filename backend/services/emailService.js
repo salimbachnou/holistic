@@ -483,10 +483,383 @@ const sendPaymentConfirmationEmail = async (booking, client, professional) => {
   }
 };
 
+// Send session booking confirmation to client
+const sendSessionBookingConfirmationToClient = async (booking, client, professional, session) => {
+  try {
+    const transporter = await createTransporter();
+    const emailSettings = await getEmailSettings();
+    
+    // Skip email sending if transporter is not configured
+    if (!transporter) {
+      console.log('Email service not configured. Skipping session booking confirmation email to client.');
+      return false;
+    }
+    
+    const statusText = booking.status === 'confirmed' 
+      ? 'confirmée' 
+      : 'en attente de confirmation';
+    
+    const formattedDate = format(new Date(session.startTime), 'EEEE d MMMM yyyy', { locale: fr });
+    const formattedTime = format(new Date(session.startTime), 'HH:mm', { locale: fr });
+    const endTime = new Date(session.startTime.getTime() + (session.duration * 60000));
+    const formattedEndTime = format(endTime, 'HH:mm', { locale: fr });
+    
+    const mailOptions = {
+      from: `${emailSettings.fromName} <${emailSettings.fromAddress}>`,
+      to: client.email,
+      subject: `Confirmation de réservation de session - ${professional.businessName}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #2d5a87;">Réservation de session ${statusText}</h2>
+          <p>Bonjour ${client.firstName || client.name || client.email},</p>
+          <p>Nous vous confirmons votre réservation de session chez <strong>${professional.businessName}</strong>.</p>
+          
+          <div style="background-color: #f8f9fa; padding: 20px; border-radius: 5px; margin: 20px 0;">
+            <h3 style="margin-top: 0; color: #2d5a87;">${session.title}</h3>
+            <p>${session.description || ''}</p>
+            
+            <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
+              <tr>
+                <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6;"><strong>Date :</strong></td>
+                <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6;">${formattedDate}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6;"><strong>Heure :</strong></td>
+                <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6;">${formattedTime} - ${formattedEndTime}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6;"><strong>Durée :</strong></td>
+                <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6;">${session.duration} minutes</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6;"><strong>Type :</strong></td>
+                <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6;">
+                  ${session.category === 'online' ? 'Session en ligne' : 'Session en présentiel'}
+                </td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6;"><strong>Lieu :</strong></td>
+                <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6;">
+                  ${session.category === 'online' 
+                    ? 'Session en ligne' + (session.meetingLink ? ` (lien: ${session.meetingLink})` : '') 
+                    : session.location || 'Lieu à confirmer'}
+                </td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6;"><strong>Prix :</strong></td>
+                <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6;">${session.price} MAD</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0;"><strong>Numéro de réservation :</strong></td>
+                <td style="padding: 8px 0;">${booking._id}</td>
+              </tr>
+            </table>
+          </div>
+          
+          ${booking.status === 'pending' ? `
+            <p><strong>Note :</strong> Votre réservation est en attente de confirmation par le professionnel. 
+            Vous recevrez un email dès que votre réservation sera confirmée.</p>
+          ` : ''}
+          
+          <p>Pour toute question ou pour modifier votre réservation, vous pouvez contacter directement 
+          ${professional.businessName} au ${professional.contactInfo?.phone || 'numéro indiqué sur son profil'} 
+          ou répondre à cet email.</p>
+          
+          <p>Vous pouvez également consulter et gérer vos réservations depuis votre espace client.</p>
+          
+          <p>Cordialement,<br/>L'équipe ${emailSettings.siteName}</p>
+        </div>
+      `
+    };
+    
+    await transporter.sendMail(mailOptions);
+    console.log(`Session booking confirmation email sent to client: ${client.email}`);
+    return true;
+  } catch (error) {
+    console.error('Error sending session booking confirmation email to client:', error);
+    return false;
+  }
+};
+
+// Send session booking notification to professional
+const sendSessionBookingNotificationToProfessional = async (booking, client, professional, session) => {
+  try {
+    const transporter = await createTransporter();
+    const emailSettings = await getEmailSettings();
+    
+    // Skip email sending if transporter is not configured
+    if (!transporter) {
+      console.log('Email service not configured. Skipping session booking notification email to professional.');
+      return false;
+    }
+    
+    const formattedDate = format(new Date(session.startTime), 'EEEE d MMMM yyyy', { locale: fr });
+    const formattedTime = format(new Date(session.startTime), 'HH:mm', { locale: fr });
+    const endTime = new Date(session.startTime.getTime() + (session.duration * 60000));
+    const formattedEndTime = format(endTime, 'HH:mm', { locale: fr });
+    
+    const mailOptions = {
+      from: `${emailSettings.fromName} <${emailSettings.fromAddress}>`,
+      to: professional.contactInfo?.email || professional.email,
+      subject: `Nouvelle réservation de session - ${session.title}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #2d5a87;">Nouvelle réservation de session</h2>
+          <p>Bonjour ${professional.businessName},</p>
+          <p>Vous avez reçu une nouvelle réservation de session de la part de <strong>${client.firstName || client.name || client.email}</strong>.</p>
+          
+          <div style="background-color: #f8f9fa; padding: 20px; border-radius: 5px; margin: 20px 0;">
+            <h3 style="margin-top: 0; color: #2d5a87;">${session.title}</h3>
+            <p>${session.description || ''}</p>
+            
+            <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
+              <tr>
+                <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6;"><strong>Client :</strong></td>
+                <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6;">${client.firstName || ''} ${client.lastName || ''} (${client.email})</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6;"><strong>Date :</strong></td>
+                <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6;">${formattedDate}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6;"><strong>Heure :</strong></td>
+                <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6;">${formattedTime} - ${formattedEndTime}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6;"><strong>Durée :</strong></td>
+                <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6;">${session.duration} minutes</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6;"><strong>Type :</strong></td>
+                <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6;">
+                  ${session.category === 'online' ? 'Session en ligne' : 'Session en présentiel'}
+                </td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6;"><strong>Prix :</strong></td>
+                <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6;">${session.price} MAD</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0;"><strong>Numéro de réservation :</strong></td>
+                <td style="padding: 8px 0;">${booking._id}</td>
+              </tr>
+            </table>
+          </div>
+          
+          ${booking.status === 'pending' ? `
+            <p><strong>Action requise :</strong> Cette réservation est en attente de votre confirmation. 
+            Veuillez vous connecter à votre espace professionnel pour l'accepter ou la refuser.</p>
+            
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${process.env.FRONTEND_URL}/professional/sessions" 
+                 style="background-color: #4F46E5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold;">
+                 Accéder à mon espace
+              </a>
+            </div>
+          ` : `
+            <p>Cette réservation a été automatiquement confirmée selon vos paramètres.</p>
+          `}
+          
+          <p>Cordialement,<br/>L'équipe ${emailSettings.siteName}</p>
+        </div>
+      `
+    };
+    
+    await transporter.sendMail(mailOptions);
+    console.log(`Session booking notification email sent to professional: ${professional.contactInfo?.email || professional.email}`);
+    return true;
+  } catch (error) {
+    console.error('Error sending session booking notification email to professional:', error);
+    return false;
+  }
+};
+
+// Send event booking confirmation to client
+const sendEventBookingConfirmationToClient = async (event, client, professional, participation) => {
+  try {
+    const transporter = await createTransporter();
+    const emailSettings = await getEmailSettings();
+    
+    // Skip email sending if transporter is not configured
+    if (!transporter) {
+      console.log('Email service not configured. Skipping event booking confirmation email to client.');
+      return false;
+    }
+    
+    const statusText = participation.status === 'confirmed' 
+      ? 'confirmée' 
+      : 'en attente de confirmation';
+    
+    const formattedDate = format(new Date(event.date), 'EEEE d MMMM yyyy', { locale: fr });
+    const formattedTime = format(new Date(event.date), 'HH:mm', { locale: fr });
+    const endTime = event.endDate ? new Date(event.endDate) : new Date(event.date);
+    const formattedEndTime = format(endTime, 'HH:mm', { locale: fr });
+    
+    const mailOptions = {
+      from: `${emailSettings.fromName} <${emailSettings.fromAddress}>`,
+      to: client.email,
+      subject: `Confirmation d'inscription à l'événement - ${event.title}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #2d5a87;">Inscription à l'événement ${statusText}</h2>
+          <p>Bonjour ${client.firstName || client.name || client.email},</p>
+          <p>Nous vous confirmons votre inscription à l'événement organisé par <strong>${professional.businessName}</strong>.</p>
+          
+          <div style="background-color: #f8f9fa; padding: 20px; border-radius: 5px; margin: 20px 0;">
+            <h3 style="margin-top: 0; color: #2d5a87;">${event.title}</h3>
+            <p>${event.description || ''}</p>
+            
+            <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
+              <tr>
+                <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6;"><strong>Date :</strong></td>
+                <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6;">${formattedDate}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6;"><strong>Heure :</strong></td>
+                <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6;">${formattedTime} - ${formattedEndTime}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6;"><strong>Lieu :</strong></td>
+                <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6;">${event.address || 'Lieu à confirmer'}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6;"><strong>Places réservées :</strong></td>
+                <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6;">${participation.quantity || 1}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6;"><strong>Prix :</strong></td>
+                <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6;">${event.price || 0} ${event.currency || 'MAD'}</td>
+              </tr>
+              ${participation.note ? `
+              <tr>
+                <td style="padding: 8px 0; vertical-align: top;"><strong>Note :</strong></td>
+                <td style="padding: 8px 0;">${participation.note}</td>
+              </tr>
+              ` : ''}
+            </table>
+          </div>
+          
+          ${participation.status === 'pending' ? `
+            <p><strong>Note :</strong> Votre inscription est en attente de confirmation par l'organisateur. 
+            Vous recevrez un email dès que votre inscription sera confirmée.</p>
+          ` : ''}
+          
+          <p>Pour toute question, vous pouvez contacter directement 
+          ${professional.businessName} ou répondre à cet email.</p>
+          
+          <p>Vous pouvez également consulter et gérer vos inscriptions depuis votre espace client.</p>
+          
+          <p>Cordialement,<br/>L'équipe ${emailSettings.siteName}</p>
+        </div>
+      `
+    };
+    
+    await transporter.sendMail(mailOptions);
+    console.log(`Event booking confirmation email sent to client: ${client.email}`);
+    return true;
+  } catch (error) {
+    console.error('Error sending event booking confirmation email to client:', error);
+    return false;
+  }
+};
+
+// Send event booking notification to professional
+const sendEventBookingNotificationToProfessional = async (event, client, professional, participation) => {
+  try {
+    const transporter = await createTransporter();
+    const emailSettings = await getEmailSettings();
+    
+    // Skip email sending if transporter is not configured
+    if (!transporter) {
+      console.log('Email service not configured. Skipping event booking notification email to professional.');
+      return false;
+    }
+    
+    const formattedDate = format(new Date(event.date), 'EEEE d MMMM yyyy', { locale: fr });
+    const formattedTime = format(new Date(event.date), 'HH:mm', { locale: fr });
+    const endTime = event.endDate ? new Date(event.endDate) : new Date(event.date);
+    const formattedEndTime = format(endTime, 'HH:mm', { locale: fr });
+    
+    const mailOptions = {
+      from: `${emailSettings.fromName} <${emailSettings.fromAddress}>`,
+      to: professional.contactInfo?.email || professional.email,
+      subject: `Nouvelle inscription à l'événement - ${event.title}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #2d5a87;">Nouvelle inscription à l'événement</h2>
+          <p>Bonjour ${professional.businessName},</p>
+          <p>Vous avez reçu une nouvelle inscription à votre événement de la part de <strong>${client.firstName || client.name || client.email}</strong>.</p>
+          
+          <div style="background-color: #f8f9fa; padding: 20px; border-radius: 5px; margin: 20px 0;">
+            <h3 style="margin-top: 0; color: #2d5a87;">${event.title}</h3>
+            <p>${event.description || ''}</p>
+            
+            <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
+              <tr>
+                <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6;"><strong>Client :</strong></td>
+                <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6;">${client.firstName || ''} ${client.lastName || ''} (${client.email})</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6;"><strong>Date :</strong></td>
+                <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6;">${formattedDate}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6;"><strong>Heure :</strong></td>
+                <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6;">${formattedTime} - ${formattedEndTime}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6;"><strong>Places réservées :</strong></td>
+                <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6;">${participation.quantity || 1}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6;"><strong>Prix :</strong></td>
+                <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6;">${event.price || 0} ${event.currency || 'MAD'}</td>
+              </tr>
+              ${participation.note ? `
+              <tr>
+                <td style="padding: 8px 0; vertical-align: top;"><strong>Note du client :</strong></td>
+                <td style="padding: 8px 0;">${participation.note}</td>
+              </tr>
+              ` : ''}
+            </table>
+          </div>
+          
+          ${participation.status === 'pending' ? `
+            <p><strong>Action requise :</strong> Cette inscription est en attente de votre confirmation. 
+            Veuillez vous connecter à votre espace professionnel pour l'accepter ou la refuser.</p>
+            
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${process.env.FRONTEND_URL}/professional/event-bookings" 
+                 style="background-color: #4F46E5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold;">
+                 Accéder à mon espace
+              </a>
+            </div>
+          ` : `
+            <p>Cette inscription a été automatiquement confirmée selon vos paramètres.</p>
+          `}
+          
+          <p>Cordialement,<br/>L'équipe ${emailSettings.siteName}</p>
+        </div>
+      `
+    };
+    
+    await transporter.sendMail(mailOptions);
+    console.log(`Event booking notification email sent to professional: ${professional.contactInfo?.email || professional.email}`);
+    return true;
+  } catch (error) {
+    console.error('Error sending event booking notification email to professional:', error);
+    return false;
+  }
+};
+
 module.exports = {
   sendBookingConfirmationToClient,
   sendBookingNotificationToProfessional,
   sendBookingStatusUpdateToClient,
   sendPaymentConfirmationEmail,
-  sendEmailVerification
+  sendEmailVerification,
+  sendSessionBookingConfirmationToClient,
+  sendSessionBookingNotificationToProfessional,
+  sendEventBookingConfirmationToClient,
+  sendEventBookingNotificationToProfessional
 }; 

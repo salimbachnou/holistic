@@ -752,6 +752,26 @@ router.put('/bookings/:bookingId', requireAuth, requireProfessional, bookingIdVa
 
     await booking.save();
 
+    // Send email notifications for status changes
+    try {
+      const EmailService = require('../services/emailService');
+      const client = await User.findById(booking.client);
+      const session = await Session.findById(booking.service.sessionId);
+      
+      if (status === 'confirmed') {
+        // Send confirmation email to client
+        await EmailService.sendSessionBookingConfirmationToClient(booking, client, professional, session);
+        console.log('Session booking confirmation email sent to client');
+      } else if (status === 'cancelled') {
+        // Send cancellation email to client
+        await EmailService.sendBookingStatusUpdateToClient(booking, client, professional, status);
+        console.log('Session booking cancellation email sent to client');
+      }
+    } catch (emailError) {
+      console.error('Error sending session booking status emails:', emailError);
+      // Don't fail the status update if email sending fails
+    }
+
     // Notify the client
     try {
       const NotificationService = require('../services/notificationService');

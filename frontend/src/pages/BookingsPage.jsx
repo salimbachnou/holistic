@@ -920,7 +920,7 @@ const BookingsPage = () => {
                 </p>
                 {activeTab === 'upcoming' && (
                   <a
-                    href="/for-you"
+                    href="/professionals"
                     className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-8 py-4 rounded-lg font-semibold hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl inline-block"
                   >
                     Découvrir des professionnels

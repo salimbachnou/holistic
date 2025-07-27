@@ -102,8 +102,26 @@ const professionalSchema = new mongoose.Schema({
       default: 'Morocco'
     },
     coordinates: {
-      lat: Number,
-      lng: Number
+      lat: {
+        type: Number,
+        required: false,
+        validate: {
+          validator: function(v) {
+            return v === null || v === undefined || (typeof v === 'number' && !isNaN(v));
+          },
+          message: 'Latitude must be a valid number or null'
+        }
+      },
+      lng: {
+        type: Number,
+        required: false,
+        validate: {
+          validator: function(v) {
+            return v === null || v === undefined || (typeof v === 'number' && !isNaN(v));
+          },
+          message: 'Longitude must be a valid number or null'
+        }
+      }
     }
   },
   contactInfo: {
@@ -178,8 +196,16 @@ const professionalSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Index for location-based searches
-professionalSchema.index({ 'businessAddress.coordinates': '2dsphere' });
+// Index for location-based searches (only for documents with valid coordinates)
+professionalSchema.index({ 
+  'businessAddress.coordinates': '2dsphere' 
+}, { 
+  sparse: true,
+  partialFilterExpression: {
+    'businessAddress.coordinates.lat': { $exists: true, $ne: null },
+    'businessAddress.coordinates.lng': { $exists: true, $ne: null }
+  }
+});
 
 // Index for business type searches
 professionalSchema.index({ businessType: 1 });

@@ -335,6 +335,40 @@ router.put('/:eventId/participants/:participantId', isAuthenticated, isProfessio
     
     await event.save();
     
+    // Send email notifications for status changes
+    try {
+      const EmailService = require('../services/emailService');
+      const participant = event.participants[participantIndex];
+      const client = await User.findById(participant.user);
+      const professional = await User.findById(event.professional);
+      const Professional = require('../models/Professional');
+      const professionalProfile = await Professional.findOne({ userId: event.professional });
+      
+      if (status === 'confirmed') {
+        // Send confirmation email to client
+        await EmailService.sendEventBookingConfirmationToClient(event, client, professionalProfile, participant);
+        console.log('Event participation confirmation email sent to client');
+      } else if (status === 'cancelled') {
+        // Send cancellation email to client
+        await EmailService.sendBookingStatusUpdateToClient(
+          { 
+            _id: participant._id,
+            service: { name: event.title },
+            appointmentDate: event.date,
+            appointmentTime: { start: 'TBD', end: 'TBD' },
+            bookingNumber: participant._id
+          }, 
+          client, 
+          professionalProfile, 
+          status
+        );
+        console.log('Event participation cancellation email sent to client');
+      }
+    } catch (emailError) {
+      console.error('Error sending event participation status emails:', emailError);
+      // Don't fail the status update if email sending fails
+    }
+    
     // Envoyer une notification au participant
     try {
       const NotificationService = require('../services/notificationService');
@@ -709,6 +743,34 @@ router.post('/:id/register', isAuthenticated, async (req, res) => {
     }
     
     await event.save();
+    
+    // Send email notifications
+    try {
+      const EmailService = require('../services/emailService');
+      const client = await User.findById(req.user._id);
+      const professional = await User.findById(event.professional);
+      const Professional = require('../models/Professional');
+      const professionalProfile = await Professional.findOne({ userId: event.professional });
+      
+      // Get the participation object that was just created/updated
+      const participation = event.participants.find(p => 
+        p.user.toString() === req.user._id.toString() && 
+        p.status !== 'cancelled'
+      );
+      
+      if (participation) {
+        // Send confirmation email to client
+        await EmailService.sendEventBookingConfirmationToClient(event, client, professionalProfile, participation);
+        console.log('Event booking confirmation email sent to client');
+        
+        // Send notification email to professional
+        await EmailService.sendEventBookingNotificationToProfessional(event, client, professionalProfile, participation);
+        console.log('Event booking notification email sent to professional');
+      }
+    } catch (emailError) {
+      console.error('Error sending event booking emails:', emailError);
+      // Don't fail the registration if email sending fails
+    }
     
     // Envoyer une notification au professionnel
     try {
